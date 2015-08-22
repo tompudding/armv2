@@ -95,7 +95,7 @@ hw_loop_done:
         MOVS PC,R0
 usr_mode:
         LDR SP,=0xe0000
-        LDR R0,=0x8258
+        LDR R0,entry_point
         ADR LR,exit
         MOVS PC,R0
         SWP R0,R0,[R1]
@@ -120,3 +120,6 @@ software_interrupt:
         BNE software_interrupt
         CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0
         MOVS PC,LR
+
+entry_point:
+        .word 0xcafebabe
