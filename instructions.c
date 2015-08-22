@@ -218,7 +218,7 @@ enum armv2_exception ALUInstruction                         (armv2_t *cpu,uint32
     uint32_t op2;
     uint32_t op1;
     uint32_t carry = (cpu->regs.actual[PC]>>29)&1;
-    uint32_t rn_val = GETREG(cpu,rn);
+    uint32_t rn_val = rn == PC ? GETPC(cpu) : GETREG(cpu,rn);
     switch(opcode) {
     case ALU_OPCODE_AND:
     case ALU_OPCODE_TST:
@@ -490,16 +490,24 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
         else {
             value = GETREG(cpu,rd);
         }
-        LOG("b\n");
 
         if(instruction&SDT_LOAD_BYTE) {
             uint32_t byte_mask = 0xff<<((rn_val&3)<<3);
             uint32_t rest_mask = ~byte_mask;
-            uint32_t store_val = (page->memory[INPAGE(rn_val)>>2]&rest_mask) | ((value&0xff)<<((rn_val&3)<<3));
-            LOG("STR at address %08x byte_mask = %08x rest_mask = %08x\n",rn_val,byte_mask,rest_mask);
-            (void) PerformStore(page,rn_val,store_val,0);
+            uint32_t store_val;
+            //uint32_t store_val = (page->memory[INPAGE(rn_val)>>2]&rest_mask) | ((value&0xff)<<((rn_val&3)<<3));
             if(page->write_byte_callback) {
-                page->write_byte_callback(page->mapped_device,INPAGE(rn_val),store_val);
+                page->write_byte_callback(page->mapped_device,INPAGE(rn_val),value);
+            }
+            else {
+                if(page->read_byte_callback) {
+                    store_val = page->read_byte_callback(page->mapped_device,INPAGE(rn_val),0);
+                }
+                else {
+                    store_val = (page->memory[INPAGE(rn_val)>>2]&rest_mask) | ((value&0xff)<<((rn_val&3)<<3));
+                }
+                LOG("STR at address %08x byte_mask = %08x rest_mask = %08x\n",rn_val,byte_mask,rest_mask);
+                (void) PerformStore(page,rn_val,store_val,0);
             }
         }
         else {
