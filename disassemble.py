@@ -234,20 +234,21 @@ class CoprocessorInstruction(Instruction):
     mneumonic = None
     def __init__(self,addr,word,cpu):
         super(CoprocessorInstruction,self).__init__(addr,word,cpu)
-        crm      = (word>> 0)&0xf
-        aux      = (word>> 5)&0xf
-        proc_num = (word>> 8)&0xf
-        crd      = (word>>12)&0xf
-        crn      = (word>>16)&0xf
+        self.crm      = (word>> 0)&0xf
+        self.aux      = (word>> 5)&0xf
+        self.proc_num = (word>> 8)&0xf
+        self.crd      = (word>>12)&0xf
+        self.crn      = (word>>16)&0xf
         self.opcode   = (word>>20)&0xf
-        self.args = ['%x' % proc_num,'#%x' % self.opcode] + [('CR%d') % n for n in crd,crn,crm]
+        self.args = ['%x' % self.proc_num,'#%x' % self.opcode] + [('CR%d') % n for n in self.crd,self.crn,self.crm]
 
 class CoprocessorRegisterTransferInstruction(CoprocessorInstruction):
-    mneumonic = 'MRC'
+    mneumonic = 'MCR'
     def __init__(self,addr,word,cpu):
         super(CoprocessorRegisterTransferInstruction,self).__init__(addr,word,cpu)
         if self.opcode&1:
-            self.mneumonic = 'MCR'
+            self.mneumonic = 'MRC'
+        self.args = ['%x' % self.proc_num,'#%x' % self.opcode, 'R%d' % self.crd] + [('CR%d') % n for n in self.crn,self.crm]
 
 class CoprocessorDataOperationInstruction(CoprocessorInstruction):
     mneumonic = 'CDP'
