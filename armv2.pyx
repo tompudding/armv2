@@ -304,9 +304,13 @@ cdef class Armv2:
         device.cdevice.extra = <void*>device
         result = carmv2.add_hardware(self.cpu,device.cdevice)
         if result != carmv2.ARMV2STATUS_OK:
-            raise ValueError
+            raise ValueError()
         self.hardware.append(device)
 
+    def Interrupt(self, hw_id, code):
+        result = carmv2.interrupt(self.cpu, <uint32_t>hw_id, <uint32_t>code)
+        if result != carmv2.ARMV2STATUS_OK:
+            raise ValueError()
 
 debugf = None
 log_lock = threading.Lock()

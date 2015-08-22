@@ -12,7 +12,7 @@ keyboard_map_end    = 0x01001000
 
 /* Stack offsets */
 keyboard_device_num = 4
-        
+
 reset:
         B start
 illegal_instruction:
@@ -72,13 +72,15 @@ hw_loop_done:
         STR R1,[R4]
         STR R1,[R4,#4]
         LDR R0,[R4,#4]
-        
+
         /* Set CR1 to be the start value */
         /* Set CR2 to be the end value */
         /* Instruct */
+inf_loop:
+        B inf_loop
         LDR R0,=0x80ac
         ADR LR,exit
         MOVS PC,R0
         SWP R0,R0,[R1]
-exit:   
+exit:
         SWI #8

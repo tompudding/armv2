@@ -8,6 +8,8 @@
 
 typedef struct {
     uint32_t regs[HW_MANAGER_NUMREGS];
+    uint32_t last_interrupt_id;
+    uint32_t last_interrupt_code;
 } hw_manager_t;
 
 typedef enum {
@@ -19,5 +21,5 @@ typedef enum {
 typedef enum {
     MOV_REGISTER = 0,
 } hw_register_opcode_t;
-    
+
 #endif

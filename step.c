@@ -38,12 +38,13 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
         }
         if(FLAG_CLEAR(cpu,I)) {
             if(PIN_ON(cpu,I)) {
-                //crumbs, time to do an FIQ!
+                //crumbs, time to do an IRQ!
                 //set the LR first
                 cpu->regs.actual[R14_I] = cpu->regs.actual[PC];
                 //set the mode to IRQ mode
                 SETMODE(cpu,MODE_IRQ);
                 //mask interrupts so they won't be taken next time.
+                CLEARPIN(cpu,I);
                 SETFLAG(cpu,I);
                 cpu->pc = 0x18-4;
                 for(uint32_t i=13;i<15;i++) {

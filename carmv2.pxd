@@ -103,3 +103,4 @@ cdef extern from "armv2.h":
     armv2_status cleanup_armv2(armv2_t *cpu) nogil
     armv2_status run_armv2(armv2_t *cpu, int32_t instructions) nogil
     armv2_status add_hardware(armv2_t *cpu, hardware_device_t *device) nogil
+    armv2_status interrupt(armv2_t *cpu, uint32_t hw_id, uint32_t code) nogil

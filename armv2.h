@@ -51,6 +51,8 @@
 #define SETPSR(cpu,newpsr)   ((cpu)->regs.actual[PC] = (((cpu)->regs.actual[PC]&0x03ffffff) | (newpsr)))
 #define GETMODEPSR(cpu)      ((cpu)->regs.actual[PC]&0xfc000003)
 #define SETFLAG(cpu,flag)    ((cpu)->regs.actual[PC] |= FLAG_##flag)
+#define SETPIN(cpu,pin)      ((cpu)->pins |= PIN_##pin)
+#define CLEARPIN(cpu,pin)    ((cpu)->pins &= (~(PIN_##pin)))
 
 #define PERM_READ    4
 #define PERM_WRITE   2
@@ -74,7 +76,7 @@
 #define FLAG_SET(cpu,flag) ((cpu)->regs.actual[PC]&FLAG_##flag)
 #define FLAG_CLEAR(cpu,flag) (!FLAG_SET(cpu,flag))
 #define PIN_ON(cpu,pin) ((cpu)->pins&PIN_##pin)
-#define PING_OFF(cpu,pin) (!PIN_ON(cpu,pin))
+#define PIN_OFF(cpu,pin) (!PIN_ON(cpu,pin))
 
 #define COND_EQ 0x0
 #define COND_NE 0x1
@@ -184,6 +186,7 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions);
 enum armv2_status add_hardware(armv2_t *cpu, hardware_device_t *device);
 enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, uint32_t end);
 enum armv2_status add_mapping(hardware_mapping_t **head, hardware_mapping_t *item);
+enum armv2_status interrupt(armv2_t *cpu, uint32_t hw_id, uint32_t code);
 
 //instruction handlers
 enum armv2_exception ALUInstruction                         (armv2_t *cpu,uint32_t instruction);
