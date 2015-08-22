@@ -224,6 +224,7 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
                 //I don't think I'm leaving anything untidied up by returning here
                 return ARMV2STATUS_MEMORY_ERROR;
             }
+            page->flags = (PERM_READ|PERM_EXECUTE|PERM_WRITE);
             page->memory = NULL;
             if(hw_mapping.device) {
                 page->mapped_device = hw_mapping.device->extra;
@@ -231,7 +232,7 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
             cpu->page_tables[page_pos] = page;
         }
         //Already checked everything's OK, and we're single threaded, so this should be ok I think...
-        LOG("Setting page_pos %x to callbacks %p %p\n",
+        LOG("Setting page_pos %x to callbacks %p %p flags %x\n",
             page_pos,
             hw_mapping.device->read_callback,
             hw_mapping.device->write_callback,

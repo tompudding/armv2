@@ -16,4 +16,4 @@ assert len(boot) < 0x8000
 boot = boot + '\x00'*(0x8000 - len(boot))
 with open(sys.argv[3],'wb') as f:
     f.write(boot)
-    f.write(data[0x8000:])
+    f.write(data[0x54:])

@@ -31,7 +31,7 @@ def RegisterList(bits):
             runs.append( (on,i) )
             on = None
     if on:
-        runs.append( (on,15) )
+        runs.append( (on,16) )
     regs = []
     for start,end in runs:
         if end-start <= 2:

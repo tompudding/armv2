@@ -497,7 +497,7 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
             uint32_t store_val;
             //uint32_t store_val = (page->memory[INPAGE(rn_val)>>2]&rest_mask) | ((value&0xff)<<((rn_val&3)<<3));
             if(page->write_byte_callback) {
-                page->write_byte_callback(page->mapped_device,INPAGE(rn_val),value);
+                page->write_byte_callback(page->mapped_device,INPAGE(rn_val),value&0xff);
             }
             else {
                 if(page->read_byte_callback) {
@@ -661,7 +661,7 @@ enum armv2_exception MultiDataTransferInstruction           (armv2_t *cpu,uint32
                 else {
                     cpu->regs.actual[PC] = value;
                 }
-                cpu->pc = GETPC(cpu)-4;
+                cpu->pc = GETPC(cpu);
             }
             else {
                 if(user_bank) {

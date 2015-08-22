@@ -89,32 +89,7 @@ keyboard_found:
         BL map_device
         B hw_id_loop
 hw_loop_done:
-        /* Let's try a test where we draw something to the screen */
-        /* First loop over the whole thing setting the background and foreground to opposites */
-        LDR R4,=display_map_start
-        ADD R5,R4,#0x4b0
-        MOV R0,#0xf0
-fill_loop:
-        STRB R0,[R4],#0x1
-        CMP R4,R5
-        BLT fill_loop
-        ADR R0,text
-write_loop:
-        LDRB R1,[R0],#1
-        STRB R1,[R5],#1
-        CMP R1,#0
-        BNE write_loop
-        B inf_loop
-.align 2
-text:   .asciz "I am the very model of a modern major general"
-.align 4
-
-        /* Set CR1 to be the start value */
-        /* Set CR2 to be the end value */
-        /* Instruct */
-inf_loop:
-        B inf_loop
-        LDR R0,=0x80ac
+        LDR R0,=0x8134
         ADR LR,exit
         MOVS PC,R0
         SWP R0,R0,[R1]

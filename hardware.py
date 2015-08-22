@@ -107,22 +107,22 @@ class Display(armv2.Device):
         self.font_surface.set_palette(((0, 0, 0, 255),)*256)
         self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
         self.font_surfaces = {}
-        self.palette = [ (0x00,0x00,0x00,0xff),
-                         (0x00,0x00,0xaa,0xff),
-                         (0x00,0xaa,0x00,0xff),
-                         (0x00,0xaa,0xaa,0xff),
-                         (0xaa,0x00,0x00,0xff),
-                         (0xaa,0x00,0xaa,0xff),
-                         (0xaa,0xaa,0x00,0xff),
-                         (0xaa,0xaa,0xaa,0xff),
-                         (0x55,0x55,0x55,0xff),
-                         (0x55,0x55,0xff,0xff),
-                         (0x55,0xff,0x55,0xff),
-                         (0x55,0xff,0xff,0xff),
-                         (0xff,0x55,0x55,0xff),
-                         (0xff,0x55,0xff,0xff),
-                         (0xff,0xff,0x55,0xff),
-                         (0xff,0xff,0xff,0xff) ]
+        self.palette = [ (0, 0, 0, 255),
+                         (255, 255, 255, 255),
+                         (136, 0, 0, 255),
+                         (170, 255, 238, 255),
+                         (204, 68, 204, 255),
+                         (0, 204, 85, 255),
+                         (0, 0, 170, 255),
+                         (238, 238, 119, 255),
+                         (221, 136, 85, 255),
+                         (102, 68, 0, 255),
+                         (255, 119, 119, 255),
+                         (51, 51, 51, 255),
+                         (119, 119, 119, 255),
+                         (170, 255, 102, 255),
+                         (0, 136, 255, 255),
+                         (187, 187, 187, 255), ]
 
         self.pixels = pygame.PixelArray(self.font_surface)
         self.font_data = [0 for i in xrange(256)]
@@ -148,6 +148,7 @@ class Display(armv2.Device):
             self.writeByteCallback(addr,byte)
             addr += 1
             value >>= 8
+        return 0
 
     def readByteCallback(self,addr,value):
         pass
