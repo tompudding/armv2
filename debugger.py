@@ -274,7 +274,7 @@ class Debugger(object):
         if num == 0:
             return None
         self.num_to_step -= num
-        armv2.DebugLog('stepping %s %s %s' % (self.machine.pc,num, self.machine.pc in self.breakpoints))
+        #armv2.DebugLog('stepping %s %s %s' % (self.machine.pc,num, self.machine.pc in self.breakpoints))
         if self.machine.pc in self.breakpoints:
             old_pos = self.machine.pc
             self.machine.memw[self.machine.pc] = self.breakpoints[self.machine.pc]
@@ -282,10 +282,7 @@ class Debugger(object):
             self.machine.memw[old_pos] = self.BKPT
             if num > 0:
                 num -= 1
-        out = self.machine.StepAndWait(num)
-        armv2.DebugLog('returning out %s' % out)
-        return out
-
+        return self.machine.StepAndWait(num)
 
     def Step(self):
         return self.StepNumInternal(1)

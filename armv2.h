@@ -139,11 +139,14 @@ typedef struct {
     uint32_t           flags;
 } page_info_t;
 
+struct _armv2_t;
+
 typedef struct {
     uint32_t device_id;
     uint32_t interrupt_flag_addr;
     access_callback_t read_callback;
     access_callback_t write_callback;
+    struct _armv2_t *cpu;
     void *extra;
 } hardware_device_t;
 
@@ -155,7 +158,7 @@ typedef struct _hardware_mapping_t {
     uint32_t flags;
 } hardware_mapping_t;
 
-typedef struct {
+typedef struct _armv2_t {
     regs_t               regs;  //storage for all the registers
     uint32_t            *physical_ram;
     uint32_t             physical_ram_size;

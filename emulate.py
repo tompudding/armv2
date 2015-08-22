@@ -42,21 +42,22 @@ def main(stdscr):
     pygame.mouse.set_visible(0)
 
     curses.use_default_colors()
+    screen = pygame.display.set_mode((320,240))
     machine = hardware.Machine(cpu_size = 2**21, cpu_rom = 'boot.rom')
     try:
-        machine.AddHardware(hardware.Keyboard(),name='keyboard')
-        machine.AddHardware(hardware.LCDDisplay(),name='display')
+        machine.AddHardware(hardware.Keyboard(machine),name='keyboard')
+        #machine.AddHardware(hardware.LCDDisplay(),name='display')
 
         dbg = debugger.Debugger(machine,stdscr)
         background = pygame.Surface((200,200))
         background = background.convert()
         background.fill((0, 0, 0))
-        machine.display.screen.blit(background, (0, 0))
+        #machine.display.screen.blit(background, (0, 0))
 
         done = False
         while not done:
             mainloop(dbg,machine)
-           
+
     finally:
         armv2.DebugLog('deleting machine')
         machine.Delete()
@@ -72,4 +73,3 @@ if __name__ == '__main__':
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
         sys.stdout.write(mystdout.get_text())
-        

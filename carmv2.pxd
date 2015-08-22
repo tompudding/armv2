@@ -95,6 +95,7 @@ cdef extern from "armv2.h":
         uint32_t interrupt_flag_addr
         access_callback_t read_callback
         access_callback_t write_callback
+        armv2_t *cpu
         void *extra
 
     armv2_status init(armv2_t *cpu, uint32_t memsize) nogil

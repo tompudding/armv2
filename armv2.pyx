@@ -162,6 +162,7 @@ cdef class Device:
         self.cdevice.device_id = self.id
         self.cdevice.read_callback = <carmv2.access_callback_t>self.read;
         self.cdevice.write_callback = <carmv2.access_callback_t>self.write;
+        self.cdevice.cpu = <carmv2.armv2_t*>args[0].cpu
         if self.cdevice == NULL:
             raise MemoryError()
 
@@ -186,12 +187,11 @@ cdef class Device:
         if self.cdevice != NULL:
             free(self.cdevice)
 
-    def __init__(self):
-        self.attached_cpu = []
+    def __init__(self,cpu):
+        self.cpu = cpu
 
-    def __del__(self):
-        for cpu in self.attached_cpu:
-            cpu.RemoveDevice(self)
+    #def __del__(self):
+    #    secpu.RemoveDevice(self)
 
     cdef carmv2.hardware_device_t *GetDevice(self):
         return self.cdevice
