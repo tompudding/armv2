@@ -160,3 +160,4 @@ class Machine:
 
     def Interrupt(self, hw_id, code):
         armv2.DebugLog('Interrupt from device %s with code %s' % (hw_id, code))
+        #self.cpu.interrupt(hw_id, code)
