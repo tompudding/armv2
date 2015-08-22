@@ -187,16 +187,12 @@ cdef class Device:
 
     cdef uint32_t read_byte(self,uint32_t addr, uint32_t value) nogil:
         with gil:
-            with open('/tmp/xxx.bin','wb') as f:
-                f.write(str(type(self)) + '\n' + str(self.readCallback))
             if self.readByteCallback:
                 return self.readByteCallback(addr,value)
             return 0
 
     cdef uint32_t write_byte(self,uint32_t addr, uint32_t value) nogil:
         with gil:
-            with open('/tmp/yyy.bin','wb') as f:
-                f.write(str(type(self)) + '\n' + str(self.writeCallback) + '\n' + str(addr) + ',' + str(value) + '\n')
             if self.writeByteCallback:
                 return self.writeByteCallback(int(addr),int(value))
 

@@ -57,7 +57,7 @@ class Keyboard(armv2.Device):
         return 0
 
     def readByteCallback(self,addr,value):
-        armv2.DebugLog('keyboard reader byte %x\n' % (addr,value))
+        armv2.DebugLog('keyboard reader byte %x %x\n' % (addr,value))
         if addr < self.ringbuffer_start:
             #It's a state request
             return (self.key_state>>(8*addr)&0xff)
@@ -86,46 +86,48 @@ class Display(armv2.Device):
 
     Mapped memory looks like this:
 
-    0x00000 - 0x12c00 : Letter array, 1 byte for every pixel starting at the bottom left, where the high nibble
-                        represents the background colour and the low nibble the foreground colour
-    0x12c00 - 0x25800 : Same as above, but each byte represents the ascii code for the character displayed
+    0x000 - 0x4b0 : Letter array, 1 byte for every pixel starting at the bottom left, where the high nibble
+                    represents the background colour and the low nibble the foreground colour
+    0x4b0 - 0x960 : Same as above, but each byte represents the ascii code for the character displayed
 
     """
     id = 0x9d99389e
-    width  = 320
-    height = 240
+    width  = 40
+    height = 30
+    cell_size = 8
     palette_start = 0
     letter_start  = width*height
+    letter_end    = width*height*2
     def __init__(self, cpu, scale_factor):
         super(Display,self).__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
-        self.screen = pygame.display.set_mode((self.width*self.scale_factor, self.height*self.scale_factor))
-        self.font_surface = pygame.Surface((8,8),depth=8)
+        self.screen = pygame.display.set_mode((self.width*self.cell_size*self.scale_factor, self.height*self.cell_size*self.scale_factor))
+        self.font_surface = pygame.Surface((self.cell_size,self.cell_size),depth=8)
         self.font_surface.set_palette(((0, 0, 0, 255),)*256)
         self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
         self.font_surfaces = {}
-        self.default_palette = [ (0x00,0x00,0x00,0xff),
-                                 (0x00,0x00,0xaa,0xff),
-                                 (0x00,0xaa,0x00,0xff),
-                                 (0x00,0xaa,0xaa,0xff),
-                                 (0xaa,0x00,0x00,0xff),
-                                 (0xaa,0x00,0xaa,0xff),
-                                 (0xaa,0xaa,0x00,0xff),
-                                 (0xaa,0xaa,0xaa,0xff),
-                                 (0x55,0x55,0x55,0xff),
-                                 (0x55,0x55,0xff,0xff),
-                                 (0x55,0xff,0x55,0xff),
-                                 (0x55,0xff,0xff,0xff),
-                                 (0xff,0x55,0x55,0xff),
-                                 (0xff,0x55,0xff,0xff),
-                                 (0xff,0xff,0x55,0xff),
-                                 (0xff,0xff,0xff,0xff) ]
-        self.palette = [colour for colour in self.default_palette]
+        self.palette = [ (0x00,0x00,0x00,0xff),
+                         (0x00,0x00,0xaa,0xff),
+                         (0x00,0xaa,0x00,0xff),
+                         (0x00,0xaa,0xaa,0xff),
+                         (0xaa,0x00,0x00,0xff),
+                         (0xaa,0x00,0xaa,0xff),
+                         (0xaa,0xaa,0x00,0xff),
+                         (0xaa,0xaa,0xaa,0xff),
+                         (0x55,0x55,0x55,0xff),
+                         (0x55,0x55,0xff,0xff),
+                         (0x55,0xff,0x55,0xff),
+                         (0x55,0xff,0xff,0xff),
+                         (0xff,0x55,0x55,0xff),
+                         (0xff,0x55,0xff,0xff),
+                         (0xff,0xff,0x55,0xff),
+                         (0xff,0xff,0xff,0xff) ]
+
         self.pixels = pygame.PixelArray(self.font_surface)
         self.font_data = [0 for i in xrange(256)]
-        self.letter_data = [0 for i in xrange(320*240)]
-        self.palette_data = [0 for i in xrange(320*240)]
+        self.letter_data = [0 for i in xrange(self.width*self.height)]
+        self.palette_data = [0 for i in xrange(self.width*self.height)]
 
         with open('petscii.txt','rb') as f:
             for line in f:
@@ -133,7 +135,7 @@ class Display(armv2.Device):
                 i,word= [int(v,16) for v in i,word]
                 self.font_data[i] = word
                 SetPixels(self.pixels,self.font_data[i])
-                self.font_surfaces[i] = pygame.transform.scale(self.font_surface,(8*self.scale_factor,8*self.scale_factor))
+                self.font_surfaces[i] = pygame.transform.scale(self.font_surface,(self.cell_size*self.scale_factor,self.cell_size*self.scale_factor))
 
 
     def readCallback(self,addr,value):
@@ -146,7 +148,39 @@ class Display(armv2.Device):
         pass
 
     def writeByteCallback(self,addr,value):
-        pass
+        if addr < self.letter_start:
+            #It's the palette
+            pos = addr
+            if value == self.palette_data[pos]:
+                #no change, ignore
+                return
+            self.palette_data[pos] = value
+            self.redraw(pos)
+        elif addr < self.letter_end:
+            pos = addr - self.letter_start
+            if value == self.letter_data[pos]:
+                #no change, ignore
+                return
+            self.letter_data[pos] = value
+            self.redraw(pos)
+
+    def redraw(self,pos):
+        x = pos%self.width
+        y = pos/self.width
+        letter = self.letter_data[pos]
+        palette = self.palette_data[pos]
+        back_colour = self.palette[(palette>>4)&0xf]
+        fore_colour = self.palette[(palette)&0xf]
+
+        tile = self.font_surfaces[letter]
+        tile.set_palette((back_colour,text_colour))
+
+        dirty = (x*self.cell_size*scale_factor,
+                 y*self.cell_size*scale_factor,
+                 (x+1)*self.cell_size*scale_factor,
+                 (y+1)*self.cell_size*scale_factor)
+        self.screen.blit(tile,(dirty[0],dirty[1]))
+        self.dirty_rects[dirty] = True
 
     def Update(self):
         if self.dirty_rects:

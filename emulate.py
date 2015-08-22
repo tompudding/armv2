@@ -22,6 +22,7 @@ class StdOutWrapper:
 def mainloop(dbg,machine):
     dbg.StepNum(dbg.FRAME_CYCLES)
     for event in pygame.event.get():
+
         if event.type == pygame.locals.QUIT:
             done = True
             break
@@ -32,6 +33,7 @@ def mainloop(dbg,machine):
             if event.key == pygame.locals.K_x:
                 dbg.Stop()
             machine.keyboard.KeyUp(event.key)
+        machine.display.Update()
 
 def main(stdscr):
     parser = OptionParser(usage="usage: %prog [options] filename",
