@@ -95,6 +95,7 @@ class Machine:
         self.mem          = MemPassthrough(self.cv,self.cpu.mem)
         self.memw         = MemPassthrough(self.cv,self.cpu.memw)
         self.thread       = threading.Thread(target = self.threadMain)
+        self.status       = None
         self.thread.start()
 
     @property
@@ -129,13 +130,24 @@ class Machine:
                     self.cv.wait(1)
                 if not self.running:
                     break
-                self.cpu.Step(self.steps_to_run)
+                self.status = self.cpu.Step(self.steps_to_run)
                 self.steps_to_run = 0
+                self.cv.notify()
 
     def Step(self,num):
         with self.cv:
             self.steps_to_run = num
             self.cv.notify()
+
+    def StepAndWait(self,num):
+        self.Step(num)
+        with self.cv:
+            while self.running:
+                while self.running and self.steps_to_run != 0:
+                    self.cv.wait(1)
+                if not self.running:
+                    break
+                return self.status
 
     def AddHardware(self,device,name = None):
         with self.cv:
@@ -151,5 +163,3 @@ class Machine:
         armv2.DebugLog('joining thread')
         self.thread.join()
         armv2.DebugLog('Killed')
-
-   

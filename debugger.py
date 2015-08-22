@@ -39,7 +39,7 @@ class Debug(View):
         if pos == None:
             pos = self.selected
         #Set our pos such that the given pos is as close to the centre as possible
-        
+
         correct = None
         self.disassembly = []
         start = max(pos-((self.height-2)/2)*4,0)
@@ -50,7 +50,7 @@ class Debug(View):
             arrow = '==>' if instruction.addr == self.debugger.machine.pc else ''
             bpt   = '*' if instruction.addr in self.debugger.breakpoints else ' '
             dis.append( (instruction.addr,'%3s%s%07x %08x : %s' % (arrow,bpt,instruction.addr,instruction.word,instruction.ToString())))
-                
+
         self.disassembly = dis
 
     def Select(self,pos):
@@ -180,7 +180,7 @@ class Memdump(View):
                 self.window.addstr(i+1,1,line,curses.A_REVERSE)
             else:
                 self.window.addstr(i+1,1,line)
-        
+
         type_string = ('%07x' % self.pos)[:self.keypos]
         extra = 7 - len(type_string)
         if extra > 0:
@@ -226,11 +226,11 @@ class Memdump(View):
             self.keypos += 1
             self.lastkey = now
             self.selected = self.pos
-            
+
         elif ch == ord('\t'):
             return WindowControl.NEXT
         return WindowControl.SAME
-    
+
 
 class Debugger(object):
     BKPT = 0xef000000 | armv2.SWI_BREAKPOINT
@@ -264,7 +264,7 @@ class Debugger(object):
         addr_word = addr
         self.breakpoints[addr]   = self.machine.memw[addr_word]
         self.machine.memw[addr_word] = self.BKPT
-    
+
     def RemoveBreakpoint(self,addr):
         self.machine.memw[addr] = self.breakpoints[addr]
         del self.breakpoints[addr]
@@ -274,16 +274,18 @@ class Debugger(object):
         if num == 0:
             return None
         self.num_to_step -= num
-        #print 'stepping',self.machine.pc,num, self.machine.pc in self.breakpoints
+        armv2.DebugLog('stepping %s %s %s' % (self.machine.pc,num, self.machine.pc in self.breakpoints))
         if self.machine.pc in self.breakpoints:
             old_pos = self.machine.pc
             self.machine.memw[self.machine.pc] = self.breakpoints[self.machine.pc]
-            self.machine.Step(1)
+            self.machine.StepAndWait(1)
             self.machine.memw[old_pos] = self.BKPT
             if num > 0:
                 num -= 1
-        return self.machine.Step(num)
-        
+        out = self.machine.StepAndWait(num)
+        armv2.DebugLog('returning out %s' % out)
+        return out
+
 
     def Step(self):
         return self.StepNumInternal(1)
@@ -293,7 +295,8 @@ class Debugger(object):
         self.stopped = False
         if armv2.Status.Breakpoint == self.StepNumInternal(self.num_to_step):
             self.Stop()
-        
+        #raise SystemExit('bob %d' % self.num_to_step)
+
     def StepNum(self,num):
         self.num_to_step = num
         if not self.stopped:
