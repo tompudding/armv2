@@ -161,23 +161,23 @@ class SingleDataTransferInstruction(Instruction):
             self.mneumonic += 'B'
         if word&self.SDT_WRITE_BACK:
             rd += '!'
-        
+
         if rn == 0xf and not word&self.SDT_REGISTER:
             val = cpu.memw[addr+8+offset]
             self.args = [rd] + ['=0x%x' % val]
             return
-            
+
         rn = registerNames[rn]
         op2.insert(0,rn)
-        
-        
+
+
         op2[0] = '[' + op2[0]
         if word&self.SDT_PREINDEX:
             op2[-1] = op2[-1] + ']'
         else:
             op2[0] = op2[0] + ']'
         self.args = [rd] + op2
-        
+
 
 class BranchInstruction(Instruction):
     def __init__(self,addr,word,cpu):
@@ -219,7 +219,7 @@ class MultiDataTransferInstruction(Instruction):
             elif self.mneumonic == 'STMDB':
                 self.mneumonic = 'PUSH'
                 self.args = self.args[1:]
-        
+
 
 class SoftwareInterruptInstruction(Instruction):
     mneumonic = 'SWI'
@@ -247,7 +247,7 @@ class CoprocessorRegisterTransferInstruction(CoprocessorInstruction):
     def __init__(self,addr,word,cpu):
         super(CoprocessorRegisterTransferInstruction,self).__init__(addr,word,cpu)
         if self.opcode&1:
-            self.mnemonic = 'MCR'        
+            self.mneumonic = 'MCR'
 
 class CoprocessorDataOperationInstruction(CoprocessorInstruction):
     mneumonic = 'CDP'
