@@ -42,11 +42,10 @@ def main(stdscr):
     pygame.mouse.set_visible(0)
 
     curses.use_default_colors()
-    screen = pygame.display.set_mode((320,240))
     machine = hardware.Machine(cpu_size = 2**21, cpu_rom = 'boot.rom')
     try:
         machine.AddHardware(hardware.Keyboard(machine),name='keyboard')
-        #machine.AddHardware(hardware.LCDDisplay(),name='display')
+        machine.AddHardware(hardware.Display(machine,scale_factor=3),name='display')
 
         dbg = debugger.Debugger(machine,stdscr)
         background = pygame.Surface((200,200))

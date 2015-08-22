@@ -60,6 +60,64 @@ class Keyboard(armv2.Device):
         armv2.DebugLog('keyboard writer %x %x\n' % (addr,value))
         return 0
 
+def SetPixels(pixels,word):
+    for j in xrange(64):
+        #the next line is so obvious it doesn't need a comment
+        pixels[7-(j/8)][j%8] = ((word>>j)&1)
+
+class Display(armv2.Device):
+    """ A Display """
+    id = 0x9d99389e
+    def __init__(self, cpu, scale_factor):
+        super(Display,self).__init__(cpu)
+        self.dirty_rects = {}
+        self.scale_factor = scale_factor
+        self.screen = pygame.display.set_mode((320*self.scale_factor, 240*self.scale_factor))
+        self.font_surface = pygame.Surface((8,8),depth=8)
+        self.font_surface.set_palette(((0, 0, 0, 255),)*256)
+        self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
+        self.font_surfaces = {}
+        self.default_palette = [ (0x00,0x00,0x00,0xff),
+                                 (0x00,0x00,0xaa,0xff),
+                                 (0x00,0xaa,0x00,0xff),
+                                 (0x00,0xaa,0xaa,0xff),
+                                 (0xaa,0x00,0x00,0xff),
+                                 (0xaa,0x00,0xaa,0xff),
+                                 (0xaa,0xaa,0x00,0xff),
+                                 (0xaa,0xaa,0xaa,0xff),
+                                 (0x55,0x55,0x55,0xff),
+                                 (0x55,0x55,0xff,0xff),
+                                 (0x55,0xff,0x55,0xff),
+                                 (0x55,0xff,0xff,0xff),
+                                 (0xff,0x55,0x55,0xff),
+                                 (0xff,0x55,0xff,0xff),
+                                 (0xff,0xff,0x55,0xff),
+                                 (0xff,0xff,0xff,0xff) ]
+        self.palette = [colour for colour in self.default_palette]
+        self.pixels = pygame.PixelArray(self.font_surface)
+        self.font_data = [0 for i in xrange(256)]
+
+        with open('petscii.txt','rb') as f:
+            for line in f:
+                i,dummy,word = line.strip().split()
+                i,word= [int(v,16) for v in i,word]
+                self.font_data[i] = word
+                SetPixels(self.pixels,self.font_data[i])
+                self.font_surfaces[i] = pygame.transform.scale(self.font_surface,(4*self.scale_factor,8*self.scale_factor))
+
+
+    def readCallback(self,addr,value):
+        pass
+
+    def writeCallback(self,addr,value):
+        pass
+
+    def Update(self):
+        if self.dirty_rects:
+            pygame.display.update(self.dirty_rects.keys())
+            self.dirty_rects = {}
+
+
 class MemPassthrough(object):
     def __init__(self,cv,accessor):
         self.cv = cv

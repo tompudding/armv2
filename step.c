@@ -25,7 +25,7 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
         if(FLAG_CLEAR(cpu,F)) {
             if(PIN_ON(cpu,F)) {
                 //crumbs, time to do an FIQ!
-                cpu->regs.actual[R14_F] = cpu->regs.actual[PC];
+                cpu->regs.actual[R14_F] = cpu->regs.actual[PC]-4;
                 SETMODE(cpu,MODE_FIQ);
                 SETFLAG(cpu,F);
                 SETFLAG(cpu,I);
@@ -40,7 +40,7 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
             if(PIN_ON(cpu,I)) {
                 //crumbs, time to do an IRQ!
                 //set the LR first
-                cpu->regs.actual[R14_I] = cpu->regs.actual[PC];
+                cpu->regs.actual[R14_I] = cpu->regs.actual[PC]-4;
                 //set the mode to IRQ mode
                 SETMODE(cpu,MODE_IRQ);
                 //mask interrupts so they won't be taken next time.
