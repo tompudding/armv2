@@ -162,6 +162,8 @@ cdef class Device:
         self.cdevice.device_id = self.id
         self.cdevice.read_callback = <carmv2.access_callback_t>self.read;
         self.cdevice.write_callback = <carmv2.access_callback_t>self.write;
+        self.cdevice.read_byte_callback = <carmv2.access_callback_t>self.read_byte;
+        self.cdevice.write_byte_callback = <carmv2.access_callback_t>self.write_byte;
         self.cdevice.cpu = <carmv2.armv2_t*>args[0].cpu
         if self.cdevice == NULL:
             raise MemoryError()
@@ -180,6 +182,23 @@ cdef class Device:
                 f.write(str(type(self)) + '\n' + str(self.writeCallback) + '\n' + str(addr) + ',' + str(value) + '\n')
             if self.writeCallback:
                 return self.writeCallback(int(addr),int(value))
+
+            return 0
+
+    cdef uint32_t read_byte(self,uint32_t addr, uint32_t value) nogil:
+        with gil:
+            with open('/tmp/xxx.bin','wb') as f:
+                f.write(str(type(self)) + '\n' + str(self.readCallback))
+            if self.readByteCallback:
+                return self.readByteCallback(addr,value)
+            return 0
+
+    cdef uint32_t write_byte(self,uint32_t addr, uint32_t value) nogil:
+        with gil:
+            with open('/tmp/yyy.bin','wb') as f:
+                f.write(str(type(self)) + '\n' + str(self.writeCallback) + '\n' + str(addr) + ',' + str(value) + '\n')
+            if self.writeByteCallback:
+                return self.writeByteCallback(int(addr),int(value))
 
             return 0
 

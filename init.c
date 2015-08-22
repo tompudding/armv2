@@ -209,7 +209,7 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
             //That's OK, that means this page is currently completely unmapped. We can make a page just for this
             continue;
         }
-        if(page->read_callback || page->write_callback) {
+        if(page->read_callback || page->write_callback || page->read_byte_callback || page->write_byte_callback) {
             return ARMV2STATUS_ALREADY_MAPPED;
         }
     }
@@ -231,9 +231,16 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
             cpu->page_tables[page_pos] = page;
         }
         //Already checked everything's OK, and we're single threaded, so this should be ok I think...
-        LOG("Setting page_pos %x to callbacks %p %p\n",page_pos,hw_mapping.device->read_callback,hw_mapping.device->write_callback);
+        LOG("Setting page_pos %x to callbacks %p %p\n",
+            page_pos,
+            hw_mapping.device->read_callback,
+            hw_mapping.device->write_callback,
+            hw_mapping.device->read_byte_callback,
+            hw_mapping.device->write_byte_callback);
         page->read_callback  = hw_mapping.device->read_callback;
         page->write_callback = hw_mapping.device->write_callback;
+        page->read_byte_callback  = hw_mapping.device->read_byte_callback;
+        page->write_byte_callback = hw_mapping.device->write_byte_callback;
     }
 
     hw_mapping.start = start;

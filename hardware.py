@@ -56,7 +56,22 @@ class Keyboard(armv2.Device):
 
         return 0
 
+    def readByteCallback(self,addr,value):
+        armv2.DebugLog('keyboard reader byte %x\n' % (addr,value))
+        if addr < self.ringbuffer_start:
+            #It's a state request
+            return (self.key_state>>(8*addr)&0xff)
+        elif addr < self.ringbuffer_pos:
+            pos = addr - self.ringbuffer_start
+            return self.ring_buffer[pos]
+        elif addr == ringbuffer_pos:
+            return self.pos
+
     def writeCallback(self,addr,value):
+        armv2.DebugLog('keyboard writer %x %x\n' % (addr,value))
+        return 0
+
+    def writeByteCallback(self,addr,value):
         armv2.DebugLog('keyboard writer %x %x\n' % (addr,value))
         return 0
 
@@ -66,13 +81,26 @@ def SetPixels(pixels,word):
         pixels[7-(j/8)][j%8] = ((word>>j)&1)
 
 class Display(armv2.Device):
-    """ A Display """
+    """
+    A Display
+
+    Mapped memory looks like this:
+
+    0x00000 - 0x12c00 : Letter array, 1 byte for every pixel starting at the bottom left, where the high nibble
+                        represents the background colour and the low nibble the foreground colour
+    0x12c00 - 0x25800 : Same as above, but each byte represents the ascii code for the character displayed
+
+    """
     id = 0x9d99389e
+    width  = 320
+    height = 240
+    palette_start = 0
+    letter_start  = width*height
     def __init__(self, cpu, scale_factor):
         super(Display,self).__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
-        self.screen = pygame.display.set_mode((320*self.scale_factor, 240*self.scale_factor))
+        self.screen = pygame.display.set_mode((self.width*self.scale_factor, self.height*self.scale_factor))
         self.font_surface = pygame.Surface((8,8),depth=8)
         self.font_surface.set_palette(((0, 0, 0, 255),)*256)
         self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
@@ -96,6 +124,8 @@ class Display(armv2.Device):
         self.palette = [colour for colour in self.default_palette]
         self.pixels = pygame.PixelArray(self.font_surface)
         self.font_data = [0 for i in xrange(256)]
+        self.letter_data = [0 for i in xrange(320*240)]
+        self.palette_data = [0 for i in xrange(320*240)]
 
         with open('petscii.txt','rb') as f:
             for line in f:
@@ -103,13 +133,19 @@ class Display(armv2.Device):
                 i,word= [int(v,16) for v in i,word]
                 self.font_data[i] = word
                 SetPixels(self.pixels,self.font_data[i])
-                self.font_surfaces[i] = pygame.transform.scale(self.font_surface,(4*self.scale_factor,8*self.scale_factor))
+                self.font_surfaces[i] = pygame.transform.scale(self.font_surface,(8*self.scale_factor,8*self.scale_factor))
 
 
     def readCallback(self,addr,value):
         pass
 
     def writeCallback(self,addr,value):
+        pass
+
+    def readByteCallback(self,addr,value):
+        pass
+
+    def writeByteCallback(self,addr,value):
         pass
 
     def Update(self):

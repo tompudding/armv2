@@ -78,6 +78,8 @@ cdef extern from "armv2.h":
         uint32_t *memory
         access_callback_t read_callback
         access_callback_t write_callback
+        access_callback_t read_byte_callback
+        access_callback_t write_byte_callback
         uint32_t flags
 
     ctypedef struct armv2_t:
@@ -95,6 +97,8 @@ cdef extern from "armv2.h":
         uint32_t interrupt_flag_addr
         access_callback_t read_callback
         access_callback_t write_callback
+        access_callback_t read_byte_callback
+        access_callback_t write_byte_callback
         armv2_t *cpu
         void *extra
 

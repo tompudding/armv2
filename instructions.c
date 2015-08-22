@@ -150,13 +150,18 @@ uint32_t OperandShift(armv2_t *cpu, uint32_t bits, uint32_t type_flag, uint32_t 
     return op2;
 }
 
-static enum armv2_status PerformLoad(page_info_t *page, uint32_t addr, uint32_t *out) {
+static enum armv2_status PerformLoad(page_info_t *page, uint32_t addr, uint32_t *out, int byte) {
     uint32_t value;
     if(NULL == page || NULL == out) {
         return ARMV2STATUS_INVALID_ARGS;
     }
     if(page->read_callback) {
-        value = page->read_callback(page->mapped_device,INPAGE(addr),0);
+        if(byte) {
+            value = page->read_byte_callback(page->mapped_device,INPAGE(addr),0);
+        }
+        else {
+            value = page->read_byte_callback(page->mapped_device,INPAGE(addr),0);
+        }
     }
     else if(NULL != page->memory) {
         value = page->memory[INPAGE(addr)>>2];
@@ -170,11 +175,11 @@ static enum armv2_status PerformLoad(page_info_t *page, uint32_t addr, uint32_t 
     return ARMV2STATUS_OK;
 }
 
-static enum armv2_status PerformStore(page_info_t *page, uint32_t addr, uint32_t value) {
+static enum armv2_status PerformStore(page_info_t *page, uint32_t addr, uint32_t value, int callback) {
     if(NULL == page) {
         return ARMV2STATUS_INVALID_ARGS;
     }
-    if(page->write_callback) {
+    if(callback && page->write_callback) {
         page->write_callback(page->mapped_device,INPAGE(addr),value);
     }
     else if(NULL != page->memory) {
@@ -454,7 +459,7 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
         }
 
         LOG("Page at %p has memory %p, rc %p wc %p flags %x\n",page,page->memory,page->read_callback,page->write_callback,page->flags);
-        if(ARMV2STATUS_OK != PerformLoad(page,rn_val,&value)) {
+        if(ARMV2STATUS_OK != PerformLoad(page,rn_val,&value, instruction&SDT_LOAD_BYTE)) {
             return EXCEPT_DATA_ABORT;
         }
 
@@ -492,7 +497,10 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
             uint32_t rest_mask = ~byte_mask;
             uint32_t store_val = (page->memory[INPAGE(rn_val)>>2]&rest_mask) | ((value&0xff)<<((rn_val&3)<<3));
             LOG("STR at address %08x byte_mask = %08x rest_mask = %08x\n",rn_val,byte_mask,rest_mask);
-            (void) PerformStore(page,rn_val,store_val);
+            (void) PerformStore(page,rn_val,store_val,0);
+            if(page->write_byte_callback) {
+                page->write_byte_callback(page->mapped_device,INPAGE(rn_val),store_val);
+            }
         }
         else {
             //must be aligned
@@ -500,7 +508,7 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
                 return EXCEPT_DATA_ABORT;
             }
             LOG("Page at %p has memory %p, rc %p wc %p flags %x\n",page,page->memory,page->read_callback,page->write_callback,page->flags);
-            (void) PerformStore(page,rn_val,value);
+            (void) PerformStore(page,rn_val,value,1);
         }
     }
     LOG("d\n");
@@ -632,7 +640,7 @@ enum armv2_exception MultiDataTransferInstruction           (armv2_t *cpu,uint32
                 retval = EXCEPT_DATA_ABORT;
                 continue;
             }
-            if(ARMV2STATUS_OK != PerformLoad(page,address,&value)) {
+            if(ARMV2STATUS_OK != PerformLoad(page,address,&value,0)) {
                 retval = EXCEPT_DATA_ABORT;
                 continue;
             }
@@ -677,7 +685,7 @@ enum armv2_exception MultiDataTransferInstruction           (armv2_t *cpu,uint32
                     value = write_back_old;
                 }
             }
-            (void) PerformStore(page,address,value);
+            (void) PerformStore(page,address,value,1);
         }
     }
 
@@ -716,7 +724,7 @@ enum armv2_exception SwapInstruction                        (armv2_t *cpu,uint32
     }
 
     //First load
-    if(ARMV2STATUS_OK != PerformLoad(page,address,&value)) {
+    if(ARMV2STATUS_OK != PerformLoad(page,address,&value,0)) {
         return EXCEPT_DATA_ABORT;
     }
     if(byte) {
@@ -752,7 +760,7 @@ enum armv2_exception SwapInstruction                        (armv2_t *cpu,uint32
         }
     }
 
-    (void) PerformStore(page,address,value);
+    (void) PerformStore(page,address,value,1);
 
     return EXCEPT_NONE;
 }

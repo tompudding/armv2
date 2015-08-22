@@ -138,6 +138,8 @@ typedef struct {
     void              *mapped_device;
     access_callback_t  read_callback;
     access_callback_t  write_callback;
+    access_callback_t  read_byte_callback;
+    access_callback_t  write_byte_callback;
     uint32_t           flags;
 } page_info_t;
 
@@ -148,6 +150,8 @@ typedef struct {
     uint32_t interrupt_flag_addr;
     access_callback_t read_callback;
     access_callback_t write_callback;
+    access_callback_t read_byte_callback;
+    access_callback_t write_byte_callback;
     struct _armv2_t *cpu;
     void *extra;
 } hardware_device_t;
