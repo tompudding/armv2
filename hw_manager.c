@@ -41,6 +41,12 @@ enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t au
             cpu->hardware_manager.regs[0] = device->device_id;
             return ARMV2STATUS_OK;
         }
+    case INTERRUPT_DATA:
+        /* put the interrupt device into cr0 and the interrupt code into cr1 */
+        cpu->hardware_manager.regs[0] = cpu->hardware_manager.last_interrupt_id;
+        cpu->hardware_manager.regs[1] = cpu->hardware_manager.last_interrupt_code;
+        return ARMV2STATUS_OK;
+
     default:
         return ARMV2STATUS_UNKNOWN_OPCODE;
     }

@@ -259,9 +259,12 @@ enum armv2_status interrupt(armv2_t *cpu, uint32_t hw_id, uint32_t code) {
     if(NULL == cpu || !CPU_INITIALISED(cpu)) {
         return ARMV2STATUS_INVALID_ARGS;
     }
-    cpu->hardware_manager.last_interrupt_id = hw_id;
-    cpu->hardware_manager.last_interrupt_code = code;
-    SETPIN(cpu,I);
+    //TODO: some kind of interrupt queue, for now drop interrupts that happen while we're doing this
+    if(PIN_OFF(cpu,I) && FLAG_CLEAR(cpu,I)) {
+        cpu->hardware_manager.last_interrupt_id = hw_id;
+        cpu->hardware_manager.last_interrupt_code = code;
+        SETPIN(cpu,I);
+    }
 
     return ARMV2STATUS_OK;
 }

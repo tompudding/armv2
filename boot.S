@@ -4,6 +4,7 @@
 num_devices_opcode  = 0
 map_memory_opcode   = 1
 device_id_opcode    = 2
+interrupt_data_opcode = 3
 mov_register_opcode = 0
 hw_manager          = 1
 keyboard_device_id  = 0x41414141
@@ -26,7 +27,7 @@ data_abort:
 address_exception:
         SWI #5
 IRQ:
-        SWI #6
+        B interrupt_handler
 FIQ:
         SWI #7
 
@@ -84,3 +85,16 @@ inf_loop:
         SWP R0,R0,[R1]
 exit:
         SWI #8
+interrupt_handler:
+        @Let's ask the hw manager what the id and code of the interrupt was
+        CDP 1,#interrupt_data_opcode,CR0,CR0,CR0
+        @Put CR0 into R8
+        MRC 1,#mov_register_opcode,R8,CR0,CR0
+        @Put CR1 into R1
+        MRC 1,#mov_register_opcode,R9,CR1,CR0
+        LDR R10,=keyboard_device_id
+        CMP R8,R10
+        BNE interrupt_done
+        MOV R8,#0
+interrupt_done:
+        SUBS PC,LR,#4
