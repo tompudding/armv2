@@ -17,6 +17,7 @@ typedef enum {
     MAP_MEMORY    = 1,
     GET_DEVICE_ID = 2,
     INTERRUPT_DATA = 3,
+    WAIT_FOR_INTERRUPT = 4,
 } hw_manager_opcode_t;
 
 typedef enum {

@@ -53,6 +53,8 @@
 #define SETFLAG(cpu,flag)    ((cpu)->regs.actual[PC] |= FLAG_##flag)
 #define SETPIN(cpu,pin)      ((cpu)->pins |= PIN_##pin)
 #define CLEARPIN(cpu,pin)    ((cpu)->pins &= (~(PIN_##pin)))
+#define SETCPUFLAG(cpu,flag) ((cpu)->flags |= FLAG_##flag)
+#define CLEARCPUFLAG(cpu,flag) ((cpu)->flags &= (~FLAG_##flag))
 
 #define PERM_READ    4
 #define PERM_WRITE   2
@@ -103,7 +105,9 @@
 #define MODE_SUP 3
 
 #define FLAG_INIT 1
+#define FLAG_WAIT 2
 #define CPU_INITIALISED(cpu) ( (((cpu)->flags)&FLAG_INIT) )
+#define WAITING(cpu) ( (((cpu)->flags)&FLAG_WAIT) )
 
 enum armv2_exception {
     EXCEPT_RST                   = 0,

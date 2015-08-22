@@ -69,6 +69,10 @@ enum armv2_status init(armv2_t *cpu, uint32_t memsize) {
     for(uint32_t i=0;i<NUM_EFFECTIVE_REGS;i++) {
         cpu->regs.effective[i] = &cpu->regs.actual[i];
     }
+    //We start in supervisor mode bank those registers
+    for(uint32_t i=13;i<15;i++) {
+        cpu->regs.effective[i] = &cpu->regs.actual[R13_S+(i-13)];
+    }
 
     //Set up the exception conditions
     for(uint32_t i=0;i<EXCEPT_NONE;i++) {

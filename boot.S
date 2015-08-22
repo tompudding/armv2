@@ -5,6 +5,7 @@ num_devices_opcode  = 0
 map_memory_opcode   = 1
 device_id_opcode    = 2
 interrupt_data_opcode = 3
+wait_for_interrupt_opcode = 4
 mov_register_opcode = 0
 hw_manager          = 1
 keyboard_device_id  = 0x41414141
@@ -13,6 +14,7 @@ keyboard_map_start  = 0x01000000
 keyboard_map_end    = 0x01001000
 display_map_start   = 0x01001000
 display_map_end     = 0x01002000
+wait_for_interrupt  = 17
 
 /* Stack offsets */
 keyboard_device_num = 4
@@ -23,7 +25,7 @@ reset:
 illegal_instruction:
         SWI #1
 swi:
-        SWI #2
+        B software_interrupt
 prefetch_abort:
         SWI #3
 data_abort:
@@ -89,7 +91,11 @@ keyboard_found:
         BL map_device
         B hw_id_loop
 hw_loop_done:
-        LDR R0,=0x8134
+        ADR R0,usr_mode
+        MOVS PC,R0
+usr_mode:
+        LDR SP,=0xe0000
+        LDR R0,=0x8258
         ADR LR,exit
         MOVS PC,R0
         SWP R0,R0,[R1]
@@ -108,3 +114,9 @@ interrupt_handler:
         MOV R8,#0
 interrupt_done:
         SUBS PC,LR,#4
+
+software_interrupt:
+        cmp R7,#wait_for_interrupt
+        BNE software_interrupt
+        CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0
+        MOVS PC,LR

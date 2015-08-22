@@ -13,9 +13,14 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
         if(instructions == 0) {
             return ARMV2STATUS_OK;
         }
+        //LOG("Step %d %d %d %08x\n",WAITING(cpu),PIN_OFF(cpu,I),PIN_OFF(cpu,F),(cpu)->regs.actual[LR]);
+        if(WAITING(cpu) && PIN_OFF(cpu,I) && PIN_OFF(cpu,F)) {
+            return ARMV2STATUS_OK;
+        }
         if(instructions > 0) {
             instructions--;
         }
+
         enum armv2_exception exception = EXCEPT_NONE;
         cpu->pc = (cpu->pc+4)&0x3ffffff;
         //check if PC is valid
@@ -46,7 +51,12 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
                 //mask interrupts so they won't be taken next time.
                 CLEARPIN(cpu,I);
                 SETFLAG(cpu,I);
+                //in case it's waiting for an interrupt
+                CLEARCPUFLAG(cpu,WAIT);
                 cpu->pc = 0x18-4;
+                for(uint32_t i=8;i<13;i++) {
+                    cpu->regs.effective[i] = &cpu->regs.actual[i];
+                }
                 for(uint32_t i=13;i<15;i++) {
                     cpu->regs.effective[i] = &cpu->regs.actual[R13_I+(i-13)];
                 }
@@ -186,6 +196,7 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
             }
             break;
         }
+        uint32_t old_mode = GETMODE(cpu);
         exception = handler(cpu,instruction);
         //handle the exception if there was one
     handle_exception:
@@ -208,6 +219,20 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
             cpu->regs.actual[PC] = ((cpu->regs.actual[PC])&0xfffffffc) | ex_handler.mode;
             cpu->pc = ex_handler.pc-4;
         }
+
+        if(GETMODE(cpu) != old_mode) {
+            //The instruction changed the mode of the processor so we need to bank registers
+            LOG("Changing to cpu mode %d\n",GETMODE(cpu));
+            for(uint32_t i=8;i<NUM_EFFECTIVE_REGS;i++) {
+                cpu->regs.effective[i] = &cpu->regs.actual[i];
+            }
+            if(MODE_SUP == GETMODE(cpu)) {
+                for(uint32_t i=13;i<15;i++) {
+                    cpu->regs.effective[i] = &cpu->regs.actual[R13_S+(i-13)];
+                }
+            }
+        }
+
     }
     return ARMV2STATUS_OK;
 }

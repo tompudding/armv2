@@ -47,6 +47,14 @@ enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t au
         cpu->hardware_manager.regs[1] = cpu->hardware_manager.last_interrupt_code;
         return ARMV2STATUS_OK;
 
+    case WAIT_FOR_INTERRUPT:
+        LOG("Wait for interrupt! %d %d\n",FLAG_CLEAR(cpu,I),FLAG_CLEAR(cpu,F));
+        if(FLAG_CLEAR(cpu,I) && FLAG_CLEAR(cpu,F)) {
+            //only start a wait if we're not already in an interrupt
+            SETCPUFLAG(cpu,WAIT);
+        }
+        return ARMV2STATUS_OK;
+
     default:
         return ARMV2STATUS_UNKNOWN_OPCODE;
     }

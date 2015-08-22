@@ -51,7 +51,7 @@ class Keyboard(armv2.Device):
             pos = addr - self.ringbuffer_start
             bytes = [self.ring_buffer[pos + i % len(self.ring_buffer)] for i in xrange(4)]
             return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
-        elif addr == ringbuffer_pos:
+        elif addr == self.ringbuffer_pos:
             return self.pos
 
         return 0
@@ -64,8 +64,10 @@ class Keyboard(armv2.Device):
         elif addr < self.ringbuffer_pos:
             pos = addr - self.ringbuffer_start
             return self.ring_buffer[pos]
-        elif addr == ringbuffer_pos:
+        elif addr == self.ringbuffer_pos:
             return self.pos
+        else:
+            return 0
 
     def writeCallback(self,addr,value):
         armv2.DebugLog('keyboard writer %x %x\n' % (addr,value))
