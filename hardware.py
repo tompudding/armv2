@@ -15,7 +15,8 @@ class Keyboard(armv2.Device):
     id = 0x41414141
     bitmask_start    = 0
     ringbuffer_start = 0x20
-    ringbuffer_pos   = 0xa0
+    ringbuffer_size  = 128
+    ringbuffer_pos   = ringbuffer_start + ringbuffer_size
 
     class InterruptCodes:
         KEY_DOWN = 0
@@ -23,7 +24,7 @@ class Keyboard(armv2.Device):
 
     def __init__(self, cpu):
         super(Keyboard,self).__init__(cpu)
-        self.ring_buffer = [0 for i in xrange(128)]
+        self.ring_buffer = [0 for i in xrange(self.ringbuffer_size)]
         self.pos = 0
         self.key_state = 0
         armv2.DebugLog('keyboard keyboard keyboard!\n')

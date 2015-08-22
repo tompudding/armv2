@@ -61,7 +61,7 @@ void process_text() {
             uint8_t c;
             c = keyboard_ringbuffer[last_pos];
             process_char(c);
-            last_pos = ((last_pos) + 1 % RINGBUFFER_SIZE);
+            last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
         }
     }
 }
