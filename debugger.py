@@ -44,7 +44,7 @@ class Debug(View):
         self.disassembly = []
         start = max(pos-((self.height-2)/2)*4,0)
         end = min(pos + ((self.height-2)/2)*4,len(self.debugger.machine.mem))
-        #print '%x - %x - %x' % (start,pos,end)
+
         dis = []
         for instruction in disassemble.Disassemble(self.debugger.machine,self.debugger.breakpoints,start,start+(self.height-2)*4):
             arrow = '==>' if instruction.addr == self.debugger.machine.pc else ''

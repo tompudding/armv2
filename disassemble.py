@@ -1,3 +1,4 @@
+import armv2
 
 registerNames = [('r%d' % i) for i in xrange(13)] + ['sp','lr','pc']
 shiftTypes = ['LSL','LSR','ASR','ROR']
@@ -163,7 +164,11 @@ class SingleDataTransferInstruction(Instruction):
             rd += '!'
 
         if rn == 0xf and not word&self.SDT_REGISTER:
-            val = cpu.memw[addr+8+offset]
+            pos = addr+8+offset
+            try:
+                val = cpu.memw[addr+8+offset]
+            except:
+                val = 0
             self.args = [rd] + ['=0x%x' % val]
             return
 
@@ -289,4 +294,5 @@ def Disassemble(cpu,breakpoints,start,end):
             word = breakpoints[addr]
         else:
             word = cpu.memw[addr]
-        yield InstructionFactory(addr,word,cpu)
+        out = InstructionFactory(addr,word,cpu)
+        yield out

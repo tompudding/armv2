@@ -78,7 +78,7 @@ class Keyboard(armv2.Device):
 def SetPixels(pixels,word):
     for j in xrange(64):
         #the next line is so obvious it doesn't need a comment
-        pixels[7-(j/8)][j%8] = ((word>>j)&1)
+        pixels[j/8][j%8] = ((word>>j)&1)
 
 class Display(armv2.Device):
     """
@@ -142,47 +142,55 @@ class Display(armv2.Device):
         pass
 
     def writeCallback(self,addr,value):
-        pass
+        armv2.DebugLog('display write word %x %x\n' % (addr,value))
+        for i in xrange(4):
+            byte = value&0xff
+            self.writeByteCallback(addr,byte)
+            addr += 1
+            value >>= 8
 
     def readByteCallback(self,addr,value):
         pass
 
     def writeByteCallback(self,addr,value):
+        armv2.DebugLog('display write byte %x %x\n' % (addr,value))
         if addr < self.letter_start:
             #It's the palette
             pos = addr
+            armv2.DebugLog('a1')
             if value == self.palette_data[pos]:
                 #no change, ignore
-                return
+                return 0
             self.palette_data[pos] = value
             self.redraw(pos)
         elif addr < self.letter_end:
             pos = addr - self.letter_start
             if value == self.letter_data[pos]:
                 #no change, ignore
-                return
+                return 0
             self.letter_data[pos] = value
             self.redraw(pos)
+        return 0
 
     def redraw(self,pos):
+        armv2.DebugLog('redraw %d' % pos)
         x = pos%self.width
         y = pos/self.width
         letter = self.letter_data[pos]
         palette = self.palette_data[pos]
         back_colour = self.palette[(palette>>4)&0xf]
         fore_colour = self.palette[(palette)&0xf]
-
         tile = self.font_surfaces[letter]
-        tile.set_palette((back_colour,text_colour))
-
-        dirty = (x*self.cell_size*scale_factor,
-                 y*self.cell_size*scale_factor,
-                 (x+1)*self.cell_size*scale_factor,
-                 (y+1)*self.cell_size*scale_factor)
+        tile.set_palette((back_colour,fore_colour))
+        dirty = (x*self.cell_size*self.scale_factor,
+                 y*self.cell_size*self.scale_factor,
+                 (x+1)*self.cell_size*self.scale_factor,
+                 (y+1)*self.cell_size*self.scale_factor)
         self.screen.blit(tile,(dirty[0],dirty[1]))
         self.dirty_rects[dirty] = True
 
     def Update(self):
+        armv2.DebugLog('update bitches %d' % len(self.dirty_rects))
         if self.dirty_rects:
             pygame.display.update(self.dirty_rects.keys())
             self.dirty_rects = {}

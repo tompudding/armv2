@@ -255,7 +255,7 @@ cdef class Armv2:
         self.setword(addr,new_word)
 
     def getword(self,addr):
-        if addr >= MAX_26BIT:
+        if addr >= MAX_26BIT or addr < 0:
             raise IndexError()
 
         cdef carmv2.page_info_t *page = self.cpu.page_tables[PAGEOF(addr)]
