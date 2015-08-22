@@ -31,7 +31,7 @@ class Keyboard(armv2.Device):
     def KeyDown(self,key):
         armv2.DebugLog('key down ' + str(key))
         self.key_state |= (1<<key)
-        self.ring_buffer[self.ring_buffer[self.pos]] = key
+        self.ring_buffer[self.pos] = key
         self.pos += 1
         if self.pos == len(self.ring_buffer):
             self.pos = 0
@@ -63,7 +63,9 @@ class Keyboard(armv2.Device):
             return (self.key_state>>(8*addr)&0xff)
         elif addr < self.ringbuffer_pos:
             pos = addr - self.ringbuffer_start
-            return self.ring_buffer[pos]
+            out = self.ring_buffer[pos]
+            armv2.DebugLog('Read key data %d\n' % out)
+            return out
         elif addr == self.ringbuffer_pos:
             return self.pos
         else:
@@ -193,7 +195,6 @@ class Display(armv2.Device):
         self.dirty_rects[dirty] = True
 
     def Update(self):
-        armv2.DebugLog('update bitches %d' % len(self.dirty_rects))
         if self.dirty_rects:
             pygame.display.update(self.dirty_rects.keys())
             self.dirty_rects = {}

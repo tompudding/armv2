@@ -160,11 +160,14 @@ static enum armv2_status PerformLoad(page_info_t *page, uint32_t addr, uint32_t 
             value = page->read_byte_callback(page->mapped_device,INPAGE(addr),0);
         }
         else {
-            value = page->read_byte_callback(page->mapped_device,INPAGE(addr),0);
+            value = page->read_callback(page->mapped_device,INPAGE(addr),0);
         }
     }
     else if(NULL != page->memory) {
         value = page->memory[INPAGE(addr)>>2];
+        if(byte) {
+            value = (value>>((addr&3)<<3))&0xff;
+        }
     }
     else {
         //No callback and no memory page is an error
@@ -464,9 +467,6 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
         }
 
         LOG("Have value %08x and %d\n",value,instruction&SDT_LOAD_BYTE);
-        if(instruction&SDT_LOAD_BYTE) {
-            value = (value>>((rn_val&3)<<3))&0xff;
-        }
 
         if(rd == PC) {
             //don't set any of the flags

@@ -7,9 +7,11 @@
 
 enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
     uint32_t running = 1;
+    uint32_t old_mode = 0;
     //for(running=1;running;cpu->pc = (cpu->pc+4)&0x3ffffff) {
     //instructions of -1 means run forever
     while(running) {
+        old_mode = GETMODE(cpu);
         if(instructions == 0) {
             return ARMV2STATUS_OK;
         }
@@ -196,7 +198,7 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
             }
             break;
         }
-        uint32_t old_mode = GETMODE(cpu);
+        old_mode = GETMODE(cpu);
         exception = handler(cpu,instruction);
         //handle the exception if there was one
     handle_exception:
