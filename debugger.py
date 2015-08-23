@@ -393,10 +393,7 @@ class Debugger(object):
         result = None
         self.stopped = False
         self.help_window.Update()
-        try:
-            if armv2.Status.Breakpoint == self.StepNumInternal(self.num_to_step):
-                raise KeyboardInterrupt()
-        except KeyboardInterrupt:
+        if armv2.Status.Breakpoint == self.StepNumInternal(self.num_to_step):
             self.Stop()
         #raise SystemExit('bob %d' % self.num_to_step)
 
