@@ -47,7 +47,7 @@ void process_char(uint8_t c) {
     }
     else {
         //only care about return
-        if(c == '\n') {
+        if(c == '\r') {
             screen_pos = ((screen_pos/WIDTH)+1)*WIDTH;
             if(screen_pos >= WIDTH*HEIGHT) {
                 screen_pos = 0;

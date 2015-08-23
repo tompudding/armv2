@@ -12,6 +12,7 @@ class WindowControl:
     NEXT    = 3
     RESTART = 4
     EXIT    = 5
+    POPUP_GOTO = 6
 
 class View(object):
     def __init__(self,parent,tl,br):
@@ -60,6 +61,67 @@ class View(object):
             self.parent.screen.blit(text, rect, area)
         else:
             self.parent.screen.blit(text, rect)
+
+class Goto(View):
+    MAX_LEN = 8
+    def __init__(self,parent,view,tl,br):
+        super(Goto,self).__init__(parent,tl,br)
+        self.text_buffer = []
+        self.view = view
+        self.invalid_text = None
+
+    def KeyPress(self, key):
+        if key >= 256:
+            return
+        if key == pygame.locals.K_BACKSPACE:
+            self.text_buffer = self.text_buffer[:-1]
+            self.invalid_text = None
+        elif key == pygame.locals.K_RETURN:
+            buffer = ''.join(self.text_buffer)
+            register = self.GetRegister(buffer)
+            if None != register:
+                return self.Dismiss(self.parent.machine.regs[register])
+            try:
+                value = int(buffer,16)
+            except ValueError:
+                return self.Invalid()
+
+            self.Dismiss(value)
+        elif key == pygame.locals.K_ESCAPE:
+            self.Dismiss(None)
+
+        elif len(self.text_buffer) < self.MAX_LEN and chr(key) in string.printable:
+            self.text_buffer.append(chr(key))
+            self.invalid_text = None
+
+    def Dismiss(self, value):
+        if None != value:
+            #Centre the view on this value
+            self.view.Select(value)
+            self.view.Centre(value)
+        self.parent.current_view = self.view
+        self.parent.goto_window = None
+
+    def GetRegister(self, key):
+        key = key.lower()
+        try:
+            return ['r%d' % i for i in xrange(16)].index(key)
+        except ValueError:
+            pass
+        try:
+            return ('sl','fp','ip','sp','lr','pc').index(key) + 10
+        except ValueError:
+            pass
+
+    def Invalid(self):
+        self.invalid_text = '** INVALID **'
+
+    def Update(self,draw_border = False):
+        pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
+        super(Goto,self).Update(draw_border)
+        self.DrawText('Goto addr or register : %s' % ''.join(self.text_buffer), 0, 10)
+        if self.invalid_text:
+            self.DrawText(self.invalid_text,1)
 
 class Debug(View):
     label_width = 14
@@ -122,17 +184,6 @@ class Debug(View):
             else:
                 self.debugger.AddBreakpoint(self.selected)
             self.Centre(self.selected)
-        elif key == pygame.locals.K_c:
-            self.debugger.Continue()
-            return WindowControl.RESUME
-        elif key == pygame.locals.K_s:
-            self.debugger.Step()
-            return WindowControl.RESUME
-        elif key == pygame.locals.K_r:
-            #self.debugger.machine.Reset()
-            return WindowControl.RESUME
-        elif key == pygame.locals.K_q:
-            return WindowControl.EXIT
         return WindowControl.SAME
 
 
@@ -171,6 +222,7 @@ class Help(View):
         actions = (('c','continue'),
                    ('q','quit'),
                    ('s','step'),
+                   ('g','goto'),
                    ('ESC','stop'),
                    ('space','set breakpoint'),
                    ('tab','switch window'))
@@ -200,6 +252,7 @@ class Memdump(View):
         self.newnum   = 0
 
     def Update(self,draw_border = False):
+        pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
         super(Memdump,self).Update(draw_border)
         for i in xrange(self.rows):
             addr = self.pos + i*self.display_width
@@ -230,6 +283,13 @@ class Memdump(View):
             self.pos = self.selected - (self.rows-1)*self.display_width
         elif self.selected < self.pos:
             self.pos = self.selected
+
+    def Select(self,pos):
+        return self.SetSelected(pos)
+
+    def Centre(self,pos):
+        self.Select(pos)
+        self.pos = pos
 
     def KeyPress(self,key):
         if key == pygame.locals.K_DOWN:
@@ -284,6 +344,7 @@ class Debugger(object):
         self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 228))
         pos += self.memdump_window.rect.height + padding/2
         self.help_window    = Help(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 80))
+        self.goto_window    = None
 
         # self.window_choices = [self.code_window,self.memdump_window]
         # self.draw_windows = self.state_window,self.memdump_window,self.code_window
@@ -349,15 +410,42 @@ class Debugger(object):
 
         #disassembly = disassemble.Disassemble(cpu.mem)
         #We're stopped, so display and wait for a keypress
+
         for window in self.draw_windows:
             window.Update(self.current_view is window)
 
-    def KeyPress(self,key):
-        result = self.current_view.KeyPress(key)
+        if self.goto_window:
+            self.goto_window.Update(True)
 
-        if result == WindowControl.RESUME:
-            self.current_view.Select(self.machine.pc)
-            self.current_view.Centre(self.machine.pc)
+    def OuterKeyPress(self,key):
+        if key == pygame.locals.K_c:
+            self.Continue()
+            return WindowControl.RESUME
+        elif key == pygame.locals.K_s:
+            self.Step()
+            return WindowControl.RESUME
+        elif key == pygame.locals.K_r:
+            #self.debugger.machine.Reset()
+            return WindowControl.RESUME
+        elif key == pygame.locals.K_g:
+            return WindowControl.POPUP_GOTO
+        elif key == pygame.locals.K_q:
+            return WindowControl.EXIT
+
+    def KeyPress(self,key):
+        if self.current_view is self.goto_window:
+            return self.goto_window.KeyPress(key)
+
+        result = self.OuterKeyPress(key)
+        if not result:
+            result = self.current_view.KeyPress(key)
+
+        if result == WindowControl.POPUP_GOTO:
+            h = self.current_view.rect.centery
+            self.current_view = self.goto_window = Goto(self,self.current_view,(self.machine.display.pixel_width()+20,h),(self.w-20,h+32))
+        elif result == WindowControl.RESUME:
+            self.code_window.Select(self.machine.pc)
+            self.code_window.Centre(self.machine.pc)
         elif result == WindowControl.RESTART:
             return False
         elif result == WindowControl.NEXT:
@@ -370,6 +458,6 @@ class Debugger(object):
     def Stop(self):
         armv2.DebugLog("Stopped called")
         self.stopped = True
-        self.current_view.Select(self.machine.pc)
-        self.current_view.Centre(self.machine.pc)
+        self.code_window.Select(self.machine.pc)
+        self.code_window.Centre(self.machine.pc)
         self.help_window.Update()
