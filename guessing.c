@@ -144,7 +144,6 @@ int _start(void) {
     uint32_t number = (getrand()%max)+1;
     int remaining = 10;
     while(1) {
-
         char buffer[64] = {0};
         process_text(buffer,remaining);
         if(remaining <= 0) {
@@ -157,6 +156,7 @@ int _start(void) {
         }
         else if(guess == number) {
             process_string("Correct! The first word to the passphrase is \"sulphuric\"\r");
+            process_string("Please reset now\r");
             break;
         }
         else if(guess < number) {
@@ -166,5 +166,9 @@ int _start(void) {
             process_string("Your guess is too high\r");
         }
         remaining -= 1;
+    }
+    //infinite loop
+    while(1) {
+        wait_for_interrupt();
     }
 }
