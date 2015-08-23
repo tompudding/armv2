@@ -21,14 +21,14 @@ def mainloop(dbg,machine):
             break
 
         if event.type == pygame.locals.KEYDOWN:
-            if not dbg.stopped:
-                machine.keyboard.KeyDown(event.key)
-        elif event.type == pygame.locals.KEYUP:
             if event.key == pygame.locals.K_ESCAPE:
                 dbg.Stop()
             if dbg.stopped:
                 dbg.KeyPress(event.key)
             else:
+                machine.keyboard.KeyDown(event.key)
+        elif event.type == pygame.locals.KEYUP:
+            if not dbg.stopped:
                 machine.keyboard.KeyUp(event.key)
     machine.display.Update()
     pygame.display.flip()
@@ -40,6 +40,7 @@ def main():
     (options, args) = parser.parse_args()
     pygame.display.set_caption('ARM emulator')
     pygame.mouse.set_visible(0)
+    pygame.key.set_repeat(500,50)
 
     screen = pygame.display.set_mode((width, height))
     machine = hardware.Machine(cpu_size = 2**21, cpu_rom = 'boot.rom')

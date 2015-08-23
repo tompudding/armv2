@@ -53,7 +53,7 @@ class Instruction(object):
         self.word = word
     def ToString(self):
         mneumonic = self.mneumonic + self.conditions[(self.word>>28)&0xf]
-        return '%7s %s' % (mneumonic.ljust(7),', '.join(self.args))
+        return '%4s %s' % (mneumonic.ljust(4),', '.join(self.args))
 
 class ALUInstruction(Instruction):
     opcodes = ['AND','EOR','SUB','RSB',

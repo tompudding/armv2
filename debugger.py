@@ -43,6 +43,8 @@ class Debug(View):
         super(Debug,self).__init__(debugger,tl,br)
         self.selected = 0
         self.debugger = debugger
+        self.row_height = self.parent.font.render('dummy', False, self.colour, self.background).get_rect().height
+        self.rows = self.height / self.row_height
 
     def Centre(self,pos = None):
         if pos == None:
@@ -51,14 +53,14 @@ class Debug(View):
 
         correct = None
         self.disassembly = []
-        start = max(pos-((self.height-2)/2)*4,0)
-        end = min(pos + ((self.height-2)/2)*4,len(self.debugger.machine.mem))
+        start = max(pos-((self.rows)/2)*4,0)
+        end = min(pos + ((self.rows)/2)*4,len(self.debugger.machine.mem))
 
         dis = []
-        for instruction in disassemble.Disassemble(self.debugger.machine,self.debugger.breakpoints,start,start+(self.height-2)*4):
-            arrow = '==>' if instruction.addr == self.debugger.machine.pc else ''
+        for instruction in disassemble.Disassemble(self.debugger.machine,self.debugger.breakpoints,start,start+(self.rows)*4):
+            arrow = '>' if instruction.addr == self.debugger.machine.pc else ''
             bpt   = '*' if instruction.addr in self.debugger.breakpoints else ' '
-            dis.append( (instruction.addr,'%3s%s%07x %08x : %s' % (arrow,bpt,instruction.addr,instruction.word,instruction.ToString())))
+            dis.append( (instruction.addr,'%1s%s%07x %08x : %s' % (arrow,bpt,instruction.addr,instruction.word,instruction.ToString())))
 
         self.disassembly = dis
 
@@ -116,15 +118,22 @@ class Debug(View):
         super(Debug,self).Update(draw_border)
         self.selected_pos = None
         for i,(pos,line) in enumerate(self.disassembly):
+            line = line + ' '*30
             if pos == self.selected:
                 text = self.parent.font.render(line, False, self.background, self.colour)
                 self.selected_pos = i
             else:
                 text = self.parent.font.render(line, False, self.colour, self.background)
             rect = text.get_rect()
-            rect.centery = rect.height*i
+            rect.centery = (self.row_height*(i+0.5))+1
             rect.left = self.rect.left+1
-            self.parent.screen.blit(text, rect)
+            if rect.right >= self.rect.right-1:
+                rect.width = rect.width - (rect.right - (self.rect.right-1))
+                area = pygame.Rect((0,0),(rect.width,rect.height))
+                self.parent.screen.blit(text, rect, area)
+            else:
+                self.parent.screen.blit(text, rect)
+
 
 class State(View):
     reglist = [('r%d' % i) for i in xrange(12)] + ['fp','sp','lr','pc']
@@ -247,11 +256,11 @@ class Debugger(object):
         self.screen           = screen
         self.breakpoints      = {}
         self.selected         = 0
-        self.font             = pygame.font.Font(os.path.join('fonts','VeraMono.ttf'),12)
+        self.font             = pygame.font.Font(os.path.join('fonts','TerminusTTF-4.39.ttf'),12)
         #self.labels           = Labels(labels)
 
         self.h,self.w       = self.screen.get_height(),self.screen.get_width()
-        self.code_window    = Debug(self,(self.w*3/4,0),(self.w,self.h/2))
+        self.code_window    = Debug(self,(self.w*3/4,0),(self.w,self.h/3))
         # self.state_window   = State(self,self.h/2,self.w/4,0,self.w/2)
         # self.help_window    = Help(self.h/2,self.w/4,0,3*(self.w/4))
         # self.memdump_window = Memdump(self,self.h/2,self.w/2,self.h/2,self.w/2)
