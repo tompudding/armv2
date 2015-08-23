@@ -236,7 +236,9 @@ class Help(View):
                 continue
             self.DrawText('%5s - %s' % action,i,xoffset=self.rect.width*0.5)
 
-        self.DrawText('***** %6s *****' % ('STOPPED' if self.parent.stopped else 'RUNNING'),self.rows-1,self.rect.width*0.3)
+        self.DrawText('                 ***** %6s *****                 ' % ('STOPPED' if self.parent.stopped else 'RUNNING'),
+                      self.rows-1,
+                      inverted = False if self.parent.stopped else True)
 
 class TapeSelector(View):
     def __init__(self,parent,tl,br):

@@ -119,6 +119,7 @@ class TapeDrive(armv2.Device):
         self.thread    = threading.Thread(target = self.threadMain)
         self.byte_required = False
         self.thread.start()
+        self.loading   = False
 
     def loadTape(self, filename):
         self.tape = open(filename,'rb')
@@ -135,6 +136,8 @@ class TapeDrive(armv2.Device):
             while self.running:
                 while self.running and not self.byte_required:
                     self.cv.wait(1)
+                if not self.running:
+                    break
                 self.byte_required = False
                 time.sleep(0.005)
                 c = self.tape.read(1)
@@ -145,6 +148,7 @@ class TapeDrive(armv2.Device):
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.END_OF_TAPE
+                    self.loading = False
                     self.cpu.Interrupt(self.id, self.status)
 
     def readByteCallback(self,addr,value):
@@ -164,6 +168,7 @@ class TapeDrive(armv2.Device):
         elif addr == 1:
             if value == self.Codes.NEXT_BYTE:
                 #They want the next byte, are we ready for them?
+                self.loading = pygame.time.get_ticks()
                 if self.tape:
                     self.status = self.Codes.NOT_READY
                     with self.cv:
@@ -342,6 +347,7 @@ class Machine:
         self.mem          = MemPassthrough(self.cv,self.cpu.mem)
         self.memw         = MemPassthrough(self.cv,self.cpu.memw)
         self.thread       = threading.Thread(target = self.threadMain)
+        self.tape_drive   = None
         self.status       = None
         self.thread.start()
 
@@ -410,9 +416,30 @@ class Machine:
         armv2.DebugLog('joining thread')
         self.thread.join()
         armv2.DebugLog('Killed')
-        if hasattr(self,'tape_drive'):
+        if self.tape_drive:
             self.tape_drive.Delete()
 
     def Interrupt(self, hw_id, code):
         armv2.DebugLog('Interrupt from device %s with code %s' % (hw_id, code))
         self.cpu.Interrupt(hw_id, code)
+
+    def Update(self):
+        return
+        # if self.tape_drive and self.tape_drive.loading:
+        #     #We should do some kind of animation
+        #     elapsed = pygame.time.get_ticks() - self.tape_drive.loading
+        #     #draw lines of alternate background and foreground of 5 times the current data bytes length,
+        #     #and then every 2 seconds change the background and foreground colours randomly
+        #     if not self.loading_background or elapsed > 2000:
+        #         self.loading_background = random.choice(self.display.palette)
+        #         self.loading_foreground = random.choice(self.display.palette)
+        #         while self.loading_foreground == self.loading_background:
+        #             self.loading_foreground = random.choice(self.display.palette)
+        #     data = self.tape_drive.data_byte
+        #     colour_one,colour_two = self.loading_background, self.loading_foreground
+        #     width,height = self.display.pixel_width(),self.display.pixel_height()
+        #     pos = 0
+        #     while pos < self.display.pixels():
+        #         length = width*4 + data*10
+        #         while length >= width:
+        #             self.display.screen.fill(colour_one, pygame.Rect((pos%width,pos/width),((pos+length)
