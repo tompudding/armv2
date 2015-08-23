@@ -46,11 +46,17 @@ void process_char(uint8_t c) {
         }
     }
     else {
-        //only care about return
         if(c == '\r') {
             screen_pos = ((screen_pos/WIDTH)+1)*WIDTH;
             if(screen_pos >= WIDTH*HEIGHT) {
                 screen_pos = 0;
+            }
+        }
+        else if(c == 8) {
+            //backspace
+            if((screen_pos%WIDTH) > 0) {
+                screen_pos--;
+                letter_data[screen_pos] = ' ';
             }
         }
     }
