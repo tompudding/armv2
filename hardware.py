@@ -103,11 +103,11 @@ class Display(armv2.Device):
     palette_start = 0
     letter_start  = width*height
     letter_end    = width*height*2
-    def __init__(self, cpu, scale_factor):
+    def __init__(self, cpu, screen, scale_factor):
         super(Display,self).__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
-        self.screen = pygame.display.set_mode((self.width*self.cell_size*self.scale_factor, self.height*self.cell_size*self.scale_factor))
+        self.screen = screen
         self.font_surface = pygame.Surface((self.cell_size,self.cell_size),depth=8)
         self.font_surface.set_palette(((0, 0, 0, 255),)*256)
         self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
