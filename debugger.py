@@ -486,7 +486,7 @@ class Debugger(object):
             return WindowControl.RESUME
         elif key == pygame.locals.K_r:
             #self.debugger.machine.Reset()
-            return WindowControl.RESUME
+            return WindowControl.RESTART
         elif key == pygame.locals.K_g:
             return WindowControl.POPUP_GOTO
         elif key == pygame.locals.K_q:

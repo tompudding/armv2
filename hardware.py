@@ -85,6 +85,78 @@ def SetPixels(pixels,word):
         #the next line is so obvious it doesn't need a comment
         pixels[j/8][j%8] = ((word>>j)&1)
 
+class TapeDrive(armv2.Device):
+    """
+    A Tape Drive
+
+    It has three bytes. The first two are control bytes and the third data
+    0 : control byte containing status for the user to read
+    1 : control byte for the user to write to
+    2 : data byte
+
+    The protocol is: write NEXT_BYTE to the write control and the read control will change to NOT_READY
+    until there is a data byte ready, when it will change to READY. Alternatively it might change to END_OF_TAPE or DRIVE_EMPTY.
+    It will generate interrupts for READY and END_OF_TAPE and DRIVE_EMPTY
+    """
+    id=0x2730eb6c
+
+    class Codes:
+        NEXT_BYTE   = 0
+        NOT_READY   = 1
+        END_OF_TAPE = 2
+        DRIVE_EMPTY = 3
+        READY       = 4
+
+    def __init__(self, cpu):
+        super(TapeDrive,self).__init__(cpu)
+        self.status = self.Codes.NOT_READY
+        self.data_byte = 0
+        self.tape_name = None
+        self.tape = None
+
+    def loadTape(self, filename):
+        self.tape = open(filename,'rb')
+        self.tape_name = filename
+
+    def unloadTape(self, filanem):
+        if self.tape:
+            self.tape.close()
+            self.tape = None
+            self.tape_name = None
+
+    def readByteCallback(self,addr,value):
+        if addr == 0:
+            #They want the current status
+            return self.status
+        elif addr == 1:
+            #They really shouldn't be reading this one
+            return 0
+        elif addr == 2:
+            return self.data_byte
+
+    def writeByteCallback(self,addr,value):
+        if addr == 0:
+            #Trying to write to the read register. :(
+            return 0
+        elif addr == 1:
+            if value == self.Codes.NEXT_BYTE:
+                #They want the next byte, are we ready for them?
+                if self.tape:
+                    c = self.tape.read(1)
+                    if c:
+                        self.data_byte = c
+                        self.status = self.Codes.READY
+                    else:
+                        self.data_byte = 0
+                        self.status = self.Codes.END_OF_TAPE
+                else:
+                    self.data_byte = 0
+                    self.status = self.Codes.DRIVE_EMPTY
+        elif addr == 2:
+            #Can't write to the data byte
+            return 0
+
+
 class Display(armv2.Device):
     """
     A Display
@@ -112,6 +184,7 @@ class Display(armv2.Device):
         self.font_surface.set_palette(((0, 0, 0, 255),)*256)
         self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
         self.font_surfaces = {}
+        self.screen.fill((0,0,0,255))
         self.palette = [ (0, 0, 0, 255),
                          (255, 255, 255, 255),
                          (136, 0, 0, 255),
@@ -228,6 +301,7 @@ class MemPassthrough(object):
 
 class Machine:
     def __init__(self,cpu_size,cpu_rom):
+        self.rom_filename = cpu_rom
         self.cpu          = armv2.Armv2(size = cpu_size,filename = cpu_rom)
         self.hardware     = []
         self.running      = True

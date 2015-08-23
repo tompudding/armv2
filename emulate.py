@@ -12,7 +12,14 @@ width,height = (1280, 720)
 
 pygame.init()
 
-def mainloop(dbg,machine):
+def new_machine(screen):
+    machine = hardware.Machine(cpu_size = 2**21, cpu_rom = 'boot.rom')
+    machine.AddHardware(hardware.Keyboard(machine),name='keyboard')
+    machine.AddHardware(hardware.Display(machine,screen,scale_factor=3),name='display')
+    machine.AddHardware(hardware.TapeDrive(machine),name='tape_drive')
+    return machine
+
+def mainloop(dbg):
     dbg.StepNum(dbg.FRAME_CYCLES)
     for event in pygame.event.get():
 
@@ -31,10 +38,15 @@ def mainloop(dbg,machine):
             if key == pygame.locals.K_ESCAPE:
                 dbg.Stop()
             if dbg.stopped:
-                dbg.KeyPress(key)
+                if False == dbg.KeyPress(key):
+                    screen = dbg.machine.display.screen
+                    dbg.machine.Delete()
+
+                    dbg.machine = new_machine(screen)
+
             else:
                 if key < 256:
-                    machine.keyboard.KeyDown(key)
+                    dbg.machine.keyboard.KeyDown(key)
         elif event.type == pygame.locals.KEYUP:
             key = event.key
             try:
@@ -44,8 +56,8 @@ def mainloop(dbg,machine):
             except (TypeError,AttributeError):
                 pass
             if not dbg.stopped and key < 256:
-                machine.keyboard.KeyUp(key)
-    machine.display.Update()
+                dbg.machine.keyboard.KeyUp(key)
+    dbg.machine.display.Update()
     pygame.display.flip()
 
 def main():
@@ -53,25 +65,22 @@ def main():
                           version="%prog 1.0")
 
     (options, args) = parser.parse_args()
-    pygame.display.set_caption('ARM emulator')
+    pygame.display.set_caption('Synapse')
     pygame.mouse.set_visible(0)
     pygame.key.set_repeat(500,50)
 
     screen = pygame.display.set_mode((width, height))
-    machine = hardware.Machine(cpu_size = 2**21, cpu_rom = 'boot.rom')
+    machine = new_machine(screen)
     try:
-        machine.AddHardware(hardware.Keyboard(machine),name='keyboard')
-        machine.AddHardware(hardware.Display(machine,screen,scale_factor=3),name='display')
-
         dbg = debugger.Debugger(machine, screen)
 
         done = False
         while not done:
-            mainloop(dbg,machine)
+            mainloop(dbg)
 
     finally:
         armv2.DebugLog('deleting machine')
-        machine.Delete()
+        dbg.machine.Delete()
 
 if __name__ == '__main__':
     main()
