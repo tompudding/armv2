@@ -146,6 +146,9 @@ class Display(armv2.Device):
     def readCallback(self,addr,value):
         pass
 
+    def pixel_width(self):
+        return self.width*self.cell_size*self.scale_factor
+
     def writeCallback(self,addr,value):
         armv2.DebugLog('display write word %x %x\n' % (addr,value))
         for i in xrange(4):

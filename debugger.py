@@ -3,6 +3,7 @@ import time
 import armv2
 import pygame
 import os
+import string
 from pygame.locals import *
 
 class WindowControl:
@@ -37,9 +38,13 @@ class View(object):
     def Update(self, draw_border = False):
         #Draw a rectangle around ourself, the subclasses can draw the other stuff
         if draw_border:
-            pygame.draw.rect(self.parent.screen, self.colour, self.rect, 2)
+            colour = self.colour
+        else:
+            #blank it...
+            colour = self.background
+        pygame.draw.rect(self.parent.screen, colour, self.rect, 2)
 
-    def DrawText(self, line, row, inverted=False):
+    def DrawText(self, line, row, xoffset=0, inverted=False):
         if inverted:
             fore,back = self.background, self.colour
         else:
@@ -47,7 +52,7 @@ class View(object):
         text = self.parent.font.render(line, False, fore, back)
         rect = text.get_rect()
         rect.centery = (self.row_height*(row+0.5))+self.rect.top+1
-        rect.left = self.rect.left+1
+        rect.left = self.rect.left+1+xoffset
         if rect.right >= self.rect.right-1:
             rect.width = rect.width - (rect.right - (self.rect.right-1))
             area = pygame.Rect((0,0),(rect.width,rect.height))
@@ -155,30 +160,34 @@ class State(View):
             line = ' '.join('%3s : %08x' % (r,v) for (r,v) in data)
             self.DrawText(line,i)
 
-        #mode_text = self.window.addstr(1,18,'Mode : %s' % self.mode_names[self.debugger.machine.mode])
-        # self.window.addstr(2,18,'  pc : %08x' % self.debugger.machine.pc)
-        # self.window.refresh()
+        self.DrawText('Mode : %s' % self.mode_names[self.parent.machine.mode], 0, self.rect.width*0.6)
+        self.DrawText('  pc : %08x' % self.parent.machine.pc, 1, self.rect.width*0.6)
 
 class Help(View):
-    def Draw(self,draw_border = False):
-        self.window.clear()
-        if draw_border:
-            self.window.border()
-        for i,(key,action) in enumerate( (('c','continue'),
-                                          ('q','quit'),
-                                          ('s','step'),
-                                          ('space','set breakpoint'),
-                                          ('tab','switch window')) ):
-            self.window.addstr(i+1,1,'%5s - %s' % (key,action))
-        self.window.refresh()
+    def Update(self,draw_border = False):
+        actions = (('c','continue'),
+                   ('q','quit'),
+                   ('s','step'),
+                   ('ESC','break'),
+                   ('space','set breakpoint'),
+                   ('tab','switch window'))
+        for i in xrange(len(actions)/2):
+            self.DrawText('%5s - %s' % actions[i*2],i)
+            try:
+                action = actions[i*2+1]
+            except IndexError:
+                continue
+            self.DrawText('%5s - %s' % action,i,xoffset=self.rect.width*0.5)
+
+
 
 class Memdump(View):
-    display_width = 16
+    display_width = 8
     key_time = 1
     max = 0x4000000
-    def __init__(self,debugger,h,w,y,x):
-        super(Memdump,self).__init__(h,w,y,x)
-        self.debugger = debugger
+    def __init__(self,parent,tl,br):
+        super(Memdump,self).__init__(parent,tl,br)
+        self.parent   = parent
         self.pos      = 0
         self.selected = 0
         self.lastkey  = 0
@@ -186,28 +195,26 @@ class Memdump(View):
         self.masks = (0x3fffff0,0x3ffff00,0x3fff000,0x3ff0000,0x3f00000,0x3000000,0)
         self.newnum   = 0
 
-    def Draw(self,draw_border = False):
-        self.window.clear()
-        if draw_border:
-            self.window.border()
-        for i in xrange(self.height-2):
+    def Update(self,draw_border = False):
+        super(Memdump,self).Update(draw_border)
+        for i in xrange(self.rows):
             addr = self.pos + i*self.display_width
-            data = self.debugger.machine.mem[addr:addr+self.display_width]
+            data = self.parent.machine.mem[addr:addr+self.display_width]
             if len(data) < self.display_width:
                 data += '??'*(self.display_width-len(data))
             data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.display_width))
-            line = '%07x : %s' % (addr,data_string)
+            ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in string.printable else '.') for i in xrange(self.display_width)))
+            line = '%07x : %s   %s' % (addr,data_string,ascii_string)
             if addr == self.selected:
-                self.window.addstr(i+1,1,line,curses.A_REVERSE)
+                self.DrawText(line,i,inverted=True)
             else:
-                self.window.addstr(i+1,1,line)
+                self.DrawText(line,i)
 
-        type_string = ('%07x' % self.pos)[:self.keypos]
-        extra = 7 - len(type_string)
-        if extra > 0:
-            type_string += '.'*extra
-        self.window.addstr(1,60,type_string)
-        self.window.refresh()
+        # type_string = ('%07x' % self.pos)[:self.keypos]
+        # extra = 7 - len(type_string)
+        # if extra > 0:
+        #     type_string += '.'*extra
+        # self.DrawText(type_string,0,xoffset=self.rect.width*0.7)
 
     def SetSelected(self,pos):
         if pos > self.max:
@@ -215,25 +222,24 @@ class Memdump(View):
         if pos < 0:
             pos = 0
         self.selected = pos
-        if ((self.selected - self.pos)/self.display_width) >= (self.height - 2):
-            self.pos = self.selected - (self.height-3)*self.display_width
+        if ((self.selected - self.pos)/self.display_width) >= (self.rows):
+            self.pos = self.selected - (self.rows-1)*self.display_width
         elif self.selected < self.pos:
             self.pos = self.selected
 
-    def TakeInput(self):
-        ch = self.window.getch()
-        if key == curses.KEY_DOWN:
+    def KeyPress(self,key):
+        if key == pygame.locals.K_DOWN:
             self.SetSelected(self.selected + self.display_width)
-        elif key == curses.KEY_NPAGE:
-            self.SetSelected(self.selected + self.display_width*(self.height-2))
-        elif key == curses.KEY_PPAGE:
-            self.SetSelected(self.selected - self.display_width*(self.height-2))
-        elif key == curses.KEY_UP:
+        elif key == pygame.locals.K_PAGEDOWN:
+            self.SetSelected(self.selected + self.display_width*(self.rows))
+        elif key == pygame.locals.K_PAGEUP:
+            self.SetSelected(self.selected - self.display_width*(self.rows))
+        elif key == pygame.locals.K_UP:
             self.SetSelected(self.selected - self.display_width)
-        elif key == ord('q'):
+        elif key == pygame.locals.K_q:
             return WindowControl.EXIT
-        elif ch in [ord(c) for c in '0123456789abcdef']:
-            newnum = int(chr(ch),16)
+        elif key in [ord(c) for c in '0123456789abcdef']:
+            newnum = int(chr(key),16)
             self.keypos %= 7
             now = time.time()
             if now - self.lastkey > self.key_time:
@@ -248,7 +254,7 @@ class Memdump(View):
             self.lastkey = now
             self.selected = self.pos
 
-        elif key == ord('\t'):
+        elif key == pygame.locals.K_TAB:
             return WindowControl.NEXT
         return WindowControl.SAME
 
@@ -265,18 +271,20 @@ class Debugger(object):
         #self.labels           = Labels(labels)
 
         self.h,self.w       = self.screen.get_height(),self.screen.get_width()
-        padding = 20
+        padding = 10
         pos = 0
-        self.code_window    = Debug(self,(self.w*3/4,pos),(self.w,self.h/3))
+        self.code_window    = Debug(self,(self.machine.display.pixel_width(),pos),(self.w,self.h/3))
         pos = self.code_window.rect.height + padding
-        self.state_window   = State(self,(self.w*3/4,pos),(self.w,self.h*2/3))
+        self.state_window   = State(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 110))
         pos += self.state_window.rect.height + padding
-        # self.help_window    = Help(self.h/2,self.w/4,0,3*(self.w/4))
-        # self.memdump_window = Memdump(self,self.h/2,self.w/2,self.h/2,self.w/2)
+        self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 225))
+        pos += self.memdump_window.rect.height + padding/2
+        self.help_window    = Help(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 80))
+
         # self.window_choices = [self.code_window,self.memdump_window]
         # self.draw_windows = self.state_window,self.memdump_window,self.code_window
-        self.draw_windows = [self.code_window,self.state_window]
-        self.window_choices = [self.code_window]
+        self.draw_windows = [self.code_window,self.state_window,self.memdump_window,self.help_window]
+        self.window_choices = [self.code_window,self.memdump_window]
         self.current_view   = self.code_window
         self.current_view.Select(self.machine.pc)
         self.current_view.Centre(self.machine.pc)
