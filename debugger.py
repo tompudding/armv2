@@ -22,7 +22,7 @@ class View(object):
         self.parent = parent
         self.rect   = pygame.Rect(self.tl, (self.width, self.height))
         self.colour = pygame.Color(0,255,0,255)
-        self.selected_colour = pygame.Color(255,255,255,255)
+        self.border_colour = pygame.Color(0,64,0,255)
         self.background = pygame.Color(0,0,0,255)
         self.row_height = self.parent.font.render('dummy', False, self.colour, self.background).get_rect().height
         self.rows = self.height / self.row_height
@@ -39,10 +39,10 @@ class View(object):
     def Update(self, draw_border = False):
         #Draw a rectangle around ourself, the subclasses can draw the other stuff
         if draw_border:
-            colour = self.selected_colour
+            colour = self.colour
         else:
             #blank it...
-            colour = self.colour
+            colour = self.border_colour
         pygame.draw.rect(self.parent.screen, colour, self.rect, 2)
 
     def DrawText(self, line, row, xoffset=0, inverted=False):
