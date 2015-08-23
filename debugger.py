@@ -223,6 +223,7 @@ class Help(View):
         actions = (('c','continue'),
                    ('q','quit'),
                    ('s','step'),
+                   ('r','reset'),
                    ('g','goto'),
                    ('ESC','stop'),
                    ('space','set breakpoint'),
@@ -401,8 +402,8 @@ class Debugger(object):
         pos += self.state_window.rect.height + padding
         self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 200))
         pos += self.memdump_window.rect.height + padding/2
-        self.tape_window    = TapeSelector(self,(self.machine.display.pixel_width(),pos),(self.w,self.h-60-padding))
-        self.help_window    = Help(self,(self.machine.display.pixel_width(),self.h-60),(self.w,self.h))
+        self.tape_window    = TapeSelector(self,(self.machine.display.pixel_width(),pos),(self.w,self.h-80-padding))
+        self.help_window    = Help(self,(self.machine.display.pixel_width(),self.h-80),(self.w,self.h))
         self.goto_window    = None
 
         # self.window_choices = [self.code_window,self.memdump_window]
