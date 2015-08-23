@@ -43,7 +43,7 @@ def mainloop(dbg):
                     dbg.machine.Delete()
 
                     dbg.machine = new_machine(screen)
-
+                    dbg.Reset()
             else:
                 if key < 256:
                     dbg.machine.keyboard.KeyDown(key)

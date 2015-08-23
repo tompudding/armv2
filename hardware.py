@@ -118,7 +118,7 @@ class TapeDrive(armv2.Device):
         self.tape = open(filename,'rb')
         self.tape_name = filename
 
-    def unloadTape(self, filanem):
+    def unloadTape(self):
         if self.tape:
             self.tape.close()
             self.tape = None

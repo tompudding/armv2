@@ -270,6 +270,7 @@ class TapeSelector(View):
             self.SetSelected(self.selected - 1)
         elif key in (pygame.locals.K_RETURN,pygame.locals.K_SPACE):
             self.loaded = self.selected
+            self.parent.machine.tape_drive.loadTape(self.tapes[self.loaded])
             #TODO: do something with the tape drive here
 
         elif key == pygame.locals.K_TAB:
@@ -288,7 +289,7 @@ class TapeSelector(View):
         super(TapeSelector,self).Update(draw_border)
         for i in xrange(0,self.rows-1):
             item = self.pos + i
-            name = self.tapes[item]
+            name = os.path.basename(self.tapes[item])
             if item == self.selected:
                 self.DrawText(name,i+1,inverted=True,xoffset=20)
             else:
@@ -467,7 +468,9 @@ class Debugger(object):
 
         #disassembly = disassemble.Disassemble(cpu.mem)
         #We're stopped, so display and wait for a keypress
+        self.Update()
 
+    def Update(self):
         for window in self.draw_windows:
             window.Update(self.current_view is window)
 
@@ -515,6 +518,12 @@ class Debugger(object):
             self.current_view = self.window_choices[pos]
         elif result == WindowControl.EXIT:
             raise SystemExit
+
+    def Reset(self):
+        self.code_window.Select(self.machine.pc)
+        self.code_window.Centre(self.machine.pc)
+        self.memdump_window.Centre(self.machine.pc)
+        self.help_window.Update()
 
     def Stop(self):
         armv2.DebugLog("Stopped called")

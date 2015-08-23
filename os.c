@@ -40,33 +40,6 @@ enum colours    {
     LIGHT_GREY  = 15,
 };
 
-void clear_screen(enum colours background, enum colours foreground) {
-    uint8_t palette_byte = background << 4 | foreground;
-    memset(palette_data, palette_byte, WIDTH*HEIGHT);
-    memset(letter_data, 0, WIDTH*HEIGHT);
-}
-
-void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size) {
-    uint8_t palette_byte = background << 4 | foreground;
-    uint8_t border_palette = foreground << 4 | background;
-    int i;
-    //set the top border
-
-    memset(palette_data, border_palette, WIDTH*border_size);
-    memset(palette_data + WIDTH*(HEIGHT-border_size), border_palette, WIDTH*border_size);
-    for(i=2; i<HEIGHT-border_size; i++) {
-        //start of border
-        memset(palette_data + WIDTH*i, border_palette, border_size);
-        //middle part
-        memset(palette_data + WIDTH*i + border_size, palette_byte, WIDTH-(border_size*2));
-        //final border
-        memset(palette_data + WIDTH*(i+1) - border_size, border_palette, border_size);
-    }
-
-    //memset(palette_data, palette_byte, WIDTH*HEIGHT);
-    //memset(letter_data, 0, WIDTH*HEIGHT);
-}
-
 #define INITIAL_CURSOR_POS ((WIDTH+1)*border_size)
 #define FINAL_CURSOR_POS   (WIDTH*HEIGHT - border_size*(WIDTH+1))
 size_t border_size = 2;
@@ -75,20 +48,12 @@ size_t processing = 0;
 char command[WIDTH+1] = {0};
 size_t command_size = 0;
 
+
 void set_command() {
-    char command[WIDTH+1] = {0};
-    size_t row_start = (cursor_pos/WIDTH)*WIDTH;
+    size_t row_start = (cursor_pos/WIDTH)*WIDTH + border_size + 1;
     command_size = (cursor_pos - row_start);
     memcpy(command,letter_data + row_start, command_size);
     //should be null terminated due to size
-}
-
-void handle_command() {
-    if(command_size) {
-        process_string("Unknown command\r>");
-        command_size = 0;
-        memset(command,0,sizeof(command));
-    }
 }
 
 void newline() {
@@ -105,6 +70,7 @@ void newline() {
         //cursor_pos = INITIAL_CURSOR_POS;
     }
 }
+
 
 void process_char(uint8_t c) {
     if(isprint(c)) {
@@ -132,6 +98,49 @@ void process_char(uint8_t c) {
 void process_string(char *s) {
     while(*s) {
         process_char(*s++);
+    }
+}
+
+
+
+
+void clear_screen(enum colours background, enum colours foreground) {
+    uint8_t palette_byte = background << 4 | foreground;
+    memset(palette_data, palette_byte, WIDTH*HEIGHT);
+    memset(letter_data, 0, WIDTH*HEIGHT);
+}
+
+void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size) {
+    uint8_t palette_byte = background << 4 | foreground;
+    uint8_t border_palette = foreground << 4 | background;
+    int i;
+    //set the top border
+
+    memset(palette_data, border_palette, WIDTH*border_size);
+    memset(palette_data + WIDTH*(HEIGHT-border_size), border_palette, WIDTH*border_size);
+    for(i=2; i<HEIGHT-border_size; i++) {
+        //start of border
+        memset(palette_data + WIDTH*i, border_palette, border_size);
+        //middle part
+        memset(palette_data + WIDTH*i + border_size, palette_byte, WIDTH-(border_size*2));
+        //final border
+        memset(palette_data + WIDTH*(i+1) - border_size, border_palette, border_size);
+    }
+
+    //memset(palette_data, palette_byte, WIDTH*HEIGHT);
+    //memset(letter_data, 0, WIDTH*HEIGHT);
+}
+
+void handle_command() {
+    if(command_size) {
+        if(0 == strcasecmp(command,"load")) {
+            process_string("Loading...\r>");
+        }
+        else {
+            process_string("Unknown command\r>");
+        }
+        command_size = 0;
+        memset(command,0,sizeof(command));
     }
 }
 

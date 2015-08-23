@@ -10,15 +10,19 @@ mov_register_opcode = 0
 hw_manager          = 1
 keyboard_device_id  = 0x41414141
 display_device_id   = 0x9d99389e
+tape_device_id      = 0x2730eb6c
 keyboard_map_start  = 0x01000000
 keyboard_map_end    = 0x01001000
 display_map_start   = 0x01001000
 display_map_end     = 0x01002000
+tape_map_start      = 0x01002000
+tape_map_end        = 0x01003000
 wait_for_interrupt  = 17
 
 /* Stack offsets */
-keyboard_device_num = 4
-display_device_num = 8
+keyboard_device_num = 0x4
+display_device_num  = 0x8
+tape_device_num     = 0xc
 
 reset:
         B start
@@ -42,6 +46,7 @@ start:
         SUB SP,SP,#4
         LDR R6,=keyboard_device_id
         LDR R7,=display_device_id
+        LDR R8,=tape_device_id
         /* Load the number of hardware devices into cr0 */
         CDP 1,#num_devices_opcode,CR0,CR0,CR0
         /* Put cr0 into r0 */
@@ -74,7 +79,16 @@ hw_id_loop:
         CMP R2,R6
         BEQ keyboard_found
         CMP R2,R7
+        BEQ display_found
+        CMP R2,R8
         BNE hw_id_loop
+tape_found:
+        STR R5,[SP,#tape_device_num]
+        MOV R0,R5
+        LDR R1,=tape_map_start
+        LDR R2,=tape_map_end
+        BL map_device
+        B hw_id_loop
 display_found:
         STR R5,[SP,#display_device_num]
         MOV R0,R5
