@@ -1,7 +1,9 @@
-import curses
 import disassemble
 import time
 import armv2
+import pygame
+import os
+from pygame.locals import *
 
 class WindowControl:
     SAME    = 1
@@ -11,13 +13,15 @@ class WindowControl:
     EXIT    = 5
 
 class View(object):
-    def __init__(self,h,w,y,x):
-        self.width  = w
-        self.height = h
-        self.startx = x
-        self.starty = y
-        self.window = curses.newwin(self.height,self.width,self.starty,self.startx)
-        self.window.keypad(1)
+    def __init__(self,parent,tl,br):
+        self.tl     = tl
+        self.br     = br
+        self.width  = br[0]-tl[0]
+        self.height = br[1]-tl[1]
+        self.parent = parent
+        self.rect   = pygame.Rect(self.tl, (self.width, self.height))
+        self.colour = pygame.Color(0,255,0,255)
+        self.background = pygame.Color(0,0,0,255)
 
     def Centre(self,pos):
         pass
@@ -28,10 +32,15 @@ class View(object):
     def TakeInput(self):
         return WindowControl.SAME
 
+    def Update(self, draw_border = False):
+        #Draw a rectangle around ourself, the subclasses can draw the other stuff
+        if draw_border:
+            pygame.draw.rect(self.parent.screen, self.colour, self.rect, 2)
+
 class Debug(View):
     label_width = 14
-    def __init__(self,debugger,h,w,y,x):
-        super(Debug,self).__init__(h,w,y,x)
+    def __init__(self,debugger,tl,br):
+        super(Debug,self).__init__(debugger,tl,br)
         self.selected = 0
         self.debugger = debugger
 
@@ -56,20 +65,18 @@ class Debug(View):
     def Select(self,pos):
         self.selected = pos
 
-    def TakeInput(self):
-        ch = self.window.getch()
-        #print ch,curses.KEY_DOWN
-        if ch == curses.KEY_DOWN:
+    def KeyPress(self, key):
+        if key == pygame.locals.K_DOWN:
             try:
                 self.selected = self.disassembly[self.selected_pos+1][0]
                 self.Centre(self.selected)
             except IndexError:
                 pass
-        elif ch == curses.KEY_UP:
+        elif key == pygame.locals.K_UP:
             if self.selected_pos > 0:
                 self.selected = self.disassembly[self.selected_pos-1][0]
                 self.Centre(self.selected)
-        elif ch == curses.KEY_NPAGE:
+        elif key == pygame.locals.K_PAGEDOWN:
             #We can't jump to any arbitrary point because we don't know the instruction boundaries
             #instead jump to the end of the screen twice, which should push us down by a whole page
             for i in xrange(2):
@@ -77,47 +84,47 @@ class Debug(View):
                 self.Centre(p)
 
             self.Select(p)
-        elif ch == curses.KEY_PPAGE:
+        elif key == pygame.locals.K_PAGEUP:
             for i in xrange(2):
                 p = self.disassembly[0][0]
                 self.Centre(p)
 
             self.Select(p)
-        elif ch == ord('\t'):
+        elif key == pygame.locals.K_TAB:
             return WindowControl.NEXT
-        elif ch == ord(' '):
+        elif key == pygame.locals.K_SPACE:
             if self.selected in self.debugger.breakpoints:
                 self.debugger.RemoveBreakpoint(self.selected)
             else:
                 self.debugger.AddBreakpoint(self.selected)
             self.Centre(self.selected)
-        elif ch == ord('c'):
+        elif key == pygame.locals.K_c:
             self.debugger.Continue()
             return WindowControl.RESUME
-        elif ch == ord('s'):
+        elif key == pygame.locals.K_s:
             self.debugger.Step()
             return WindowControl.RESUME
-        elif ch == ord('r'):
+        elif key == pygame.locals.K_r:
             #self.debugger.machine.Reset()
             return WindowControl.RESUME
-        elif ch == ord('q'):
+        elif key == pygame.locals.K_q:
             return WindowControl.EXIT
         return WindowControl.SAME
 
 
-    def Draw(self,draw_border = False):
-        self.window.clear()
-        if draw_border:
-            self.window.border()
+    def Update(self,draw_border = False):
+        super(Debug,self).Update(draw_border)
         self.selected_pos = None
         for i,(pos,line) in enumerate(self.disassembly):
             if pos == self.selected:
+                text = self.parent.font.render(line, False, self.background, self.colour)
                 self.selected_pos = i
-                self.window.addstr(i+1,1,line,curses.A_REVERSE)
             else:
-                #print i,line
-                self.window.addstr(i+1,1,line)
-        self.window.refresh()
+                text = self.parent.font.render(line, False, self.colour, self.background)
+            rect = text.get_rect()
+            rect.centery = rect.height*i
+            rect.left = self.rect.left+1
+            self.parent.screen.blit(text, rect)
 
 class State(View):
     reglist = [('r%d' % i) for i in xrange(12)] + ['fp','sp','lr','pc']
@@ -201,15 +208,15 @@ class Memdump(View):
 
     def TakeInput(self):
         ch = self.window.getch()
-        if ch == curses.KEY_DOWN:
+        if key == curses.KEY_DOWN:
             self.SetSelected(self.selected + self.display_width)
-        elif ch == curses.KEY_NPAGE:
+        elif key == curses.KEY_NPAGE:
             self.SetSelected(self.selected + self.display_width*(self.height-2))
-        elif ch == curses.KEY_PPAGE:
+        elif key == curses.KEY_PPAGE:
             self.SetSelected(self.selected - self.display_width*(self.height-2))
-        elif ch == curses.KEY_UP:
+        elif key == curses.KEY_UP:
             self.SetSelected(self.selected - self.display_width)
-        elif ch == ord('q'):
+        elif key == ord('q'):
             return WindowControl.EXIT
         elif ch in [ord(c) for c in '0123456789abcdef']:
             newnum = int(chr(ch),16)
@@ -227,7 +234,7 @@ class Memdump(View):
             self.lastkey = now
             self.selected = self.pos
 
-        elif ch == ord('\t'):
+        elif key == ord('\t'):
             return WindowControl.NEXT
         return WindowControl.SAME
 
@@ -235,26 +242,30 @@ class Memdump(View):
 class Debugger(object):
     BKPT = 0xef000000 | armv2.SWI_BREAKPOINT
     FRAME_CYCLES = 66666
-    def __init__(self,machine,stdscr):
+    def __init__(self,machine,screen):
         self.machine          = machine
+        self.screen           = screen
         self.breakpoints      = {}
         self.selected         = 0
-        self.stdscr           = stdscr
+        self.font             = pygame.font.Font(os.path.join('fonts','VeraMono.ttf'),12)
         #self.labels           = Labels(labels)
 
-        self.h,self.w       = self.stdscr.getmaxyx()
-        self.code_window    = Debug(self,self.h,self.w/2,0,0)
-        self.state_window   = State(self,self.h/2,self.w/4,0,self.w/2)
-        self.help_window    = Help(self.h/2,self.w/4,0,3*(self.w/4))
-        self.memdump_window = Memdump(self,self.h/2,self.w/2,self.h/2,self.w/2)
-        self.window_choices = [self.code_window,self.memdump_window]
+        self.h,self.w       = self.screen.get_height(),self.screen.get_width()
+        self.code_window    = Debug(self,(self.w*3/4,0),(self.w,self.h/2))
+        # self.state_window   = State(self,self.h/2,self.w/4,0,self.w/2)
+        # self.help_window    = Help(self.h/2,self.w/4,0,3*(self.w/4))
+        # self.memdump_window = Memdump(self,self.h/2,self.w/2,self.h/2,self.w/2)
+        # self.window_choices = [self.code_window,self.memdump_window]
+        # self.draw_windows = self.state_window,self.memdump_window,self.code_window
+        self.draw_windows = [self.code_window]
+        self.window_choices = [self.code_window]
         self.current_view   = self.code_window
         self.current_view.Select(self.machine.pc)
         self.current_view.Centre(self.machine.pc)
         self.num_to_step    = 0
         #stopped means that the debugger has halted execution and is waiting for input
         self.stopped        = True
-        self.help_window.Draw()
+        # self.help_window.Draw()
 
     def AddBreakpoint(self,addr):
         if addr&3:
@@ -307,12 +318,12 @@ class Debugger(object):
 
         #disassembly = disassemble.Disassemble(cpu.mem)
         #We're stopped, so display and wait for a keypress
-        for window in self.state_window,self.memdump_window,self.code_window:
-            armv2.DebugLog(str(window))
-            window.Draw(self.current_view is window)
-            armv2.DebugLog(str(window) + ' 1')
+        for window in self.draw_windows:
+            window.Update(self.current_view is window)
 
-        result = self.current_view.TakeInput()
+    def KeyPress(self,key):
+        result = self.current_view.KeyPress(key)
+
         if result == WindowControl.RESUME:
             self.current_view.Select(self.machine.pc)
             self.current_view.Centre(self.machine.pc)
