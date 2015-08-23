@@ -370,21 +370,6 @@ class Memdump(View):
             self.SetSelected(self.selected - self.display_width*(self.rows))
         elif key == pygame.locals.K_UP:
             self.SetSelected(self.selected - self.display_width)
-        elif key in [ord(c) for c in '0123456789abcdef']:
-            newnum = int(chr(key),16)
-            self.keypos %= 7
-            now = time.time()
-            if now - self.lastkey > self.key_time:
-                self.keypos = 0
-                self.newnum = 0
-            self.newnum <<= 4
-            self.newnum |= newnum
-            self.newnum &= 0x3ffffff
-            self.pos &= self.masks[self.keypos]
-            self.pos |= self.newnum
-            self.keypos += 1
-            self.lastkey = now
-            self.selected = self.pos
 
         elif key == pygame.locals.K_TAB:
             return WindowControl.NEXT
