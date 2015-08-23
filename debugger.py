@@ -39,6 +39,22 @@ class View(object):
         if draw_border:
             pygame.draw.rect(self.parent.screen, self.colour, self.rect, 2)
 
+    def DrawText(self, line, row, inverted=False):
+        if inverted:
+            fore,back = self.background, self.colour
+        else:
+            fore,back = self.colour, self.background
+        text = self.parent.font.render(line, False, fore, back)
+        rect = text.get_rect()
+        rect.centery = (self.row_height*(row+0.5))+self.rect.top+1
+        rect.left = self.rect.left+1
+        if rect.right >= self.rect.right-1:
+            rect.width = rect.width - (rect.right - (self.rect.right-1))
+            area = pygame.Rect((0,0),(rect.width,rect.height))
+            self.parent.screen.blit(text, rect, area)
+        else:
+            self.parent.screen.blit(text, rect)
+
 class Debug(View):
     label_width = 14
     def __init__(self,debugger,tl,br):
@@ -120,20 +136,11 @@ class Debug(View):
         for i,(pos,line) in enumerate(self.disassembly):
             line = line + ' '*30
             if pos == self.selected:
-                text = self.parent.font.render(line, False, self.background, self.colour)
+                self.DrawText(line,i,inverted = True)
                 self.selected_pos = i
             else:
                 text = self.parent.font.render(line, False, self.colour, self.background)
-            rect = text.get_rect()
-            rect.centery = (self.row_height*(i+0.5))+1
-            rect.left = self.rect.left+1
-            if rect.right >= self.rect.right-1:
-                rect.width = rect.width - (rect.right - (self.rect.right-1))
-                area = pygame.Rect((0,0),(rect.width,rect.height))
-                self.parent.screen.blit(text, rect, area)
-            else:
-                self.parent.screen.blit(text, rect)
-
+                self.DrawText(line,i)
 
 class State(View):
     reglist = [('r%d' % i) for i in xrange(12)] + ['fp','sp','lr','pc']
@@ -146,18 +153,9 @@ class State(View):
         for i in xrange(8):
             data = [(self.reglist[i*2+j],self.parent.machine.regs[i*2+j]) for j in (0,1)]
             line = ' '.join('%3s : %08x' % (r,v) for (r,v) in data)
-            text = self.parent.font.render(line, False, self.colour, self.background)
-            rect = text.get_rect()
-            rect.centery = (self.row_height*(i+0.5))+self.rect.top+1
-            rect.left = self.rect.left+1
-            if rect.right >= self.rect.right-1:
-                rect.width = rect.width - (rect.right - (self.rect.right-1))
-                area = pygame.Rect((0,0),(rect.width,rect.height))
-                self.parent.screen.blit(text, rect, area)
-            else:
-                self.parent.screen.blit(text, rect)
+            self.DrawText(line,i)
 
-        # self.window.addstr(1,18,'Mode : %s' % self.mode_names[self.debugger.machine.mode])
+        #mode_text = self.window.addstr(1,18,'Mode : %s' % self.mode_names[self.debugger.machine.mode])
         # self.window.addstr(2,18,'  pc : %08x' % self.debugger.machine.pc)
         # self.window.refresh()
 
@@ -267,8 +265,12 @@ class Debugger(object):
         #self.labels           = Labels(labels)
 
         self.h,self.w       = self.screen.get_height(),self.screen.get_width()
-        self.code_window    = Debug(self,(self.w*3/4,0),(self.w,self.h/3))
-        self.state_window   = State(self,(self.w*3/4,self.h/3),(self.w,self.h*2/3))
+        padding = 20
+        pos = 0
+        self.code_window    = Debug(self,(self.w*3/4,pos),(self.w,self.h/3))
+        pos = self.code_window.rect.height + padding
+        self.state_window   = State(self,(self.w*3/4,pos),(self.w,self.h*2/3))
+        pos += self.state_window.rect.height + padding
         # self.help_window    = Help(self.h/2,self.w/4,0,3*(self.w/4))
         # self.memdump_window = Memdump(self,self.h/2,self.w/2,self.h/2,self.w/2)
         # self.window_choices = [self.code_window,self.memdump_window]
