@@ -244,10 +244,14 @@ class TapeSelector(View):
     def __init__(self,parent,tl,br):
         super(TapeSelector,self).__init__(parent,tl,br)
         self.parent   = parent
+        self.Reset()
+
+    def Reset(self):
         self.tapes    = sorted(glob.glob(os.path.join('tapes','*')))
         self.pos      = 0
         self.selected = 0
         self.loaded   = -1
+        self.Update()
 
     def SetSelected(self,pos):
         if pos > len(self.tapes)-1:
@@ -528,6 +532,7 @@ class Debugger(object):
         self.code_window.Centre(self.machine.pc)
         self.memdump_window.Centre(self.machine.pc)
         self.help_window.Update()
+        self.tape_window.Reset()
 
     def Stop(self):
         armv2.DebugLog("Stopped called")
