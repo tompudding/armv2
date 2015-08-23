@@ -9,7 +9,7 @@ uint32_t *keyboard_bitmask = (void*)0x01000000;
 uint8_t *keyboard_ringbuffer = (void*)0x01000020;
 uint8_t *ringbuffer_pos      = (void*)0x010000a0;
 struct tape_control *tape_control = (void*)0x01002000;
-uint8_t *tape_load_area = (void*)0x10000;
+uint8_t *tape_load_area = (void*)0xf0000;
 
 
 void clear_screen(enum colours background, enum colours foreground) {
