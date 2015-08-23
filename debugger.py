@@ -22,6 +22,7 @@ class View(object):
         self.parent = parent
         self.rect   = pygame.Rect(self.tl, (self.width, self.height))
         self.colour = pygame.Color(0,255,0,255)
+        self.selected_colour = pygame.Color(255,255,255,255)
         self.background = pygame.Color(0,0,0,255)
         self.row_height = self.parent.font.render('dummy', False, self.colour, self.background).get_rect().height
         self.rows = self.height / self.row_height
@@ -38,10 +39,10 @@ class View(object):
     def Update(self, draw_border = False):
         #Draw a rectangle around ourself, the subclasses can draw the other stuff
         if draw_border:
-            colour = self.colour
+            colour = self.selected_colour
         else:
             #blank it...
-            colour = self.background
+            colour = self.colour
         pygame.draw.rect(self.parent.screen, colour, self.rect, 2)
 
     def DrawText(self, line, row, xoffset=0, inverted=False):
@@ -51,8 +52,8 @@ class View(object):
             fore,back = self.colour, self.background
         text = self.parent.font.render(line, False, fore, back)
         rect = text.get_rect()
-        rect.centery = (self.row_height*(row+0.5))+self.rect.top+1
-        rect.left = self.rect.left+1+xoffset
+        rect.centery = (self.row_height*(row+0.5))+self.rect.top+2
+        rect.left = self.rect.left+4+xoffset
         if rect.right >= self.rect.right-1:
             rect.width = rect.width - (rect.right - (self.rect.right-1))
             area = pygame.Rect((0,0),(rect.width,rect.height))
@@ -155,6 +156,7 @@ class State(View):
         self.parent = parent
 
     def Update(self,draw_border = False):
+        super(State,self).Update(draw_border)
         for i in xrange(8):
             data = [(self.reglist[i*2+j],self.parent.machine.regs[i*2+j]) for j in (0,1)]
             line = ' '.join('%3s : %08x' % (r,v) for (r,v) in data)
@@ -165,10 +167,11 @@ class State(View):
 
 class Help(View):
     def Update(self,draw_border = False):
+        super(Help,self).Update(draw_border)
         actions = (('c','continue'),
                    ('q','quit'),
                    ('s','step'),
-                   ('ESC','break'),
+                   ('ESC','stop'),
                    ('space','set breakpoint'),
                    ('tab','switch window'))
         for i in xrange(len(actions)/2):
@@ -179,6 +182,7 @@ class Help(View):
                 continue
             self.DrawText('%5s - %s' % action,i,xoffset=self.rect.width*0.5)
 
+        self.DrawText('***** %6s *****' % ('STOPPED' if self.parent.stopped else 'RUNNING'),self.rows-1,self.rect.width*0.3)
 
 
 class Memdump(View):
@@ -275,9 +279,9 @@ class Debugger(object):
         pos = 0
         self.code_window    = Debug(self,(self.machine.display.pixel_width(),pos),(self.w,self.h/3))
         pos = self.code_window.rect.height + padding
-        self.state_window   = State(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 110))
+        self.state_window   = State(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 114))
         pos += self.state_window.rect.height + padding
-        self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 225))
+        self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 228))
         pos += self.memdump_window.rect.height + padding/2
         self.help_window    = Help(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 80))
 
@@ -327,6 +331,7 @@ class Debugger(object):
     def Continue(self):
         result = None
         self.stopped = False
+        self.help_window.Update()
         try:
             if armv2.Status.Breakpoint == self.StepNumInternal(self.num_to_step):
                 raise KeyboardInterrupt()
@@ -367,3 +372,4 @@ class Debugger(object):
         self.stopped = True
         self.current_view.Select(self.machine.pc)
         self.current_view.Centre(self.machine.pc)
+        self.help_window.Update()
