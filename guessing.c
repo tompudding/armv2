@@ -50,11 +50,13 @@ void newline() {
     }
 }
 
-void process_char(uint8_t c) {
+void process_char(uint8_t c, int is_input) {
     if(isprint(c)) {
         size_t line_pos;
         letter_data[cursor_pos++] = c;
-        input[input_size++] = c;
+        if(is_input) {
+            input[input_size++] = c;
+        }
         line_pos = cursor_pos%WIDTH;
         if(line_pos >= WIDTH-border_size) {
             newline();
@@ -70,13 +72,17 @@ void process_char(uint8_t c) {
                 cursor_pos--;
                 letter_data[cursor_pos] = ' ';
             }
+            if(is_input && input_size > 0) {
+                input_size--;
+                input[input_size] = 0;
+            }
         }
     }
 }
 
 void process_string(char *s) {
     while(*s) {
-        process_char(*s++);
+        process_char(*s++,0);
     }
 }
 
@@ -104,7 +110,7 @@ void process_text(char *in_buffer, int remaining) {
         while(last_pos != new_pos) {
             uint8_t c;
             c = keyboard_ringbuffer[last_pos];
-            process_char(c);
+            process_char(c,1);
             last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
             if(c == '\r') {
                 memcpy(in_buffer, input, input_size);
