@@ -23,8 +23,10 @@ size_t command_size = 0;
 
 
 void wait_for_interrupt() {
+    asm("push {r7}");
     asm("mov r7,#17");
     asm("swi #0");
+    asm("pop {r7}");
 }
 
 void set_command() {
@@ -84,11 +86,11 @@ int load_tape(uint8_t *tape_area) {
     while(result == READY) {
         tape_control->write = NEXT_BYTE;
         while(tape_control->read == NOT_READY) {
-            wait_for_interrupt();
+            //wait_for_interrupt();
         }
         if(tape_control->read == READY) {
             *tape_area++ = tape_control->data;
-            if((((uint32_t)tape_area)&3) == 0) {
+            if((((uint32_t)tape_area)&7) == 0) {
                 processing = 0;
                 process_char('.');
                 processing = 1;

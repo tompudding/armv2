@@ -291,7 +291,7 @@ class TapeSelector(View):
     def Update(self,draw_border = False):
         pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
         super(TapeSelector,self).Update(draw_border)
-        for i in xrange(0,min(self.rows-1,len(self.tapes))):
+        for i in xrange(0,min(self.rows-1,len(self.tapes)-self.pos)):
             item = self.pos + i
             name = os.path.basename(self.tapes[item])
             if item == self.selected:

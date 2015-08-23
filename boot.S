@@ -17,7 +17,11 @@ display_map_start   = 0x01001000
 display_map_end     = 0x01002000
 tape_map_start      = 0x01002000
 tape_map_end        = 0x01003000
-wait_for_interrupt  = 17
+
+/* Syscalls */
+sys_wait_for_interrupt  = 17
+sys_gettime             = 18
+sys_getrand             = 19
 
 /* Stack offsets */
 keyboard_device_num = 0x4
@@ -31,11 +35,11 @@ illegal_instruction:
 swi:
         B software_interrupt
 prefetch_abort:
-        SWI #3
+        BL error
 data_abort:
-        SWI #4
+        BL error
 address_exception:
-        SWI #5
+        BL error
 IRQ:
         B interrupt_handler
 FIQ:
@@ -130,10 +134,10 @@ interrupt_done:
         SUBS PC,LR,#4
 
 software_interrupt:
-        cmp R7,#wait_for_interrupt
-        BNE software_interrupt
+        cmp R7,#sys_wait_for_interrupt
+        BNE software_interrupt_done
         CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0
-        MOVS PC,LR
+        SUBS PC,LR,#4
 
 entry_point:
         .word 0xcafebabe

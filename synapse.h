@@ -43,6 +43,7 @@ extern uint8_t *keyboard_ringbuffer;
 extern uint8_t *ringbuffer_pos;
 extern struct tape_control *tape_control;
 extern uint8_t *tape_load_area;
+extern uint32_t *rng;
 
 void clear_screen(enum colours background, enum colours foreground);
 void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size);

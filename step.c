@@ -16,11 +16,12 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
             return ARMV2STATUS_OK;
         }
         //LOG("Step %d %d %d %08x\n",WAITING(cpu),PIN_OFF(cpu,I),PIN_OFF(cpu,F),(cpu)->regs.actual[LR]);
-        if(WAITING(cpu) && PIN_OFF(cpu,I) && PIN_OFF(cpu,F)) {
-            return ARMV2STATUS_OK;
-        }
+
         if(instructions > 0) {
             instructions--;
+        }
+        if(WAITING(cpu) && PIN_OFF(cpu,I) && PIN_OFF(cpu,F)) {
+            return ARMV2STATUS_OK;
         }
 
         enum armv2_exception exception = EXCEPT_NONE;

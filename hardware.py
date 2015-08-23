@@ -4,6 +4,7 @@ import threading
 import traceback
 import signal
 import time
+import random
 
 class Keyboard(armv2.Device):
     """
@@ -118,7 +119,7 @@ class TapeDrive(armv2.Device):
         self.cv        = threading.Condition(threading.Lock())
         self.thread    = threading.Thread(target = self.threadMain)
         self.byte_required = False
-        self.thread.start()
+        #self.thread.start()
         self.loading   = False
 
     def loadTape(self, filename):
@@ -135,11 +136,11 @@ class TapeDrive(armv2.Device):
         with self.cv:
             while self.running:
                 while self.running and not self.byte_required:
-                    self.cv.wait(1)
+                    self.cv.wait(0.01)
                 if not self.running:
                     break
                 self.byte_required = False
-                time.sleep(0.005)
+                #time.sleep(0.001)
                 c = self.tape.read(1)
                 if c:
                     self.data_byte = ord(c)
@@ -168,12 +169,24 @@ class TapeDrive(armv2.Device):
         elif addr == 1:
             if value == self.Codes.NEXT_BYTE:
                 #They want the next byte, are we ready for them?
-                self.loading = pygame.time.get_ticks()
+                #self.loading = pygame.time.get_ticks()
                 if self.tape:
-                    self.status = self.Codes.NOT_READY
-                    with self.cv:
-                        self.byte_required = True
-                        self.cv.notify()
+                    # self.status = self.Codes.NOT_READY
+                    # with self.cv:
+                    #     self.byte_required = True
+                    #     self.cv.notify()
+                    c = self.tape.read(1)
+                    if c:
+                        self.data_byte = ord(c)
+                        self.status = self.Codes.READY
+                        #time.sleep(0.001)
+                        self.cpu.Interrupt(self.id, self.status)
+                    else:
+                        self.data_byte = 0
+                        self.status = self.Codes.END_OF_TAPE
+                        self.loading = False
+                        self.cpu.Interrupt(self.id, self.status)
+
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.DRIVE_EMPTY
@@ -184,6 +197,7 @@ class TapeDrive(armv2.Device):
         return 0;
 
     def Delete(self):
+        return
         with self.cv:
             self.running = False
             self.cv.notify()
@@ -252,6 +266,9 @@ class Display(armv2.Device):
 
 
     def readCallback(self,addr,value):
+        #The display has a secret RNG, did you know that?
+        if addr == self.letter_end:
+            return random.getrandbits(32)
         bytes = [self.readByteCallback(addr + i, 0) for i in xrange(4)]
         return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
 
@@ -276,7 +293,7 @@ class Display(armv2.Device):
             return self.letter_data[pos]
 
     def writeByteCallback(self,addr,value):
-        armv2.DebugLog('display write byte %x %x\n' % (addr,value))
+        #armv2.DebugLog('display write byte %x %x\n' % (addr,value))
         if addr < self.letter_start:
             #It's the palette
             pos = addr
@@ -295,7 +312,7 @@ class Display(armv2.Device):
         return 0
 
     def redraw(self,pos):
-        armv2.DebugLog('redraw %d' % pos)
+        #armv2.DebugLog('redraw %d' % pos)
         x = pos%self.width
         y = pos/self.width
         letter = self.letter_data[pos]
@@ -398,6 +415,8 @@ class Machine:
             while self.running:
                 while self.running and self.steps_to_run != 0:
                     self.cv.wait(1)
+                    #Keep interrupts pumping every now and again
+                    #self.cpu.Interrupt(6, 0)
                 if not self.running:
                     break
                 return self.status
@@ -420,10 +439,10 @@ class Machine:
             self.tape_drive.Delete()
 
     def Interrupt(self, hw_id, code):
-        armv2.DebugLog('Interrupt from device %s with code %s' % (hw_id, code))
         self.cpu.Interrupt(hw_id, code)
 
     def Update(self):
+
         return
         # if self.tape_drive and self.tape_drive.loading:
         #     #We should do some kind of animation
