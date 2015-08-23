@@ -4,6 +4,7 @@ import armv2
 import pygame
 import os
 import string
+import glob
 from pygame.locals import *
 
 class WindowControl:
@@ -236,6 +237,65 @@ class Help(View):
 
         self.DrawText('***** %6s *****' % ('STOPPED' if self.parent.stopped else 'RUNNING'),self.rows-1,self.rect.width*0.3)
 
+class TapeSelector(View):
+    def __init__(self,parent,tl,br):
+        super(TapeSelector,self).__init__(parent,tl,br)
+        self.parent   = parent
+        self.tapes    = sorted(glob.glob(os.path.join('tapes','*')))
+        self.pos      = 0
+        self.selected = 0
+        self.loaded   = -1
+
+    def SetSelected(self,pos):
+        if pos > len(self.tapes)-1:
+            pos = len(self.tapes)-1
+        if pos < 0:
+            pos = 0
+        self.selected = pos
+
+        if self.selected - self.pos >= self.rows-1:
+            self.pos = self.selected - (self.rows-2)
+        elif self.selected < self.pos:
+            self.pos = self.selected
+
+    def KeyPress(self,key):
+        if key == pygame.locals.K_DOWN:
+            self.SetSelected(self.selected + 1)
+        elif key == pygame.locals.K_PAGEDOWN:
+            self.SetSelected(self.selected + self.rows)
+        elif key == pygame.locals.K_PAGEUP:
+            self.SetSelected(self.selected - self.rows)
+        elif key == pygame.locals.K_UP:
+            self.SetSelected(self.selected - 1)
+        elif key in (pygame.locals.K_RETURN,pygame.locals.K_SPACE):
+            self.loaded = self.selected
+            #TODO: do something with the tape drive here
+
+        elif key == pygame.locals.K_TAB:
+            return WindowControl.NEXT
+        return WindowControl.SAME
+
+    def Select(self,pos):
+        return self.SetSelected(pos)
+
+    def Centre(self,pos):
+        self.Select(pos)
+        self.pos = pos
+
+    def Update(self,draw_border = False):
+        pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
+        super(TapeSelector,self).Update(draw_border)
+        for i in xrange(0,self.rows-1):
+            item = self.pos + i
+            name = self.tapes[item]
+            if item == self.selected:
+                self.DrawText(name,i+1,inverted=True,xoffset=20)
+            else:
+                self.DrawText(name,i+1,xoffset=20)
+            if item == self.loaded:
+                self.DrawText('*LOADED*',i+1,inverted=True,xoffset=self.rect.width*0.8)
+        self.DrawText('Tape Selector:',0)
+
 
 class Memdump(View):
     display_width = 8
@@ -300,8 +360,6 @@ class Memdump(View):
             self.SetSelected(self.selected - self.display_width*(self.rows))
         elif key == pygame.locals.K_UP:
             self.SetSelected(self.selected - self.display_width)
-        elif key == pygame.locals.K_q:
-            return WindowControl.EXIT
         elif key in [ord(c) for c in '0123456789abcdef']:
             newnum = int(chr(key),16)
             self.keypos %= 7
@@ -335,21 +393,22 @@ class Debugger(object):
         #self.labels           = Labels(labels)
 
         self.h,self.w       = self.screen.get_height(),self.screen.get_width()
-        padding = 10
+        padding = 6
         pos = 0
-        self.code_window    = Debug(self,(self.machine.display.pixel_width(),pos),(self.w,self.h/3))
+        self.code_window    = Debug(self,(self.machine.display.pixel_width(),pos),(self.w,200))
         pos = self.code_window.rect.height + padding
         self.state_window   = State(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 114))
         pos += self.state_window.rect.height + padding
-        self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 228))
+        self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 200))
         pos += self.memdump_window.rect.height + padding/2
-        self.help_window    = Help(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 80))
+        self.tape_window    = TapeSelector(self,(self.machine.display.pixel_width(),pos),(self.w,self.h-60-padding))
+        self.help_window    = Help(self,(self.machine.display.pixel_width(),self.h-60),(self.w,self.h))
         self.goto_window    = None
 
         # self.window_choices = [self.code_window,self.memdump_window]
         # self.draw_windows = self.state_window,self.memdump_window,self.code_window
-        self.draw_windows = [self.code_window,self.state_window,self.memdump_window,self.help_window]
-        self.window_choices = [self.code_window,self.memdump_window]
+        self.draw_windows = [self.code_window,self.state_window,self.memdump_window,self.help_window,self.tape_window]
+        self.window_choices = [self.code_window,self.memdump_window,self.tape_window]
         self.current_view   = self.code_window
         self.current_view.Select(self.machine.pc)
         self.current_view.Centre(self.machine.pc)
@@ -415,7 +474,10 @@ class Debugger(object):
             self.goto_window.Update(True)
 
     def OuterKeyPress(self,key):
-        key = ord(chr(key).lower())
+        try:
+            key = ord(chr(key).lower())
+        except ValueError:
+            pass
         if key == pygame.locals.K_c:
             self.Continue()
             return WindowControl.RESUME

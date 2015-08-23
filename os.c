@@ -11,6 +11,16 @@ uint32_t *keyboard_bitmask = (void*)0x01000000;
 uint8_t *keyboard_ringbuffer = (void*)0x01000020;
 uint8_t *ringbuffer_pos      = (void*)0x010000a0;
 
+char *banner_lines[] = {
+    "\r",
+    "** TETRALIMBIC SYSTEMS Synapse V2 **",
+    "\r",
+    "    2048K RAM SYSTEM 2021K FREE     ",
+    "\r",
+    "READY. Type load to access the tape\r",
+    "\r"
+};
+
 enum colours    {
     BLACK       = 0,
     WHITE       = 1,
@@ -61,8 +71,31 @@ void clear_screen_with_border(enum colours background, enum colours foreground, 
 #define FINAL_CURSOR_POS   (WIDTH*HEIGHT - border_size*(WIDTH+1))
 size_t border_size = 2;
 size_t cursor_pos = 0;
+size_t processing = 0;
+char command[WIDTH+1] = {0};
+size_t command_size = 0;
+
+void set_command() {
+    char command[WIDTH+1] = {0};
+    size_t row_start = (cursor_pos/WIDTH)*WIDTH;
+    command_size = (cursor_pos - row_start);
+    memcpy(command,letter_data + row_start, command_size);
+    //should be null terminated due to size
+}
+
+void handle_command() {
+    if(command_size) {
+        process_string("Unknown command\r>");
+        command_size = 0;
+        memset(command,0,sizeof(command));
+    }
+}
 
 void newline() {
+    if(processing) {
+        //handle the command
+        set_command();
+    }
     cursor_pos = ((cursor_pos/WIDTH)+1)*WIDTH + border_size;
     if(cursor_pos >= FINAL_CURSOR_POS) {
         //move all rows up one
@@ -85,15 +118,20 @@ void process_char(uint8_t c) {
     else {
         if(c == '\r') {
             newline();
-
         }
         else if(c == 8) {
             //backspace
-            if((cursor_pos%WIDTH) > border_size) {
+            if((cursor_pos%WIDTH) > border_size+1) { //1 for the prompt
                 cursor_pos--;
                 letter_data[cursor_pos] = ' ';
             }
         }
+    }
+}
+
+void process_string(char *s) {
+    while(*s) {
+        process_char(*s++);
     }
 }
 
@@ -104,7 +142,7 @@ void wait_for_interrupt() {
 
 void process_text() {
     uint8_t last_pos = *ringbuffer_pos;
-
+    process_char('>');
     while(1) {
         uint8_t new_pos;
         while(last_pos == (new_pos = *ringbuffer_pos)) {
@@ -116,12 +154,24 @@ void process_text() {
             process_char(c);
             last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
         }
+        handle_command();
+    }
+}
+
+
+
+void banner() {
+    size_t i;
+    for(i=0; i< sizeof(banner_lines)/sizeof(banner_lines[0]); i++) {
+        process_string(banner_lines[i]);
     }
 }
 
 int _start(void) {
     cursor_pos = INITIAL_CURSOR_POS;
     clear_screen_with_border(BLUE, LIGHT_BLUE, border_size);
+    banner();
+    processing = 1;
     process_text();
     return 0;
 }
