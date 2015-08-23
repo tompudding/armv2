@@ -31,15 +31,15 @@ tape_device_num     = 0xc
 reset:
         B start
 illegal_instruction:
-        SWI #1
+        B handle_illegal_instruction
 swi:
         B software_interrupt
 prefetch_abort:
-        BL error
+        B handle_prefetch_error
 data_abort:
-        BL error
+        B handle_data_abort
 address_exception:
-        BL error
+        B handle_address_exception
 IRQ:
         B interrupt_handler
 FIQ:
@@ -138,6 +138,28 @@ software_interrupt:
         BNE software_interrupt_done
         CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0
         SUBS PC,LR,#4
+
+handle_illegal_instruction:
+        MOV R0,#0
+        B handle_error
+handle_prefetch_error:
+        MOV R0,#1
+        B handle_error
+handle_data_abort:
+        MOV R0,#2
+        B handle_error
+handle_address_exception:
+        MOV R0,#3
+handle_error:
+        MOV R1,LR
+        ADR R5,handle_error_usr
+        MOVS PC,R5
+handle_error_usr:
+        MOV R2,SP
+        MOV R3,LR
+        LDR R4,=0x20000
+        LDR R4,[R4]
+        MOV PC,R4
 
 entry_point:
         .word 0xcafebabe

@@ -159,6 +159,7 @@ void banner() {
 }
 
 int _start(void) {
+    crash_handler_word[0] = crash_handler;
     cursor_pos = INITIAL_CURSOR_POS;
     clear_screen_with_border(BLUE, LIGHT_BLUE, border_size);
     banner();

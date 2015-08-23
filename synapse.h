@@ -44,6 +44,8 @@ extern uint8_t *ringbuffer_pos;
 extern struct tape_control *tape_control;
 extern uint8_t *tape_load_area;
 extern uint32_t *rng;
+extern uint32_t *crash_handler_word;
 
 void clear_screen(enum colours background, enum colours foreground);
 void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size);
+void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr);

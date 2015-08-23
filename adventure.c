@@ -182,6 +182,7 @@ char *adventure(char *out) {
 }
 
 int _start(void) {
+    crash_handler_word[0] = crash_handler;
     int max = 1000;
     cursor_pos = INITIAL_CURSOR_POS;
     clear_screen_with_border(DARK_GREY, WHITE, border_size);
