@@ -36,27 +36,62 @@ void clear_screen(enum colours background, enum colours foreground) {
     memset(letter_data, 0, WIDTH*HEIGHT);
 }
 
-size_t screen_pos = 0;
+void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size) {
+    uint8_t palette_byte = background << 4 | foreground;
+    uint8_t border_palette = foreground << 4 | background;
+    int i;
+    //set the top border
+
+    memset(palette_data, border_palette, WIDTH*border_size);
+    memset(palette_data + WIDTH*(HEIGHT-border_size), border_palette, WIDTH*border_size);
+    for(i=2; i<HEIGHT-border_size; i++) {
+        //start of border
+        memset(palette_data + WIDTH*i, border_palette, border_size);
+        //middle part
+        memset(palette_data + WIDTH*i + border_size, palette_byte, WIDTH-(border_size*2));
+        //final border
+        memset(palette_data + WIDTH*(i+1) - border_size, border_palette, border_size);
+    }
+
+    //memset(palette_data, palette_byte, WIDTH*HEIGHT);
+    //memset(letter_data, 0, WIDTH*HEIGHT);
+}
+
+#define INITIAL_CURSOR_POS ((WIDTH+1)*border_size)
+#define FINAL_CURSOR_POS   (WIDTH*HEIGHT - border_size*(WIDTH+1))
+size_t border_size = 2;
+size_t cursor_pos = 0;
+
+void newline() {
+    cursor_pos = ((cursor_pos/WIDTH)+1)*WIDTH + border_size;
+    if(cursor_pos >= FINAL_CURSOR_POS) {
+        cursor_pos = INITIAL_CURSOR_POS;
+    }
+}
 
 void process_char(uint8_t c) {
     if(isprint(c)) {
-        letter_data[screen_pos++] = c;
-        if(screen_pos >= WIDTH*HEIGHT) {
-            screen_pos = 0;
+        size_t line_pos;
+        letter_data[cursor_pos++] = c;
+        line_pos = cursor_pos%WIDTH;
+        if(line_pos >= WIDTH-border_size) {
+            newline();
+        }
+
+        if(cursor_pos >= FINAL_CURSOR_POS) {
+            cursor_pos = 0;
         }
     }
     else {
         if(c == '\r') {
-            screen_pos = ((screen_pos/WIDTH)+1)*WIDTH;
-            if(screen_pos >= WIDTH*HEIGHT) {
-                screen_pos = 0;
-            }
+            newline();
+
         }
         else if(c == 8) {
             //backspace
-            if((screen_pos%WIDTH) > 0) {
-                screen_pos--;
-                letter_data[screen_pos] = ' ';
+            if((cursor_pos%WIDTH) > border_size) {
+                cursor_pos--;
+                letter_data[cursor_pos] = ' ';
             }
         }
     }
@@ -85,7 +120,8 @@ void process_text() {
 }
 
 int _start(void) {
-    clear_screen(BLUE, LIGHT_BLUE);
+    cursor_pos = INITIAL_CURSOR_POS;
+    clear_screen_with_border(BLUE, LIGHT_BLUE, border_size);
     process_text();
     return 0;
 }
