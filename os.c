@@ -2,23 +2,18 @@
 #include <string.h>
 #include <ctype.h>
 
-#define WIDTH  40
-#define HEIGHT 30
-#define RINGBUFFER_SIZE 128
-uint8_t *palette_data = (void*)0x01001000;
-uint8_t *letter_data  = (void*)0x01001000 + WIDTH*HEIGHT;
-uint32_t *keyboard_bitmask = (void*)0x01000000;
-uint8_t *keyboard_ringbuffer = (void*)0x01000020;
-uint8_t *ringbuffer_pos      = (void*)0x010000a0;
+struct tape_control {
+    uint8_t read;
+    uint8_t write;
+    uint8_t data;
+};
 
-char *banner_lines[] = {
-    "\r",
-    "** TETRALIMBIC SYSTEMS Synapse V2 **",
-    "\r",
-    "    2048K RAM SYSTEM 2021K FREE     ",
-    "\r",
-    "READY. Type load to access the tape\r",
-    "\r"
+enum tape_codes {
+    NEXT_BYTE   = 0,
+    NOT_READY   = 1,
+    END_OF_TAPE = 2,
+    DRIVE_EMPTY = 3,
+    READY       = 4,
 };
 
 enum colours    {
@@ -40,6 +35,28 @@ enum colours    {
     LIGHT_GREY  = 15,
 };
 
+
+#define WIDTH  40
+#define HEIGHT 30
+#define RINGBUFFER_SIZE 128
+uint8_t *palette_data = (void*)0x01001000;
+uint8_t *letter_data  = (void*)0x01001000 + WIDTH*HEIGHT;
+uint32_t *keyboard_bitmask = (void*)0x01000000;
+uint8_t *keyboard_ringbuffer = (void*)0x01000020;
+uint8_t *ringbuffer_pos      = (void*)0x010000a0;
+struct tape_control *tape_control = (void*)0x01002000;
+uint8_t *tape_load_area = (void*)0x10000;
+
+char *banner_lines[] = {
+    "\r",
+    "** TETRALIMBIC SYSTEMS Synapse V2 **",
+    "\r",
+    "    2048K RAM SYSTEM 2021K FREE     ",
+    "\r",
+    "READY. Type load to access the tape\r",
+    "\r"
+};
+
 #define INITIAL_CURSOR_POS ((WIDTH+1)*border_size)
 #define FINAL_CURSOR_POS   (WIDTH*HEIGHT - border_size*(WIDTH+1))
 size_t border_size = 2;
@@ -48,6 +65,11 @@ size_t processing = 0;
 char command[WIDTH+1] = {0};
 size_t command_size = 0;
 
+
+void wait_for_interrupt() {
+    asm("mov r7,#17");
+    asm("swi #0");
+}
 
 void set_command() {
     size_t row_start = (cursor_pos/WIDTH)*WIDTH + border_size + 1;
@@ -70,7 +92,6 @@ void newline() {
         //cursor_pos = INITIAL_CURSOR_POS;
     }
 }
-
 
 void process_char(uint8_t c) {
     if(isprint(c)) {
@@ -101,9 +122,6 @@ void process_string(char *s) {
     }
 }
 
-
-
-
 void clear_screen(enum colours background, enum colours foreground) {
     uint8_t palette_byte = background << 4 | foreground;
     memset(palette_data, palette_byte, WIDTH*HEIGHT);
@@ -131,10 +149,44 @@ void clear_screen_with_border(enum colours background, enum colours foreground, 
     //memset(letter_data, 0, WIDTH*HEIGHT);
 }
 
+int load_tape(uint8_t *tape_area) {
+    //We need to read all the bytes from the tape until we get an end of tape, without getting any errors
+    int result = READY;
+    while(result == READY) {
+        tape_control->write = NEXT_BYTE;
+        while(tape_control->read == NOT_READY) {
+            wait_for_interrupt();
+        }
+        if(tape_control->read == READY) {
+            *tape_area++ = tape_control->data;
+        }
+        result = tape_control->read;
+    }
+    return tape_control->read == END_OF_TAPE ? 0 : tape_control->read + 1;
+}
+
 void handle_command() {
     if(command_size) {
         if(0 == strcasecmp(command,"load")) {
-            process_string("Loading...\r>");
+            process_string("Loading...\r");
+            int result = load_tape(tape_load_area);
+            switch(result) {
+            case 0:
+            {
+                //The tape is loaded so let's clear the screen and jump to the tape
+                void (*fn)(void) = (void*)tape_load_area;
+                clear_screen(BLACK,BLACK);
+                fn();
+                break;
+            }
+            case DRIVE_EMPTY+1:
+                process_string("Tape drive empty\r>");
+                break;
+            default:
+                process_string("Tape drive error\r>");
+                break;
+            }
+
         }
         else {
             process_string("Unknown command\r>");
@@ -142,11 +194,6 @@ void handle_command() {
         command_size = 0;
         memset(command,0,sizeof(command));
     }
-}
-
-void wait_for_interrupt() {
-    asm("mov r7,#17");
-    asm("swi #0");
 }
 
 void process_text() {

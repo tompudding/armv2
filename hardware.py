@@ -146,12 +146,15 @@ class TapeDrive(armv2.Device):
                     if c:
                         self.data_byte = c
                         self.status = self.Codes.READY
+                        self.cpu.Interrupt(self.id, self.status)
                     else:
                         self.data_byte = 0
                         self.status = self.Codes.END_OF_TAPE
+                        self.cpu.Interrupt(self.id, self.status)
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.DRIVE_EMPTY
+                    self.cpu.Interrupt(self.id, self.status)
         elif addr == 2:
             #Can't write to the data byte
             return 0
