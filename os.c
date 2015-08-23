@@ -1,51 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
-
-struct tape_control {
-    uint8_t read;
-    uint8_t write;
-    uint8_t data;
-};
-
-enum tape_codes {
-    NEXT_BYTE   = 0,
-    NOT_READY   = 1,
-    END_OF_TAPE = 2,
-    DRIVE_EMPTY = 3,
-    READY       = 4,
-};
-
-enum colours    {
-    BLACK       = 0,
-    WHITE       = 1,
-    RED         = 2,
-    CYAN        = 3,
-    VIOLET      = 4,
-    GREEN       = 5,
-    BLUE        = 6,
-    YELLOW      = 7,
-    ORANGE      = 8,
-    BROWN       = 9,
-    LIGHT_RED   = 10,
-    DARK_GREY   = 11,
-    MED_GREY    = 12,
-    LIGHT_GREEN = 13,
-    LIGHT_BLUE  = 14,
-    LIGHT_GREY  = 15,
-};
-
-
-#define WIDTH  40
-#define HEIGHT 30
-#define RINGBUFFER_SIZE 128
-uint8_t *palette_data = (void*)0x01001000;
-uint8_t *letter_data  = (void*)0x01001000 + WIDTH*HEIGHT;
-uint32_t *keyboard_bitmask = (void*)0x01000000;
-uint8_t *keyboard_ringbuffer = (void*)0x01000020;
-uint8_t *ringbuffer_pos      = (void*)0x010000a0;
-struct tape_control *tape_control = (void*)0x01002000;
-uint8_t *tape_load_area = (void*)0x10000;
+#include "synapse.h"
 
 char *banner_lines[] = {
     "\r",
@@ -122,33 +78,6 @@ void process_string(char *s) {
     }
 }
 
-void clear_screen(enum colours background, enum colours foreground) {
-    uint8_t palette_byte = background << 4 | foreground;
-    memset(palette_data, palette_byte, WIDTH*HEIGHT);
-    memset(letter_data, 0, WIDTH*HEIGHT);
-}
-
-void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size) {
-    uint8_t palette_byte = background << 4 | foreground;
-    uint8_t border_palette = foreground << 4 | background;
-    int i;
-    //set the top border
-
-    memset(palette_data, border_palette, WIDTH*border_size);
-    memset(palette_data + WIDTH*(HEIGHT-border_size), border_palette, WIDTH*border_size);
-    for(i=2; i<HEIGHT-border_size; i++) {
-        //start of border
-        memset(palette_data + WIDTH*i, border_palette, border_size);
-        //middle part
-        memset(palette_data + WIDTH*i + border_size, palette_byte, WIDTH-(border_size*2));
-        //final border
-        memset(palette_data + WIDTH*(i+1) - border_size, border_palette, border_size);
-    }
-
-    //memset(palette_data, palette_byte, WIDTH*HEIGHT);
-    //memset(letter_data, 0, WIDTH*HEIGHT);
-}
-
 int load_tape(uint8_t *tape_area) {
     //We need to read all the bytes from the tape until we get an end of tape, without getting any errors
     int result = READY;
@@ -159,6 +88,12 @@ int load_tape(uint8_t *tape_area) {
         }
         if(tape_control->read == READY) {
             *tape_area++ = tape_control->data;
+            if((((uint32_t)tape_area)&3) == 0) {
+                processing = 0;
+                process_char('.');
+                processing = 1;
+            }
+
         }
         result = tape_control->read;
     }
@@ -213,8 +148,6 @@ void process_text() {
         handle_command();
     }
 }
-
-
 
 void banner() {
     size_t i;
