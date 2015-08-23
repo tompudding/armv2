@@ -3,6 +3,7 @@ import pygame
 import threading
 import traceback
 import signal
+import time
 
 class Keyboard(armv2.Device):
     """
@@ -109,10 +110,15 @@ class TapeDrive(armv2.Device):
 
     def __init__(self, cpu):
         super(TapeDrive,self).__init__(cpu)
-        self.status = self.Codes.NOT_READY
+        self.status    = self.Codes.NOT_READY
         self.data_byte = 0
         self.tape_name = None
-        self.tape = None
+        self.tape      = None
+        self.running   = True
+        self.cv        = threading.Condition(threading.Lock())
+        self.thread    = threading.Thread(target = self.threadMain)
+        self.byte_required = False
+        self.thread.start()
 
     def loadTape(self, filename):
         self.tape = open(filename,'rb')
@@ -123,6 +129,23 @@ class TapeDrive(armv2.Device):
             self.tape.close()
             self.tape = None
             self.tape_name = None
+
+    def threadMain(self):
+        with self.cv:
+            while self.running:
+                while self.running and not self.byte_required:
+                    self.cv.wait(1)
+                self.byte_required = False
+                time.sleep(0.005)
+                c = self.tape.read(1)
+                if c:
+                    self.data_byte = ord(c)
+                    self.status = self.Codes.READY
+                    self.cpu.Interrupt(self.id, self.status)
+                else:
+                    self.data_byte = 0
+                    self.status = self.Codes.END_OF_TAPE
+                    self.cpu.Interrupt(self.id, self.status)
 
     def readByteCallback(self,addr,value):
         if addr == 0:
@@ -137,27 +160,31 @@ class TapeDrive(armv2.Device):
     def writeByteCallback(self,addr,value):
         if addr == 0:
             #Trying to write to the read register. :(
-            return 0
+            pass
         elif addr == 1:
             if value == self.Codes.NEXT_BYTE:
                 #They want the next byte, are we ready for them?
                 if self.tape:
-                    c = self.tape.read(1)
-                    if c:
-                        self.data_byte = c
-                        self.status = self.Codes.READY
-                        self.cpu.Interrupt(self.id, self.status)
-                    else:
-                        self.data_byte = 0
-                        self.status = self.Codes.END_OF_TAPE
-                        self.cpu.Interrupt(self.id, self.status)
+                    self.status = self.Codes.NOT_READY
+                    with self.cv:
+                        self.byte_required = True
+                        self.cv.notify()
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.DRIVE_EMPTY
                     self.cpu.Interrupt(self.id, self.status)
         elif addr == 2:
             #Can't write to the data byte
-            return 0
+            pass
+        return 0;
+
+    def Delete(self):
+        with self.cv:
+            self.running = False
+            self.cv.notify()
+        armv2.DebugLog('joining tape drivethread')
+        self.thread.join()
+        armv2.DebugLog('joined tape drivethread')
 
 
 class Display(armv2.Device):
@@ -383,6 +410,8 @@ class Machine:
         armv2.DebugLog('joining thread')
         self.thread.join()
         armv2.DebugLog('Killed')
+        if hasattr(self,'tape_drive'):
+            self.tape_drive.Delete()
 
     def Interrupt(self, hw_id, code):
         armv2.DebugLog('Interrupt from device %s with code %s' % (hw_id, code))
