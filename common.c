@@ -26,7 +26,7 @@ void clear_screen_with_border(enum colours background, enum colours foreground, 
 
     memset(palette_data, border_palette, WIDTH*border_size);
     memset(palette_data + WIDTH*(HEIGHT-border_size), border_palette, WIDTH*border_size);
-    for(i=2; i<HEIGHT-border_size; i++) {
+    for(i=border_size; i<HEIGHT-border_size; i++) {
         //start of border
         memset(palette_data + WIDTH*i, border_palette, border_size);
         //middle part
