@@ -155,18 +155,15 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
         //We're executing the instruction
         switch((instruction>>26)&03) {
         case 0:
-            //Data processing, multiply or single data swap
-            if((instruction&0xf0) != 0x90) {
-                //data processing instruction...
-                handler = ALUInstruction;
-            }
-            else if(instruction&0xf00) {
-                //multiply
+            if((instruction&0x0fc000f0) == 0x00000090) {
                 handler = MultiplyInstruction;
             }
-            else {
-                //swap
+            else if((instruction&0x0fb00ff0) == 0x01000090) {
                 handler = SwapInstruction;
+            }
+            else {
+                //data processing instruction...
+                handler = ALUInstruction;
             }
             break;
         case 1:

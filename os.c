@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
 
 #define WIDTH  40
 #define HEIGHT 30
@@ -38,9 +39,20 @@ void clear_screen(enum colours background, enum colours foreground) {
 size_t screen_pos = 0;
 
 void process_char(uint8_t c) {
-    letter_data[screen_pos++] = c;
-    if(screen_pos >= WIDTH*HEIGHT) {
-        screen_pos = 0;
+    if(isprint(c)) {
+        letter_data[screen_pos++] = c;
+        if(screen_pos >= WIDTH*HEIGHT) {
+            screen_pos = 0;
+        }
+    }
+    else {
+        //only care about return
+        if(c == '\n') {
+            screen_pos = ((screen_pos/WIDTH)+1)*WIDTH;
+            if(screen_pos >= WIDTH*HEIGHT) {
+                screen_pos = 0;
+            }
+        }
     }
 }
 

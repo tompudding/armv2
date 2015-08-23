@@ -21,15 +21,30 @@ def mainloop(dbg,machine):
             break
 
         if event.type == pygame.locals.KEYDOWN:
-            if event.key == pygame.locals.K_ESCAPE:
+            key = event.key
+            try:
+                #Try to use the unicode field instead. If it doesn't work for some reason,
+                #use the old value
+                key = ord(event.unicode)
+            except (TypeError,AttributeError):
+                pass
+            if key == pygame.locals.K_ESCAPE:
                 dbg.Stop()
             if dbg.stopped:
-                dbg.KeyPress(event.key)
+                dbg.KeyPress(key)
             else:
-                machine.keyboard.KeyDown(event.key)
+                if key < 256:
+                    machine.keyboard.KeyDown(key)
         elif event.type == pygame.locals.KEYUP:
-            if not dbg.stopped:
-                machine.keyboard.KeyUp(event.key)
+            key = event.key
+            try:
+                #Try to use the unicode field instead. If it doesn't work for some reason,
+                #use the old value
+                key = ord(event.unicode)
+            except (TypeError,AttributeError):
+                pass
+            if not dbg.stopped and key < 256:
+                machine.keyboard.KeyUp(key)
     machine.display.Update()
     pygame.display.flip()
 

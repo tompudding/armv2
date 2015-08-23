@@ -262,12 +262,12 @@ def InstructionFactory(addr,word,cpu):
     tag = (word>>26)&3
     handler = None
     if tag == 0:
-        if (word&0xf0) != 0x90:
-            handler = ALUInstruction
-        elif (word&0xf00):
+        if(word&0x0fc000f0) == 0x00000090:
             handler = MultiplyInstruction
-        else:
+        elif (word&0x0fb00ff0) == 0x01000090:
             handler = SwapInstruction
+        else:
+            handler = ALUInstruction
     elif tag == 1:
         handler = SingleDataTransferInstruction
     elif tag == 2:
