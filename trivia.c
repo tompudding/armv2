@@ -13,6 +13,7 @@ size_t processing = 0;
 
 char *banner_lines[] = {
     "      Buffy Trivia\r",
+    "      ------------\r",
     "\r",
     "  Do you have what it takes?\r",
     "\r",
@@ -307,7 +308,7 @@ int _start(void) {
     clear_screen_with_border(WHITE, BLACK, border_size);
     banner();
     uint32_t number = (getrand()%max)+1;
-    int remaining = 1;
+    int remaining = 1337;
     char question[] = "What is the title of episode 00 of season 0 of Buffy the Vampire Slayer?\r\r>";
     while(1) {
         char buffer[64] = {0};
