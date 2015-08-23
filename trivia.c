@@ -7,7 +7,7 @@
 
 #define INITIAL_CURSOR_POS ((WIDTH+1)*border_size)
 #define FINAL_CURSOR_POS   (WIDTH*HEIGHT - border_size*(WIDTH+1))
-size_t border_size = 0;
+size_t border_size = 1;
 size_t cursor_pos = 0;
 size_t processing = 0;
 
