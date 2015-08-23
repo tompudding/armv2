@@ -65,7 +65,11 @@ size_t cursor_pos = 0;
 void newline() {
     cursor_pos = ((cursor_pos/WIDTH)+1)*WIDTH + border_size;
     if(cursor_pos >= FINAL_CURSOR_POS) {
-        cursor_pos = INITIAL_CURSOR_POS;
+        //move all rows up one
+        memmove(letter_data+border_size*WIDTH, letter_data + (border_size+1)*WIDTH, (WIDTH*(HEIGHT-border_size*2-1)));
+        memset(letter_data + (WIDTH*(HEIGHT-border_size-1)), 0, WIDTH);
+        cursor_pos = ((cursor_pos/WIDTH)*WIDTH) + border_size - WIDTH;
+        //cursor_pos = INITIAL_CURSOR_POS;
     }
 }
 
@@ -76,10 +80,6 @@ void process_char(uint8_t c) {
         line_pos = cursor_pos%WIDTH;
         if(line_pos >= WIDTH-border_size) {
             newline();
-        }
-
-        if(cursor_pos >= FINAL_CURSOR_POS) {
-            cursor_pos = 0;
         }
     }
     else {

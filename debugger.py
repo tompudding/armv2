@@ -418,6 +418,7 @@ class Debugger(object):
             self.goto_window.Update(True)
 
     def OuterKeyPress(self,key):
+        key = ord(chr(key).lower())
         if key == pygame.locals.K_c:
             self.Continue()
             return WindowControl.RESUME

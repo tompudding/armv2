@@ -144,7 +144,8 @@ class Display(armv2.Device):
 
 
     def readCallback(self,addr,value):
-        pass
+        bytes = [self.readByteCallback(addr + i, 0) for i in xrange(4)]
+        return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
 
     def pixel_width(self):
         return self.width*self.cell_size*self.scale_factor
@@ -159,14 +160,18 @@ class Display(armv2.Device):
         return 0
 
     def readByteCallback(self,addr,value):
-        pass
+        if addr < self.letter_start:
+            #It's the palette
+            return self.palette_data[addr]
+        elif addr < self.letter_end:
+            pos = addr - self.letter_start
+            return self.letter_data[pos]
 
     def writeByteCallback(self,addr,value):
         armv2.DebugLog('display write byte %x %x\n' % (addr,value))
         if addr < self.letter_start:
             #It's the palette
             pos = addr
-            armv2.DebugLog('a1')
             if value == self.palette_data[pos]:
                 #no change, ignore
                 return 0
