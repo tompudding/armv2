@@ -22,6 +22,8 @@ class View(object):
         self.rect   = pygame.Rect(self.tl, (self.width, self.height))
         self.colour = pygame.Color(0,255,0,255)
         self.background = pygame.Color(0,0,0,255)
+        self.row_height = self.parent.font.render('dummy', False, self.colour, self.background).get_rect().height
+        self.rows = self.height / self.row_height
 
     def Centre(self,pos):
         pass
@@ -43,8 +45,6 @@ class Debug(View):
         super(Debug,self).__init__(debugger,tl,br)
         self.selected = 0
         self.debugger = debugger
-        self.row_height = self.parent.font.render('dummy', False, self.colour, self.background).get_rect().height
-        self.rows = self.height / self.row_height
 
     def Centre(self,pos = None):
         if pos == None:
@@ -138,21 +138,28 @@ class Debug(View):
 class State(View):
     reglist = [('r%d' % i) for i in xrange(12)] + ['fp','sp','lr','pc']
     mode_names = ['USR','FIQ','IRQ','SUP']
-    def __init__(self,debugger,h,w,y,x):
-        super(State,self).__init__(h,w,y,x)
-        self.debugger = debugger
+    def __init__(self,parent,tl,br):
+        super(State,self).__init__(parent,tl,br)
+        self.parent = parent
 
-    def Draw(self,draw_border = False):
-        self.window.clear()
-        if draw_border:
-            self.window.border()
-        for i in xrange(16):
-            regname = self.reglist[i]
-            value = self.debugger.machine.regs[i]
-            self.window.addstr(i+1,1,'%3s : %08x' % (regname,value))
-        self.window.addstr(1,18,'Mode : %s' % self.mode_names[self.debugger.machine.mode])
-        self.window.addstr(2,18,'  pc : %08x' % self.debugger.machine.pc)
-        self.window.refresh()
+    def Update(self,draw_border = False):
+        for i in xrange(8):
+            data = [(self.reglist[i*2+j],self.parent.machine.regs[i*2+j]) for j in (0,1)]
+            line = ' '.join('%3s : %08x' % (r,v) for (r,v) in data)
+            text = self.parent.font.render(line, False, self.colour, self.background)
+            rect = text.get_rect()
+            rect.centery = (self.row_height*(i+0.5))+self.rect.top+1
+            rect.left = self.rect.left+1
+            if rect.right >= self.rect.right-1:
+                rect.width = rect.width - (rect.right - (self.rect.right-1))
+                area = pygame.Rect((0,0),(rect.width,rect.height))
+                self.parent.screen.blit(text, rect, area)
+            else:
+                self.parent.screen.blit(text, rect)
+
+        # self.window.addstr(1,18,'Mode : %s' % self.mode_names[self.debugger.machine.mode])
+        # self.window.addstr(2,18,'  pc : %08x' % self.debugger.machine.pc)
+        # self.window.refresh()
 
 class Help(View):
     def Draw(self,draw_border = False):
@@ -261,12 +268,12 @@ class Debugger(object):
 
         self.h,self.w       = self.screen.get_height(),self.screen.get_width()
         self.code_window    = Debug(self,(self.w*3/4,0),(self.w,self.h/3))
-        # self.state_window   = State(self,self.h/2,self.w/4,0,self.w/2)
+        self.state_window   = State(self,(self.w*3/4,self.h/3),(self.w,self.h*2/3))
         # self.help_window    = Help(self.h/2,self.w/4,0,3*(self.w/4))
         # self.memdump_window = Memdump(self,self.h/2,self.w/2,self.h/2,self.w/2)
         # self.window_choices = [self.code_window,self.memdump_window]
         # self.draw_windows = self.state_window,self.memdump_window,self.code_window
-        self.draw_windows = [self.code_window]
+        self.draw_windows = [self.code_window,self.state_window]
         self.window_choices = [self.code_window]
         self.current_view   = self.code_window
         self.current_view.Select(self.machine.pc)
