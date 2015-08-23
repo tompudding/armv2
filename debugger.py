@@ -424,8 +424,9 @@ class Debugger(object):
         self.current_view.Centre(self.machine.pc)
         self.num_to_step    = 0
         #stopped means that the debugger has halted execution and is waiting for input
-        self.stopped        = True
+        self.stopped        = False
         # self.help_window.Draw()
+        self.Update()
 
     def AddBreakpoint(self,addr):
         if addr&3:
