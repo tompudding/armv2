@@ -34,19 +34,19 @@ tapes/1_guessing.bin: guessing tape_loader.bin
 	python create_tape.py $@ $^
 
 guessing: guessing.c common.c synapse.h
-	arm-none-eabi-gcc -Os -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ guessing.c common.c
+	arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ guessing.c common.c
 
 tapes/2_trivia.bin: trivia tape_loader.bin
 	python create_tape.py $@ $^
 
 trivia: trivia.c common.c synapse.h
-	arm-none-eabi-gcc -Os -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ trivia.c common.c
+	arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ trivia.c common.c
 
 tapes/3_adventure.bin: adventure tape_loader.bin
 	python create_tape.py $@ $^
 
 adventure: adventure.c common.c synapse.h
-	arm-none-eabi-gcc -Os -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ adventure.c common.c
+	arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ adventure.c common.c
 
 clean:
 	rm -f armv2 os tapes/3_adventure.bin adventure tapes/2_trivia.bin trivia tapes/1_guessing.bin guessing boot.rom armtest step.o instructions.o init.o armv2.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc

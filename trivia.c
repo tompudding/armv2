@@ -175,7 +175,7 @@ char *episodes[7][22] = { {"Welcome to the Hellmouth",
                            "End of Days",
                            "Chosen"} };
 
-char input[WIDTH+1] = {0};
+char input[64] = {0};
 size_t input_size = 0;
 
 void wait_for_interrupt() {
@@ -254,7 +254,7 @@ void process_text(char *in_buffer) {
             process_char(c,1);
             last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
             if(c == '\r') {
-                memcpy(in_buffer, input, input_size);
+                strcpy(in_buffer, input);
                 process_char('\r',0);
                 input_size = 0;
                 memset(input,0,sizeof(input));
@@ -302,6 +302,8 @@ void print_number(int n) {
     }
 }
 
+char question[] = "What is the title of episode 00 of season 0 of Buffy the Vampire Slayer?\r\r>";
+
 int _start(void) {
     crash_handler_word[0] = crash_handler;
     int max = 1000;
@@ -310,9 +312,9 @@ int _start(void) {
     banner();
     uint32_t number = (getrand()%max)+1;
     int remaining = 1337;
-    char question[] = "What is the title of episode 00 of season 0 of Buffy the Vampire Slayer?\r\r>";
+
     while(1) {
-        char buffer[64] = {0};
+        char buffer[32] = {0};
         char *episode_name = NULL;
         int season = getrand()%7;;
         int episode_number;
