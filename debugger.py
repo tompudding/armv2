@@ -487,7 +487,7 @@ class Debugger(object):
             key = ord(chr(key).lower())
         except ValueError:
             pass
-        if key == pygame.locals.K_c:
+        if key == pygame.locals.K_c or key == pygame.locals.K_ESCAPE:
             self.Continue()
             return WindowControl.RESUME
         elif key == pygame.locals.K_s:

@@ -35,8 +35,9 @@ def mainloop(dbg):
                 key = ord(event.unicode)
             except (TypeError,AttributeError):
                 pass
-            if key == pygame.locals.K_ESCAPE:
+            if key == pygame.locals.K_ESCAPE and not dbg.stopped:
                 dbg.Stop()
+                return
             if dbg.stopped:
                 if False == dbg.KeyPress(key):
                     screen = dbg.machine.display.screen
