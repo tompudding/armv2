@@ -11,7 +11,7 @@ uint8_t *ringbuffer_pos      = (void*)0x010000a0;
 struct tape_control *tape_control = (void*)0x01002000;
 uint8_t *tape_load_area = (void*)0xf0000;
 uint32_t *rng = (void*)0x01001000 + WIDTH*HEIGHT*2;
-uint32_t *crash_handler_word = (void*)0x20000;
+void **crash_handler_word = (void*)0x20000;
 
 void clear_screen(enum colours background, enum colours foreground) {
     uint8_t palette_byte = background << 4 | foreground;

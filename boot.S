@@ -6,6 +6,7 @@ map_memory_opcode   = 1
 device_id_opcode    = 2
 interrupt_data_opcode = 3
 wait_for_interrupt_opcode = 4
+gettime_opcode      = 5
 mov_register_opcode = 0
 hw_manager          = 1
 keyboard_device_id  = 0x41414141
@@ -135,8 +136,21 @@ interrupt_done:
 
 software_interrupt:
         cmp R7,#sys_wait_for_interrupt
+        BEQ wfi
+        CMP R7,#sys_gettime
         BNE software_interrupt_done
+gettime:
+        CDP 1,#gettime_opcode,CR0,CR0,CR0
+        MRC 1,#mov_register_opcode,R0,CR0,CR0
+        /* put the start value into cr1 */
+        MRC 1,#mov_register_opcode,R1,CR1,CR0
+        ADR R3,scratch
+        STR R0,[R3]
+        STR R1,[R3,#4]
+        B software_interrupt_done
+wfi:
         CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0
+software_interrupt_done:
         SUBS PC,LR,#4
 
 handle_illegal_instruction:
@@ -163,3 +177,8 @@ handle_error_usr:
 
 entry_point:
         .word 0xcafebabe
+scratch:
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000

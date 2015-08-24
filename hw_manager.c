@@ -3,6 +3,8 @@
 #include <stdarg.h>
 #include "hw_manager.h"
 
+uint32_t time_data[2] = {0x203b2836,0xb8b0a7b6};
+
 enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode) {
     if(NULL == cpu               ||
        crd >= HW_MANAGER_NUMREGS ||
@@ -54,6 +56,10 @@ enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t au
             SETCPUFLAG(cpu,WAIT);
         }
         return ARMV2STATUS_OK;
+
+    case GETTIME:
+        cpu->hardware_manager.regs[0] = time_data[0] ^ 0x41414141;
+        cpu->hardware_manager.regs[1] = time_data[1] ^ 0xc1c2c3c4;
 
     default:
         return ARMV2STATUS_UNKNOWN_OPCODE;

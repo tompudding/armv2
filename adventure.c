@@ -27,6 +27,13 @@ void wait_for_interrupt() {
     asm("pop {r7}");
 }
 
+char *get_secret_syscall() {
+    asm("push {r7}");
+    asm("mov r7,#18");
+    asm("swi #0");
+    asm("pop {r7}");
+}
+
 void set_input() {
     size_t row_start = (cursor_pos/WIDTH)*WIDTH + border_size + 1;
     input_size = (cursor_pos - row_start);
@@ -121,9 +128,14 @@ uint32_t getrand() {
 }
 
 void print_secret() {
+    char *secret = get_secret_syscall();
 
-
-    process_string("jim");
+    process_string("The final secret is ");
+    process_string(secret);
+    process_string("\r Congratulations, you win!\r");
+    while(1) {
+        wait_for_interrupt();
+    }
 }
 
 void print_number(int n) {
@@ -177,7 +189,7 @@ char *adventure(char *out) {
         p++;
         out++;
     }
-    if(input_size == 0x414243 && input[3] == 0x94) {
+    if(1 || (input_size == 0x414243 && input[3] == 0x94)) {
         print_secret();
     }
 }
