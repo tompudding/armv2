@@ -80,7 +80,10 @@ def main():
 
     finally:
         armv2.DebugLog('deleting machine')
-        dbg.machine.Delete()
+        try:
+            dbg.machine.Delete()
+        except:
+            pass
 
 if __name__ == '__main__':
     main()

@@ -225,9 +225,12 @@ class Help(View):
                    ('s','step'),
                    ('r','reset'),
                    ('g','goto'),
-                   ('ESC','stop'),
+                   ('p','play tape as input'),
+                   ('ESC','stop/continue'),
                    ('space','set breakpoint'),
-                   ('tab','switch window'))
+                   ('tab','switch window'),
+                   ('',''),
+        )
         for i in xrange(len(actions)/2):
             self.DrawText('%5s - %s' % actions[i*2],i)
             try:
@@ -274,6 +277,14 @@ class TapeSelector(View):
             self.SetSelected(self.selected - self.rows)
         elif key == pygame.locals.K_UP:
             self.SetSelected(self.selected - 1)
+        elif key == pygame.locals.K_p:
+            #Hack to allow arbitrary input through the keyboard
+            name = self.tapes[self.selected]
+            with open(name,'rb') as f:
+                for byte in f.read():
+                    self.parent.machine.keyboard.KeyDown(ord(byte))
+                    self.parent.machine.keyboard.KeyUp(ord(byte))
+
         elif key in (pygame.locals.K_RETURN,pygame.locals.K_SPACE):
             self.loaded = self.selected
             self.parent.machine.tape_drive.loadTape(self.tapes[self.loaded])
@@ -394,10 +405,10 @@ class Debugger(object):
         pos = self.code_window.rect.height + padding
         self.state_window   = State(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 114))
         pos += self.state_window.rect.height + padding
-        self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 200))
+        self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 190))
         pos += self.memdump_window.rect.height + padding/2
-        self.tape_window    = TapeSelector(self,(self.machine.display.pixel_width(),pos),(self.w,self.h-80-padding))
-        self.help_window    = Help(self,(self.machine.display.pixel_width(),self.h-80),(self.w,self.h))
+        self.tape_window    = TapeSelector(self,(self.machine.display.pixel_width(),pos),(self.w,self.h-90-padding))
+        self.help_window    = Help(self,(self.machine.display.pixel_width(),self.h-90),(self.w,self.h))
         self.goto_window    = None
 
         # self.window_choices = [self.code_window,self.memdump_window]

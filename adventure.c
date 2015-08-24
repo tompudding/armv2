@@ -46,7 +46,7 @@ void newline() {
 }
 
 void process_char(uint8_t c, int is_input) {
-    if(isprint(c)) {
+    if(isprint(c) || 0 == c) {
         size_t line_pos;
         letter_data[cursor_pos++] = c;
         if(is_input) {
@@ -155,6 +155,7 @@ void start() {
             process_string("I did not understand :");
             process_string(buffer);
             process_string("\r\r>");
+            memset(buffer,0,sizeof(buffer));
         }
     }
 }
