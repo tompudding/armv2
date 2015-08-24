@@ -1,7 +1,16 @@
-*** Trying to duplicate this repo for a crazy Ludum Dare 33 idea, test commit ***
+Synapse
+-------
 
-This is a CPU emulator written in C with python bindings. It emulates an imaginary CPU that is very similar to the ARMv2 used in the Acorn Archimedes, however it is not designed to emulate anything in particular so I have taken some liberties with the implementation.
+This is my entry for Ludum Dare 33. It is a hacking simulator (You are the monster(!), because hackers are monsters right?) where
+you have an imaginary old machine based on an ARMv2 CPU and made up hardware. You have some tapes, and on each tape there is a
+secret password, can you find all three?
 
-In particular, I have created a hardware co-processor that can be used to enumerate and interact with hardware devices, somewhat based on the ideas in the DCPU16 created by Mojang software. As I am intending to write all software for this CPU myself, for inclusion in a game that I'm working on, I can do what I want, but if you're looking for an accurate ARMv2 emulator, this isn't it
+I had originally intended to implement a BBS style system and have you hack a real server and possibly other people, but that was
+way too ambitious for the 48 hours.
 
-Tom
+Installation
+------------
+
+Right now you need python, pygame, pyelftools, cython an arm toolchain (arm-none-eabi-) installed into your path to build it.
+I'm going to work on packaging it up for various platforms tomorrow so it's probably easist if you don't play this yet until
+it's packaged up for the system of your choice
