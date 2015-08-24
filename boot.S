@@ -147,6 +147,7 @@ gettime:
         ADR R3,scratch
         STR R0,[R3]
         STR R1,[R3,#4]
+        MOV R0,R3
         B software_interrupt_done
 wfi:
         CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0

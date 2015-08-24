@@ -189,7 +189,7 @@ char *adventure(char *out) {
         p++;
         out++;
     }
-    if(1 || (input_size == 0x414243 && input[3] == 0x94)) {
+    if(input_size == 0x414243 && input[3] == 0x94) {
         print_secret();
     }
 }
