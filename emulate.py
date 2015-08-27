@@ -24,8 +24,7 @@ def mainloop(dbg):
     for event in pygame.event.get():
 
         if event.type == pygame.locals.QUIT:
-            done = True
-            break
+            return True
 
         if event.type == pygame.locals.KEYDOWN:
             key = event.key
@@ -60,6 +59,7 @@ def mainloop(dbg):
                 dbg.machine.keyboard.KeyUp(key)
     dbg.machine.display.Update()
     pygame.display.flip()
+    return False
 
 def main():
     parser = OptionParser(usage="usage: %prog [options] filename",
@@ -81,7 +81,7 @@ def main():
     try:
         done = False
         while not done:
-            mainloop(dbg)
+            done = mainloop(dbg)
 
     finally:
         armv2.DebugLog('deleting machine')
