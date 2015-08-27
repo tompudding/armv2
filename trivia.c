@@ -204,7 +204,21 @@ void newline() {
 }
 
 void process_char(uint8_t c, int is_input) {
-    if(isprint(c)) {
+    if(c == '\r') {
+        newline();
+    }
+    else if(c == 8) {
+        //backspace
+        if((cursor_pos%WIDTH) > border_size+1) { //1 for the prompt
+            cursor_pos--;
+            letter_data[cursor_pos] = ' ';
+        }
+        if(is_input && input_size > 0) {
+            input_size--;
+            input[input_size] = 0;
+        }
+    }
+    else {
         size_t line_pos;
         letter_data[cursor_pos++] = c;
         if(is_input) {
@@ -213,22 +227,6 @@ void process_char(uint8_t c, int is_input) {
         line_pos = cursor_pos%WIDTH;
         if(line_pos >= WIDTH-border_size) {
             newline();
-        }
-    }
-    else {
-        if(c == '\r') {
-            newline();
-        }
-        else if(c == 8) {
-            //backspace
-            if((cursor_pos%WIDTH) > border_size+1) { //1 for the prompt
-                cursor_pos--;
-                letter_data[cursor_pos] = ' ';
-            }
-            if(is_input && input_size > 0) {
-                input_size--;
-                input[input_size] = 0;
-            }
         }
     }
 }
@@ -337,13 +335,13 @@ int _start(void) {
 
         process_text(buffer);
         if(0 == strcasecmp(buffer,episode_name)) {
-            if(--remaining == 0) {
+            if(remaining == 0) {
                 print_secret();
                 break;
             }
             else {
                 process_string("Correct! get ");
-                print_number(remaining);
+                print_number(remaining--);
                 process_string(" more correct to learn the password\r\r");
             }
         }
