@@ -38,9 +38,9 @@ class View(object):
     def TakeInput(self):
         return WindowControl.SAME
 
-    def Update(self, draw_border = False):
+    def Update(self):
         #Draw a rectangle around ourself, the subclasses can draw the other stuff
-        if draw_border:
+        if self.parent.current_view is self:
             colour = self.colour
         else:
             #blank it...
@@ -70,6 +70,7 @@ class Goto(View):
         self.text_buffer = []
         self.view = view
         self.invalid_text = None
+        self.Update()
 
     def KeyPress(self, key):
         if key >= 256:
@@ -77,6 +78,7 @@ class Goto(View):
         if key == pygame.locals.K_BACKSPACE:
             self.text_buffer = self.text_buffer[:-1]
             self.invalid_text = None
+            self.Update()
         elif key == pygame.locals.K_RETURN:
             buffer = ''.join(self.text_buffer)
             register = self.GetRegister(buffer)
@@ -94,14 +96,15 @@ class Goto(View):
         elif len(self.text_buffer) < self.MAX_LEN and chr(key) in string.printable:
             self.text_buffer.append(chr(key))
             self.invalid_text = None
+            self.Update()
 
     def Dismiss(self, value):
+        self.parent.current_view = self.view
+        self.parent.goto_window = None
         if None != value:
             #Centre the view on this value
             self.view.Select(value)
             self.view.Centre(value)
-        self.parent.current_view = self.view
-        self.parent.goto_window = None
 
     def GetRegister(self, key):
         key = key.lower()
@@ -116,10 +119,11 @@ class Goto(View):
 
     def Invalid(self):
         self.invalid_text = '** INVALID **'
+        self.Update()
 
-    def Update(self,draw_border = False):
+    def Update(self):
         pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
-        super(Goto,self).Update(draw_border)
+        super(Goto,self).Update()
         self.DrawText('Goto addr or register : %s' % ''.join(self.text_buffer), 0, 10)
         if self.invalid_text:
             self.DrawText(self.invalid_text,1)
@@ -130,6 +134,7 @@ class Debug(View):
         super(Debug,self).__init__(debugger,tl,br)
         self.selected = 0
         self.debugger = debugger
+        self.disassembly = None
 
     def Centre(self,pos = None):
         if pos == None:
@@ -148,9 +153,11 @@ class Debug(View):
             dis.append( (instruction.addr,'%1s%s%07x %08x : %s' % (arrow,bpt,instruction.addr,instruction.word,instruction.ToString())))
 
         self.disassembly = dis
+        self.Update()
 
     def Select(self,pos):
         self.selected = pos
+        self.Update()
 
     def KeyPress(self, key):
         if key == pygame.locals.K_DOWN:
@@ -188,9 +195,11 @@ class Debug(View):
         return WindowControl.SAME
 
 
-    def Update(self,draw_border = False):
-        super(Debug,self).Update(draw_border)
+    def Update(self):
+        super(Debug,self).Update()
         self.selected_pos = None
+        if not self.disassembly:
+            return
         for i,(pos,line) in enumerate(self.disassembly):
             line = line + ' '*30
             if pos == self.selected:
@@ -207,8 +216,8 @@ class State(View):
         super(State,self).__init__(parent,tl,br)
         self.parent = parent
 
-    def Update(self,draw_border = False):
-        super(State,self).Update(draw_border)
+    def Update(self):
+        super(State,self).Update()
         for i in xrange(8):
             data = [(self.reglist[i*2+j],self.parent.machine.regs[i*2+j]) for j in (0,1)]
             line = ' '.join('%3s : %08x' % (r,v) for (r,v) in data)
@@ -218,8 +227,8 @@ class State(View):
         self.DrawText('  pc : %08x' % self.parent.machine.pc, 1, self.rect.width*0.6)
 
 class Help(View):
-    def Update(self,draw_border = False):
-        super(Help,self).Update(draw_border)
+    def Update(self):
+        super(Help,self).Update()
         actions = (('c','continue'),
                    ('q','quit'),
                    ('s','step'),
@@ -267,6 +276,7 @@ class TapeSelector(View):
             self.pos = self.selected - (self.rows-2)
         elif self.selected < self.pos:
             self.pos = self.selected
+        self.Update()
 
     def KeyPress(self,key):
         if key == pygame.locals.K_DOWN:
@@ -288,6 +298,7 @@ class TapeSelector(View):
         elif key in (pygame.locals.K_RETURN,pygame.locals.K_SPACE):
             self.loaded = self.selected
             self.parent.machine.tape_drive.loadTape(self.tapes[self.loaded])
+            self.Update()
             #TODO: do something with the tape drive here
 
         elif key == pygame.locals.K_TAB:
@@ -303,9 +314,9 @@ class TapeSelector(View):
             pos = len(self.tapes)-1
         self.pos = pos
 
-    def Update(self,draw_border = False):
+    def Update(self):
         pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
-        super(TapeSelector,self).Update(draw_border)
+        super(TapeSelector,self).Update()
         for i in xrange(0,min(self.rows-1,len(self.tapes)-self.pos)):
             item = self.pos + i
             name = os.path.basename(self.tapes[item])
@@ -332,9 +343,9 @@ class Memdump(View):
         self.masks = (0x3fffff0,0x3ffff00,0x3fff000,0x3ff0000,0x3f00000,0x3000000,0)
         self.newnum   = 0
 
-    def Update(self,draw_border = False):
+    def Update(self):
         pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
-        super(Memdump,self).Update(draw_border)
+        super(Memdump,self).Update()
         for i in xrange(self.rows):
             addr = self.pos + i*self.display_width
             data = self.parent.machine.mem[addr:addr+self.display_width]
@@ -364,6 +375,7 @@ class Memdump(View):
             self.pos = self.selected - (self.rows-1)*self.display_width
         elif self.selected < self.pos:
             self.pos = self.selected
+        self.Update()
 
     def Select(self,pos):
         return self.SetSelected(pos)
@@ -371,6 +383,7 @@ class Memdump(View):
     def Centre(self,pos):
         self.Select(pos)
         self.pos = pos
+        self.Update()
 
     def KeyPress(self,key):
         if key == pygame.locals.K_DOWN:
@@ -397,6 +410,7 @@ class Debugger(object):
         self.selected         = 0
         self.font             = pygame.font.Font(os.path.join('fonts','TerminusTTF-4.39.ttf'),12)
         #self.labels           = Labels(labels)
+        self.current_view     = None
 
         self.h,self.w       = self.screen.get_height(),self.screen.get_width()
         padding = 6
@@ -450,7 +464,10 @@ class Debugger(object):
             self.machine.memw[old_pos] = self.BKPT
             if num > 0:
                 num -= 1
-        return self.machine.StepAndWait(num)
+        status = self.machine.StepAndWait(num)
+        self.state_window.Update()
+        self.memdump_window.Update()
+        return status
 
     def Step(self):
         return self.StepNumInternal(1)
@@ -473,11 +490,11 @@ class Debugger(object):
 
         #disassembly = disassemble.Disassemble(cpu.mem)
         #We're stopped, so display and wait for a keypress
-        self.Update()
+        #self.Update()
 
     def Update(self):
         for window in self.draw_windows:
-            window.Update(self.current_view is window)
+            window.Update()
 
         if self.goto_window:
             self.goto_window.Update(True)
@@ -520,9 +537,14 @@ class Debugger(object):
         elif result == WindowControl.NEXT:
             pos = self.window_choices.index(self.current_view)
             pos = (pos + 1)%len(self.window_choices)
+            old = self.current_view
             self.current_view = self.window_choices[pos]
+            for view in old,self.current_view:
+                view.Update()
         elif result == WindowControl.EXIT:
             raise SystemExit
+
+
 
     def Reset(self):
         self.code_window.Select(self.machine.pc)

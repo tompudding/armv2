@@ -21,7 +21,7 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
             instructions--;
         }
         if(WAITING(cpu) && PIN_OFF(cpu,I) && PIN_OFF(cpu,F)) {
-            return ARMV2STATUS_OK;
+            return ARMV2STATUS_WAIT_FOR_INTERRUPT;
         }
 
         enum armv2_exception exception = EXCEPT_NONE;

@@ -22,12 +22,17 @@ class CpuExceptions:
     Breakpoint           = carmv2.EXCEPT_BREAKPOINT
 
 class Status:
-    Ok              = carmv2.ARMV2STATUS_OK
-    InvalidCpuState = carmv2.ARMV2STATUS_INVALID_CPUSTATE
-    MemoryError     = carmv2.ARMV2STATUS_MEMORY_ERROR
-    ValueError      = carmv2.ARMV2STATUS_VALUE_ERROR
-    IoError         = carmv2.ARMV2STATUS_IO_ERROR
-    Breakpoint      = carmv2.ARMV2STATUS_BREAKPOINT
+    Ok               = carmv2.ARMV2STATUS_OK
+    InvalidCpuState  = carmv2.ARMV2STATUS_INVALID_CPUSTATE
+    MemoryError      = carmv2.ARMV2STATUS_MEMORY_ERROR
+    ValueError       = carmv2.ARMV2STATUS_VALUE_ERROR
+    IoError          = carmv2.ARMV2STATUS_IO_ERROR
+    Breakpoint       = carmv2.ARMV2STATUS_BREAKPOINT
+    WaitForInterrupt = carmv2.ARMV2STATUS_WAIT_FOR_INTERRUPT
+
+class Pins:
+    Interrupt     = carmv2.PIN_I
+    FastInterrupt = carmv2.PIN_F
 
 def PAGEOF(addr):
     return addr>>carmv2.PAGE_SIZE_BITS
@@ -283,6 +288,10 @@ cdef class Armv2:
         return self.cpu.pc + 4
 
     @property
+    def pins(self):
+        return self.cpu.pins
+
+    @property
     def mode(self):
         return self.regs.pc&3
 
@@ -324,7 +333,9 @@ cdef class Armv2:
         self.hardware.append(device)
 
     def Interrupt(self, hw_id, code):
+        DebugLog('ab')
         result = carmv2.interrupt(self.cpu, <uint32_t>hw_id, <uint32_t>code)
+        DebugLog('ac')
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 

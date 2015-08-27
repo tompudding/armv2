@@ -40,6 +40,8 @@ cdef extern from "armv2.h":
     enum: WORDS_PER_PAGE
     enum: MAX_MEMORY
     enum: SWI_BREAKPOINT
+    enum: PIN_I
+    enum: PIN_F
 
     ctypedef enum:
         EXCEPT_RST
@@ -66,7 +68,8 @@ cdef extern from "armv2.h":
         ARMV2STATUS_MEMORY_ERROR,
         ARMV2STATUS_VALUE_ERROR,
         ARMV2STATUS_IO_ERROR,
-        ARMV2STATUS_BREAKPOINT
+        ARMV2STATUS_BREAKPOINT,
+        ARMV2STATUS_WAIT_FOR_INTERRUPT
 
     ctypedef struct regs_t:
         uint32_t actual[NUMREGS]

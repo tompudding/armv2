@@ -117,7 +117,7 @@ class TapeDrive(armv2.Device):
         self.tape      = None
         self.running   = True
         self.cv        = threading.Condition(threading.Lock())
-        self.thread    = threading.Thread(target = self.threadMain)
+        #self.thread    = threading.Thread(target = self.threadMain)
         self.byte_required = False
         #self.thread.start()
         self.loading   = False
@@ -145,12 +145,12 @@ class TapeDrive(armv2.Device):
                 if c:
                     self.data_byte = ord(c)
                     self.status = self.Codes.READY
-                    self.cpu.Interrupt(self.id, self.status)
+                    self.cpu.cpu.Interrupt(self.id, self.status)
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.END_OF_TAPE
                     self.loading = False
-                    self.cpu.Interrupt(self.id, self.status)
+                    self.cpu.cpu.Interrupt(self.id, self.status)
 
     def readByteCallback(self,addr,value):
         if addr == 0:
@@ -180,17 +180,17 @@ class TapeDrive(armv2.Device):
                         self.data_byte = ord(c)
                         self.status = self.Codes.READY
                         #time.sleep(0.001)
-                        self.cpu.Interrupt(self.id, self.status)
+                        self.cpu.cpu.Interrupt(self.id, self.status)
                     else:
                         self.data_byte = 0
                         self.status = self.Codes.END_OF_TAPE
                         self.loading = False
-                        self.cpu.Interrupt(self.id, self.status)
+                        self.cpu.cpu.Interrupt(self.id, self.status)
 
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.DRIVE_EMPTY
-                    self.cpu.Interrupt(self.id, self.status)
+                    self.cpu.cpu.Interrupt(self.id, self.status)
         elif addr == 2:
             #Can't write to the data byte
             pass
@@ -365,7 +365,7 @@ class Machine:
         self.memw         = MemPassthrough(self.cv,self.cpu.memw)
         self.thread       = threading.Thread(target = self.threadMain)
         self.tape_drive   = None
-        self.status       = None
+        self.status       = armv2.Status.Ok
         self.thread.start()
 
     @property
@@ -394,15 +394,20 @@ class Machine:
             return self.cpu.pc
 
     def threadMain(self):
-        with self.cv:
-            while self.running:
-                while self.running and self.steps_to_run == 0:
-                    self.cv.wait(1)
-                if not self.running:
-                    break
-                self.status = self.cpu.Step(self.steps_to_run)
-                self.steps_to_run = 0
-                self.cv.notify()
+        try:
+            with self.cv:
+                while self.running:
+                    while self.running and \
+                            ((self.steps_to_run == 0) or\
+                                 (self.status == armv2.Status.WaitForInterrupt and not (self.cpu.pins & armv2.Pins.Interrupt))):
+                        armv2.DebugLog('%d %d %x' % (self.steps_to_run,self.status,self.cpu.pins))
+                        self.cv.wait(5)
+                    self.status = self.cpu.Step(self.steps_to_run)
+                    self.steps_to_run = 0
+                    self.cv.notify()
+        finally:
+            #in case we exit this and leave running on (due to an exception say)
+            self.running = False
 
     def Step(self,num):
         with self.cv:
@@ -413,13 +418,15 @@ class Machine:
         self.Step(num)
         with self.cv:
             while self.running:
-                while self.running and self.steps_to_run != 0:
-                    self.cv.wait(1)
+                while self.running and (self.steps_to_run and self.status != armv2.Status.WaitForInterrupt):
+                    self.cv.wait(0.1)
                     #Keep interrupts pumping every now and again
                     #self.cpu.Interrupt(6, 0)
                 if not self.running:
                     break
                 return self.status
+            #if we get here it's not running
+            raise RuntimeError('Thread is not running!')
 
     def AddHardware(self,device,name = None):
         with self.cv:
@@ -439,7 +446,11 @@ class Machine:
             self.tape_drive.Delete()
 
     def Interrupt(self, hw_id, code):
-        self.cpu.Interrupt(hw_id, code)
+        armv2.DebugLog('Interrupting1')
+        with self.cv:
+            self.cpu.Interrupt(hw_id, code)
+            armv2.DebugLog('Interrupting2')
+            self.cv.notify()
 
     def Update(self):
 

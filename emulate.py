@@ -74,7 +74,11 @@ def main():
     machine = new_machine(screen)
     try:
         dbg = debugger.Debugger(machine, screen)
+    except:
+        machine.Delete()
+        raise
 
+    try:
         done = False
         while not done:
             mainloop(dbg)

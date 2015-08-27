@@ -27,7 +27,7 @@ void wait_for_interrupt() {
     asm("pop {r7}");
 }
 
-char *get_secret_syscall() {
+char *get_time_syscall() {
     asm("push {r7}");
     asm("mov r7,#18");
     asm("swi #0");
@@ -126,7 +126,7 @@ uint32_t getrand() {
 }
 
 void print_secret() {
-    char *secret = get_secret_syscall();
+    char *secret = get_time_syscall();
 
     process_string("The final secret is ");
     process_string(secret);
