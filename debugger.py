@@ -70,6 +70,7 @@ class Goto(View):
         self.text_buffer = []
         self.view = view
         self.invalid_text = None
+        self.Update()
 
     def KeyPress(self, key):
         if key >= 256:
@@ -77,6 +78,7 @@ class Goto(View):
         if key == pygame.locals.K_BACKSPACE:
             self.text_buffer = self.text_buffer[:-1]
             self.invalid_text = None
+            self.Update()
         elif key == pygame.locals.K_RETURN:
             buffer = ''.join(self.text_buffer)
             register = self.GetRegister(buffer)
@@ -94,6 +96,7 @@ class Goto(View):
         elif len(self.text_buffer) < self.MAX_LEN and chr(key) in string.printable:
             self.text_buffer.append(chr(key))
             self.invalid_text = None
+            self.Update()
 
     def Dismiss(self, value):
         if None != value:
@@ -116,6 +119,7 @@ class Goto(View):
 
     def Invalid(self):
         self.invalid_text = '** INVALID **'
+        self.Update()
 
     def Update(self,draw_border = False):
         pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
@@ -130,6 +134,7 @@ class Debug(View):
         super(Debug,self).__init__(debugger,tl,br)
         self.selected = 0
         self.debugger = debugger
+        self.disassembly = None
 
     def Centre(self,pos = None):
         if pos == None:
@@ -148,9 +153,11 @@ class Debug(View):
             dis.append( (instruction.addr,'%1s%s%07x %08x : %s' % (arrow,bpt,instruction.addr,instruction.word,instruction.ToString())))
 
         self.disassembly = dis
+        self.Update()
 
     def Select(self,pos):
         self.selected = pos
+        self.Update()
 
     def KeyPress(self, key):
         if key == pygame.locals.K_DOWN:
@@ -191,6 +198,8 @@ class Debug(View):
     def Update(self,draw_border = False):
         super(Debug,self).Update(draw_border)
         self.selected_pos = None
+        if not self.disassembly:
+            return
         for i,(pos,line) in enumerate(self.disassembly):
             line = line + ' '*30
             if pos == self.selected:
@@ -267,6 +276,7 @@ class TapeSelector(View):
             self.pos = self.selected - (self.rows-2)
         elif self.selected < self.pos:
             self.pos = self.selected
+        self.Update()
 
     def KeyPress(self,key):
         if key == pygame.locals.K_DOWN:
@@ -364,6 +374,7 @@ class Memdump(View):
             self.pos = self.selected - (self.rows-1)*self.display_width
         elif self.selected < self.pos:
             self.pos = self.selected
+        self.Update()
 
     def Select(self,pos):
         return self.SetSelected(pos)
@@ -371,6 +382,7 @@ class Memdump(View):
     def Centre(self,pos):
         self.Select(pos)
         self.pos = pos
+        self.Update()
 
     def KeyPress(self,key):
         if key == pygame.locals.K_DOWN:
@@ -450,7 +462,9 @@ class Debugger(object):
             self.machine.memw[old_pos] = self.BKPT
             if num > 0:
                 num -= 1
-        return self.machine.StepAndWait(num)
+        status = self.machine.StepAndWait(num)
+        self.state_window.Update()
+        return status
 
     def Step(self):
         return self.StepNumInternal(1)
@@ -473,7 +487,7 @@ class Debugger(object):
 
         #disassembly = disassemble.Disassemble(cpu.mem)
         #We're stopped, so display and wait for a keypress
-        self.Update()
+        #self.Update()
 
     def Update(self):
         for window in self.draw_windows:
@@ -523,6 +537,8 @@ class Debugger(object):
             self.current_view = self.window_choices[pos]
         elif result == WindowControl.EXIT:
             raise SystemExit
+
+
 
     def Reset(self):
         self.code_window.Select(self.machine.pc)
