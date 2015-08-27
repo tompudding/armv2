@@ -22,12 +22,17 @@ class CpuExceptions:
     Breakpoint           = carmv2.EXCEPT_BREAKPOINT
 
 class Status:
-    Ok              = carmv2.ARMV2STATUS_OK
-    InvalidCpuState = carmv2.ARMV2STATUS_INVALID_CPUSTATE
-    MemoryError     = carmv2.ARMV2STATUS_MEMORY_ERROR
-    ValueError      = carmv2.ARMV2STATUS_VALUE_ERROR
-    IoError         = carmv2.ARMV2STATUS_IO_ERROR
-    Breakpoint      = carmv2.ARMV2STATUS_BREAKPOINT
+    Ok               = carmv2.ARMV2STATUS_OK
+    InvalidCpuState  = carmv2.ARMV2STATUS_INVALID_CPUSTATE
+    MemoryError      = carmv2.ARMV2STATUS_MEMORY_ERROR
+    ValueError       = carmv2.ARMV2STATUS_VALUE_ERROR
+    IoError          = carmv2.ARMV2STATUS_IO_ERROR
+    Breakpoint       = carmv2.ARMV2STATUS_BREAKPOINT
+    WaitForInterrupt = carmv2.ARMV2STATUS_WAIT_FOR_INTERRUPT
+
+class Pins:
+    Interrupt     = carmv2.PIN_I
+    FastInterrupt = carmv2.PIN_F
 
 def PAGEOF(addr):
     return addr>>carmv2.PAGE_SIZE_BITS
@@ -281,6 +286,10 @@ cdef class Armv2:
         #The first thing the run loop does is add 4 to PC, so PC is effectively 4 greater than
         #it appears to be
         return self.cpu.pc + 4
+
+    @property
+    def pins(self):
+        return self.cpu.pins
 
     @property
     def mode(self):
