@@ -333,7 +333,9 @@ cdef class Armv2:
         self.hardware.append(device)
 
     def Interrupt(self, hw_id, code):
+        DebugLog('ab')
         result = carmv2.interrupt(self.cpu, <uint32_t>hw_id, <uint32_t>code)
+        DebugLog('ac')
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 

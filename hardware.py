@@ -145,12 +145,12 @@ class TapeDrive(armv2.Device):
                 if c:
                     self.data_byte = ord(c)
                     self.status = self.Codes.READY
-                    self.cpu.Interrupt(self.id, self.status)
+                    self.cpu.cpu.Interrupt(self.id, self.status)
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.END_OF_TAPE
                     self.loading = False
-                    self.cpu.Interrupt(self.id, self.status)
+                    self.cpu.cpu.Interrupt(self.id, self.status)
 
     def readByteCallback(self,addr,value):
         if addr == 0:
@@ -180,17 +180,17 @@ class TapeDrive(armv2.Device):
                         self.data_byte = ord(c)
                         self.status = self.Codes.READY
                         #time.sleep(0.001)
-                        self.cpu.Interrupt(self.id, self.status)
+                        self.cpu.cpu.Interrupt(self.id, self.status)
                     else:
                         self.data_byte = 0
                         self.status = self.Codes.END_OF_TAPE
                         self.loading = False
-                        self.cpu.Interrupt(self.id, self.status)
+                        self.cpu.cpu.Interrupt(self.id, self.status)
 
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.DRIVE_EMPTY
-                    self.cpu.Interrupt(self.id, self.status)
+                    self.cpu.cpu.Interrupt(self.id, self.status)
         elif addr == 2:
             #Can't write to the data byte
             pass
@@ -400,7 +400,8 @@ class Machine:
                     while self.running and \
                             ((self.steps_to_run == 0) or\
                                  (self.status == armv2.Status.WaitForInterrupt and not (self.cpu.pins & armv2.Pins.Interrupt))):
-                        self.cv.wait(1)
+                        armv2.DebugLog('%d %d %x' % (self.steps_to_run,self.status,self.cpu.pins))
+                        self.cv.wait(5)
                     self.status = self.cpu.Step(self.steps_to_run)
                     self.steps_to_run = 0
                     self.cv.notify()
@@ -418,7 +419,7 @@ class Machine:
         with self.cv:
             while self.running:
                 while self.running and (self.steps_to_run and self.status != armv2.Status.WaitForInterrupt):
-                    self.cv.wait(1)
+                    self.cv.wait(0.1)
                     #Keep interrupts pumping every now and again
                     #self.cpu.Interrupt(6, 0)
                 if not self.running:
