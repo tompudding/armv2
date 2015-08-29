@@ -1,3 +1,6 @@
 *.pyc
 *~
 errorlog.log
+*.o
+.idea/
+build/
