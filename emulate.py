@@ -1,6 +1,7 @@
 import armv2
 import binascii
 import debugger
+import os
 import sys
 import hardware
 import pygame
@@ -28,12 +29,12 @@ def mainloop(dbg):
 
         if event.type == pygame.locals.KEYDOWN:
             key = event.key
-            try:
-                #Try to use the unicode field instead. If it doesn't work for some reason,
-                #use the old value
-                key = ord(event.unicode)
-            except (TypeError,AttributeError):
-                pass
+            # try:
+            #     #Try to use the unicode field instead. If it doesn't work for some reason,
+            #     #use the old value
+            #     key = ord(event.unicode)
+            # except (TypeError,AttributeError):
+            #     pass
             if key == pygame.locals.K_ESCAPE and not dbg.stopped:
                 dbg.Stop()
                 return
@@ -49,12 +50,12 @@ def mainloop(dbg):
                     dbg.machine.keyboard.KeyDown(key)
         elif event.type == pygame.locals.KEYUP:
             key = event.key
-            try:
-                #Try to use the unicode field instead. If it doesn't work for some reason,
-                #use the old value
-                key = ord(event.unicode)
-            except (TypeError,AttributeError):
-                pass
+            # try:
+            #     #Try to use the unicode field instead. If it doesn't work for some reason,
+            #     #use the old value
+            #     key = ord(event.unicode)
+            # except (TypeError,AttributeError):
+            #     pass
             if not dbg.stopped and key < 256:
                 dbg.machine.keyboard.KeyUp(key)
     dbg.machine.display.Update()
@@ -64,6 +65,9 @@ def mainloop(dbg):
 def main():
     parser = OptionParser(usage="usage: %prog [options] filename",
                           version="%prog 1.0")
+
+    if hasattr(sys, "_MEIPASS"):
+        os.chdir(sys._MEIPASS)
 
     (options, args) = parser.parse_args()
     pygame.display.set_caption('Synapse')
