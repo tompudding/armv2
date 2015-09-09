@@ -236,12 +236,12 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
             cpu->page_tables[page_pos] = page;
         }
         //Already checked everything's OK, and we're single threaded, so this should be ok I think...
-        LOG("Setting page_pos %x to callbacks %p %p flags %x\n",
-            page_pos,
-            hw_mapping.device->read_callback,
-            hw_mapping.device->write_callback,
-            hw_mapping.device->read_byte_callback,
-            hw_mapping.device->write_byte_callback);
+        /* LOG("Setting page_pos %x to callbacks %p %p flags %x\n", */
+        /*     page_pos, */
+        /*     hw_mapping.device->read_callback, */
+        /*     hw_mapping.device->write_callback, */
+        /*     hw_mapping.device->read_byte_callback, */
+        /*     hw_mapping.device->write_byte_callback); */
         page->read_callback  = hw_mapping.device->read_callback;
         page->write_callback = hw_mapping.device->write_callback;
         page->read_byte_callback  = hw_mapping.device->read_byte_callback;
@@ -257,7 +257,7 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
 }
 
 enum armv2_status add_mapping(hardware_mapping_t **head,hardware_mapping_t *item) {
-    LOG("Apping mad! *p *p\n",*head,item);
+    LOG("Apping mad! %p %p\n",*head,item);
     if(NULL == head) {
         LOG("Mapping jim NULL\n");
         return ARMV2STATUS_INVALID_ARGS;

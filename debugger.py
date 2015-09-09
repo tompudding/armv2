@@ -451,32 +451,36 @@ class Debugger(object):
         self.machine.memw[addr] = self.breakpoints[addr]
         del self.breakpoints[addr]
 
-    def StepNumInternal(self,num):
+    def StepNumInternal(self,num,skip_breakpoint):
         #If we're at a breakpoint and we've been asked to continue, we step it once and then replace the breakpoint
         if num == 0:
             return None
         self.num_to_step -= num
         #armv2.DebugLog('stepping %s %s %s' % (self.machine.pc,num, self.machine.pc in self.breakpoints))
-        if self.machine.pc in self.breakpoints:
+        if skip_breakpoint and self.machine.pc in self.breakpoints:
             old_pos = self.machine.pc
+            print 'boom doing replacement'
             self.machine.memw[self.machine.pc] = self.breakpoints[self.machine.pc]
-            self.machine.StepAndWait(1)
+            status = self.machine.StepAndWait(1)
             self.machine.memw[old_pos] = self.BKPT
             if num > 0:
                 num -= 1
-        status = self.machine.StepAndWait(num)
+        if num > 0:
+            status = self.machine.StepAndWait(num)
         self.state_window.Update()
         self.memdump_window.Update()
         return status
 
-    def Step(self):
-        return self.StepNumInternal(1)
+    def Step(self, explicit=False):
+        return self.StepNumInternal(1, skip_breakpoint=explicit)
 
-    def Continue(self):
+    def Continue(self, explicit=False):
         result = None
         self.stopped = False
         self.help_window.Update()
-        if armv2.Status.Breakpoint == self.StepNumInternal(self.num_to_step):
+        status = self.StepNumInternal(self.num_to_step, skip_breakpoint=explicit)
+        if armv2.Status.Breakpoint == status:
+            print '**************** GOT BREAKPOINT **************'
             self.Stop()
         #raise SystemExit('bob %d' % self.num_to_step)
 
@@ -505,10 +509,10 @@ class Debugger(object):
         except ValueError:
             pass
         if key == pygame.locals.K_c or key == pygame.locals.K_ESCAPE:
-            self.Continue()
+            self.Continue(explicit=True)
             return WindowControl.RESUME
         elif key == pygame.locals.K_s:
-            self.Step()
+            self.Step(explicit=True)
             return WindowControl.RESUME
         elif key == pygame.locals.K_r:
             #self.debugger.machine.Reset()

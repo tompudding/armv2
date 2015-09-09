@@ -335,7 +335,6 @@ enum armv2_exception ALUInstruction                         (armv2_t *cpu,uint32
         }
     }
 
-    //LOG("%s r%d %08x %08x\n",__func__,rd,GETREG(cpu,rd),cpu->regs.actual[PC]);
     return EXCEPT_NONE;
 }
 
@@ -348,7 +347,6 @@ enum armv2_exception MultiplyInstruction                    (armv2_t *cpu,uint32
     uint32_t rs = (instruction>>8)&0xf;
     uint32_t rd = (instruction>>16)&0xf;
     uint32_t result;
-    LOG("%s\n",__func__);
 
     if(instruction&MUL_TYPE_MLA) {
         //using rn so get its value
@@ -397,7 +395,6 @@ enum armv2_exception MultiplyInstruction                    (armv2_t *cpu,uint32
 
 enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32_t instruction)
 {
-    LOG("%s\n",__func__);
     //LDR/STR{B}{T} rd,address
     //address is one of:
     //[rn](!)
@@ -420,7 +417,6 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
     else {
         op2 = OperandShift(cpu,instruction&0xfff,0,NULL);
     }
-    LOG("SDI op2 = %08x\n",op2);
     if(rn == PC) {
         rn_val = GETPC(cpu);
     }
@@ -443,7 +439,6 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
         //The address bus is 26 bits so this is a address exception
         return EXCEPT_ADDRESS;
     }
-    LOG("x %x\n",PAGEOF(rn_val));
     page = cpu->page_tables[PAGEOF(rn_val)];
     if(NULL == page) {
         //This is a data abort. Could also check for permission here
@@ -461,12 +456,9 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
             return EXCEPT_DATA_ABORT;
         }
 
-        LOG("Page at %p has memory %p, rc %p wc %p flags %x\n",page,page->memory,page->read_callback,page->write_callback,page->flags);
         if(ARMV2STATUS_OK != PerformLoad(page,rn_val,&value, instruction&SDT_LOAD_BYTE)) {
             return EXCEPT_DATA_ABORT;
         }
-
-        LOG("Have value %08x and %d\n",value,instruction&SDT_LOAD_BYTE);
 
         if(rd == PC) {
             //don't set any of the flags
@@ -480,7 +472,6 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
     else {
         //STR
         uint32_t value;
-        LOG("a\n");
         if(GETMODE(cpu) == MODE_USR && !(page->flags&PERM_WRITE)) {
             return EXCEPT_DATA_ABORT;
         }
@@ -506,7 +497,7 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
                 else {
                     store_val = (page->memory[INPAGE(rn_val)>>2]&rest_mask) | ((value&0xff)<<((rn_val&3)<<3));
                 }
-                LOG("STR at address %08x byte_mask = %08x rest_mask = %08x\n",rn_val,byte_mask,rest_mask);
+                //LOG("STR at address %08x byte_mask = %08x rest_mask = %08x\n",rn_val,byte_mask,rest_mask);
                 (void) PerformStore(page,rn_val,store_val,0);
             }
         }
@@ -515,11 +506,10 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
             if(rn_val&0x3) {
                 return EXCEPT_DATA_ABORT;
             }
-            LOG("Page at %p has memory %p, rc %p wc %p flags %x\n",page,page->memory,page->read_callback,page->write_callback,page->flags);
+            //LOG("Page at %p has memory %p, rc %p wc %p flags %x\n",page,page->memory,page->read_callback,page->write_callback,page->flags);
             (void) PerformStore(page,rn_val,value,1);
         }
     }
-    LOG("d\n");
     //Now for any post indexing
     if((instruction&SDT_PREINDEX) == 0) {
         if(instruction&SDT_OFFSET_ADD) {
@@ -543,7 +533,6 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
 }
 enum armv2_exception BranchInstruction                      (armv2_t *cpu,uint32_t instruction)
 {
-    LOG("%s\n",__func__);
     if((instruction>>24&1)) {
         GETREG(cpu,LR) = cpu->pc+4;
     }
