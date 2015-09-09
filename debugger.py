@@ -148,6 +148,7 @@ class Debug(View):
         end = min(pos + ((self.rows)/2)*4,len(self.debugger.machine.mem))
 
         dis = []
+
         for instruction in disassemble.Disassemble(self.debugger.machine,self.debugger.breakpoints,start,start+(self.rows)*4):
             arrow = '>' if instruction.addr == self.debugger.machine.pc else ''
             bpt   = '*' if instruction.addr in self.debugger.breakpoints else ' '

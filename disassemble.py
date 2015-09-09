@@ -38,7 +38,7 @@ def RegisterList(bits):
             for r in xrange(start,end):
                 regs.append(registerNames[r])
         else:
-            regs.append('%s - %s' % (registerNames[start],registerNames[end]))
+            regs.append('%s - %s' % (registerNames[start],registerNames[end-1]))
     return ['{' + ','.join(regs) + '}']
 
 class Instruction(object):
@@ -89,7 +89,7 @@ class ALUInstruction(Instruction):
         if word & self.ALU_TYPE_IMM:
             right_rotate = (word>>7)&0x1e
             if right_rotate != 0:
-                val = ((word&0xff) << (32-right_rotate)) | ((word&0xff) >> right_rotate)
+                val = (((word&0xff) << (32-right_rotate)) | ((word&0xff) >> right_rotate))&0xffffffff
             else:
                 val = word&0xff
             op2 = ['#0x%x' % val]
@@ -287,12 +287,14 @@ def InstructionFactory(addr,word,cpu):
     return handler(addr,word,cpu)
 
 def Disassemble(cpu,breakpoints,start,end):
-    if start&3:
-        raise ValueError
     for addr in xrange(start,end,4):
         if addr in breakpoints:
             word = breakpoints[addr]
-        else:
+        elif (addr&3) == 0:
             word = cpu.memw[addr]
+        else:
+            word = 0
+            for byte in ((ord(cpu.mem[addr+i]) << ((3-i)*8)) for i in xrange(4)):
+                word |= byte
         out = InstructionFactory(addr,word,cpu)
         yield out
