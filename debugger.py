@@ -105,6 +105,7 @@ class Goto(View):
             #Centre the view on this value
             self.view.Select(value)
             self.view.Centre(value)
+        self.view.Update()
 
     def GetRegister(self, key):
         key = key.lower()
@@ -533,6 +534,10 @@ class Debugger(object):
         if result == WindowControl.POPUP_GOTO:
             h = self.current_view.rect.centery
             self.current_view = self.goto_window = Goto(self,self.current_view,(self.machine.display.pixel_width()+20,h),(self.w-20,h+32))
+            #we've changed who should be selected, so update those two windows
+            self.goto_window.view.Update()
+            self.goto_window.Update()
+
         elif result == WindowControl.RESUME:
             self.code_window.Select(self.machine.pc)
             self.code_window.Centre(self.machine.pc)
