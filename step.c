@@ -222,14 +222,28 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
 
         if(GETMODE(cpu) != old_mode) {
             //The instruction changed the mode of the processor so we need to bank registers
-            //LOG("Changing to cpu mode %d\n",GETMODE(cpu));
+            LOG("Changing to cpu mode %d\n",GETMODE(cpu));
             for(uint32_t i=8;i<NUM_EFFECTIVE_REGS;i++) {
                 cpu->regs.effective[i] = &cpu->regs.actual[i];
             }
-            if(MODE_SUP == GETMODE(cpu)) {
+            switch(GETMODE(cpu)) {
+            case MODE_SUP:
                 for(uint32_t i=13;i<15;i++) {
                     cpu->regs.effective[i] = &cpu->regs.actual[R13_S+(i-13)];
                 }
+                break;
+            case MODE_IRQ:
+                for(uint32_t i=13;i<15;i++) {
+                    cpu->regs.effective[i] = &cpu->regs.actual[R13_I+(i-13)];
+                }
+                break;
+            case MODE_FIQ:
+                for(uint32_t i=8;i<15;i++) {
+                    cpu->regs.effective[i] = &cpu->regs.actual[R8_F+(i-8)];
+                }
+                break;
+            default:
+                break;
             }
         }
 

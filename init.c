@@ -62,7 +62,7 @@ enum armv2_status init(armv2_t *cpu, uint32_t memsize) {
 
     cpu->flags = FLAG_INIT;
 
-    cpu->regs.actual[PC] = MODE_SUP;
+    cpu->regs.actual[PC] = MODE_SUP | FLAG_I; //Start with the interrupt flag on so we don't get interrupts until we're ready
     cpu->pins = 0;
     cpu->pc = -4; //hack because it gets incremented on the first loop
 

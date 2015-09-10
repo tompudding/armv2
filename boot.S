@@ -47,8 +47,23 @@ FIQ:
         SWI #7
 
 start:
+        @ Set the stack up for supervisor mode...
         MOV SP,#0x100000
         SUB SP,SP,#4
+        @ Now switch to IRQ mode to set that stack up...
+        ADR R0,setup_irq_stack
+        AND R0,R0,#0x03fffffc
+        ORR R0,R0,#2
+        MOVS PC,R0
+setup_irq_stack:
+        MOV SP,#0xe0000
+        SUB SP,SP,#4
+        ADR R0,start_sup
+        AND R0,R0,#0x03fffffc
+        ORR R0,R0,#3
+        MOVS PC,R0
+start_sup:
+
         LDR R6,=keyboard_device_id
         LDR R7,=display_device_id
         LDR R8,=tape_device_id
@@ -113,7 +128,7 @@ hw_loop_done:
         ADR R0,usr_mode
         MOVS PC,R0
 usr_mode:
-        LDR SP,=0xe0000
+        LDR SP,=0xf0000
         LDR R0,entry_point
         ADR LR,exit
         MOVS PC,R0
@@ -121,6 +136,7 @@ usr_mode:
 exit:
         SWI #8
 interrupt_handler:
+        PUSH {R8-R10}
         @Let's ask the hw manager what the id and code of the interrupt was
         CDP 1,#interrupt_data_opcode,CR0,CR0,CR0
         @Put CR0 into R8
@@ -132,6 +148,7 @@ interrupt_handler:
         BNE interrupt_done
         MOV R8,#0
 interrupt_done:
+        POP {R8-R10}
         SUBS PC,LR,#4
 
 software_interrupt:
