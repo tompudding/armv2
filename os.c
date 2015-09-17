@@ -21,10 +21,21 @@ size_t processing = 0;
 char command[WIDTH+1] = {0};
 size_t command_size = 0;
 
+#define BACKGROUND BLUE
+#define FOREGROUND LIGHT_BLUE
+uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
+uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
-void wait_for_interrupt() {
+uint64_t wait_for_interrupt() {
     asm("push {r7}");
-    asm("mov r7,#17");
+    asm("mov r7,#0");
+    asm("swi #0");
+    asm("pop {r7}");
+}
+
+void set_alarm() {
+    asm("push {r7}");
+    asm("mov r7,#3");
     asm("swi #0");
     asm("pop {r7}");
 }
@@ -139,7 +150,9 @@ void process_text() {
     while(1) {
         uint8_t new_pos;
         while(last_pos == (new_pos = *ringbuffer_pos)) {
-            wait_for_interrupt();
+            uint64_t int_info = wait_for_interrupt();
+            uint32_t int_id = int_info>>32;
+            //*(palette_data+cursor_pos)^=0xff;
         }
         while(last_pos != new_pos) {
             uint8_t c;

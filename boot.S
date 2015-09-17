@@ -12,6 +12,7 @@ hw_manager           = 1
 keyboard_device_id   = 0x41414141
 display_device_id    = 0x9d99389e
 tape_device_id       = 0x2730eb6c
+clock_device_id      = 0x92d177b0
 keyboard_map_start   = 0x01000000
 keyboard_map_end     = 0x01001000
 display_map_start    = 0x01001000
@@ -24,14 +25,14 @@ wfi_ringbuffer_pos       = 0x000bfef8
 FLAG_I                   = 0x08000000
 
 /* Syscalls */
-sys_wait_for_interrupt  = 17
-sys_gettime             = 18
-sys_getrand             = 19
+sys_wait_for_interrupt  = 0
+sys_gettime             = 1
+sys_getrand             = 2
+sys_alarm               = 3
+syscall_max             = 3
 
-/* Stack offsets */
-keyboard_device_num = 0x4
-display_device_num  = 0x8
-tape_device_num     = 0xc
+
+num_ids                 = 4
 
 reset:
         B start
@@ -50,6 +51,12 @@ IRQ:
 FIQ:
         SWI #7
 
+hardware_ids:
+display_index:  .word display_device_id
+keyboard_index: .word keyboard_device_id
+tape_index:     .word tape_device_id
+clock_index:    .word clock_device_id
+
 start:
         @ Set the stack up for supervisor mode...
         MOV SP,#0x100000
@@ -61,9 +68,6 @@ start:
         SUB SP,SP,#4
         ORRS PC,PC,#3
         NOP
-        LDR R6,=keyboard_device_id
-        LDR R7,=display_device_id
-        LDR R8,=tape_device_id
         /* Load the number of hardware devices into cr0 */
         CDP 1,#num_devices_opcode,CR0,CR0,CR0
         /* Put cr0 into r0 */
@@ -84,6 +88,7 @@ map_device:
         CDP 1,#map_memory_opcode,CR0,CR1,CR2
         MOV PC,LR
 hw_id_loop:
+        ADR R6,hardware_ids
         ADD R5,R5,#1
         CMP R5,R4
         BGE hw_loop_done
@@ -93,35 +98,36 @@ hw_id_loop:
         CDP 1,#device_id_opcode,CR0,CR0,CR0
         /* Move the output into R2 */
         MRC 1,#mov_register_opcode,R2,CR0,CR0
-        CMP R2,R6
-        BEQ keyboard_found
-        CMP R2,R7
-        BEQ display_found
+        /* loop over the hardware ids looking for that guy */
+        ADD R7,R6,#num_ids*4
+find_id_loop:
+        CMP R6,R7
+        BGE find_id_done
+        LDR R8,[R6],#0x4
         CMP R2,R8
-        BNE hw_id_loop
-tape_found:
-        STR R5,[SP,#tape_device_num]
-        MOV R0,R5
+        BNE find_id_loop
+find_id_match:
+        STR R5,[R6,#-4]
+find_id_done:
+        B hw_id_loop
+hw_loop_done:
+        /* let's map the devices if we have them... */
+tape_map:
+        LDR R0,tape_index
         LDR R1,=tape_map_start
         LDR R2,=tape_map_end
         BL map_device
-        B hw_id_loop
-display_found:
-        STR R5,[SP,#display_device_num]
-        MOV R0,R5
+display_map:
+        LDR R0,display_index
         LDR R1,=display_map_start
         LDR R2,=display_map_end
         BL map_device
-        B hw_id_loop
-keyboard_found:
-        /*found the keyboard, nice!*/
-        STR R5,[SP,#keyboard_device_num]
-        MOV R0,R5
+keyboard_map:
+        LDR R0,keyboard_index
         LDR R1,=keyboard_map_start
         LDR R2,=keyboard_map_end
         BL map_device
-        B hw_id_loop
-hw_loop_done:
+
         ADR R0,usr_mode
         MOVS PC,R0
 usr_mode:
@@ -153,10 +159,16 @@ interrupt_handler:
         SUBS PC,LR,#4
 
 software_interrupt:
-        cmp R7,#sys_wait_for_interrupt
-        BEQ wfi
-        CMP R7,#sys_gettime
-        BNE software_interrupt_done
+        CMP R7,#syscall_max
+        BHI invalid_syscall_num
+        ADD PC,PC,R7,LSL#2
+invalid_syscall_num:
+        B not_implemented
+syscall_table:
+        B wfi
+        B gettime
+        B not_implemented
+        B alarm
 gettime:
         CDP 1,#gettime_opcode,CR0,CR0,CR0
         MRC 1,#mov_register_opcode,R0,CR0,CR0
@@ -195,6 +207,10 @@ return_interrupt:
         AND R9,#0xff
         STR R9,[R8]
         POP {R8-R12}
+        B software_interrupt_done
+alarm:
+not_implemented:
+        MOV R0,#-2
 software_interrupt_done:
         SUBS PC,LR,#4
 

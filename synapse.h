@@ -35,6 +35,7 @@ enum colours    {
 #define WIDTH  40
 #define HEIGHT 30
 #define RINGBUFFER_SIZE 128
+#define PALETTE(background,foreground) ((background<<4)|foreground)
 
 extern uint8_t *palette_data;
 extern uint8_t *letter_data;
