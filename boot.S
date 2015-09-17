@@ -7,6 +7,7 @@ device_id_opcode     = 2
 interrupt_data_opcode = 3
 wait_for_interrupt_opcode = 4
 gettime_opcode       = 5
+device_operation_opcode = 6
 mov_register_opcode  = 0
 hw_manager           = 1
 keyboard_device_id   = 0x41414141
@@ -52,6 +53,8 @@ FIQ:
         SWI #7
 
 hardware_ids:
+/* There's a fun bug here where a hardware device with an id less than the number of devices in the system will
+   cause some craziness :) */
 display_index:  .word display_device_id
 keyboard_index: .word keyboard_device_id
 tape_index:     .word tape_device_id
@@ -127,6 +130,10 @@ keyboard_map:
         LDR R1,=keyboard_map_start
         LDR R2,=keyboard_map_end
         BL map_device
+
+        LDR R0,clock_index
+        MCR 1,#mov_register_opcode,R0,CR0,CR0
+        CDP 1,#device_operation_opcode,CR0,CR1,CR2
 
         ADR R0,usr_mode
         MOVS PC,R0
@@ -209,6 +216,7 @@ return_interrupt:
         POP {R8-R12}
         B software_interrupt_done
 alarm:
+
 not_implemented:
         MOV R0,#-2
 software_interrupt_done:

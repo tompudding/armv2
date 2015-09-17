@@ -5,6 +5,26 @@
 
 uint32_t time_data[2] = {0x203b2836,0xb8b0a7b6};
 
+enum armv2_status device_operation(armv2_t *cpu, uint32_t device_num, uint32_t arg0, uint32_t arg1, uint32_t *result) {
+    hardware_device_t *device = cpu->hardware_devices[device_num];
+    if(NULL == cpu || NULL == result) {
+        return ARMV2STATUS_INVALID_ARGS;
+    }
+    if(device_num >= cpu->num_hardware_devices) {
+        return ARMV2STATUS_NO_SUCH_DEVICE;
+    }
+    if(NULL == cpu->hardware_devices[device_num]) {
+        return ARMV2STATUS_INVALID_CPUSTATE;
+    }
+
+    if(NULL == device->operation_callback) {
+        return ARMV2STATUS_DEVICE_ERROR;
+    }
+    *result = device->operation_callback(device->extra, arg0, arg1);
+
+    return ARMV2STATUS_OK;
+}
+
 enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode) {
     if(NULL == cpu               ||
        crd >= HW_MANAGER_NUMREGS ||
@@ -60,6 +80,21 @@ enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t au
     case GETTIME:
         cpu->hardware_manager.regs[0] = time_data[0] ^ 0x41414141;
         cpu->hardware_manager.regs[1] = time_data[1] ^ 0xc1c2c3c4;
+        return ARMV2STATUS_OK;
+
+    case DEVICE_OPERATION: {
+        uint32_t device_num  = cpu->hardware_manager.regs[crd];
+        uint32_t arg0        = cpu->hardware_manager.regs[crn];
+        uint32_t arg1        = cpu->hardware_manager.regs[crm];
+        uint32_t result_word = 0;
+        enum armv2_status result = device_operation(cpu,device_num,arg0,arg1, &result_word);
+        //FIXME: set aux here on error
+        if(ARMV2STATUS_OK == result) {
+            cpu->hardware_manager.regs[crd] = result_word;
+        }
+        return result;
+    }
+
 
     default:
         return ARMV2STATUS_UNKNOWN_OPCODE;

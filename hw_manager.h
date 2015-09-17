@@ -19,6 +19,7 @@ typedef enum {
     INTERRUPT_DATA = 3,
     WAIT_FOR_INTERRUPT = 4,
     GETTIME = 5,
+    DEVICE_OPERATION = 6,
 } hw_manager_opcode_t;
 
 typedef enum {

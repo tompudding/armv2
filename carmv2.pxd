@@ -76,6 +76,7 @@ cdef extern from "armv2.h":
         uint32_t *effective[NUM_EFFECTIVE_REGS]
 
     ctypedef void (*access_callback_t)(uint32_t)
+    ctypedef void (*operation_callback_t)(uint32_t)
 
     ctypedef struct page_info_t:
         uint32_t *memory
@@ -102,6 +103,7 @@ cdef extern from "armv2.h":
         access_callback_t write_callback
         access_callback_t read_byte_callback
         access_callback_t write_byte_callback
+        operation_callback_t operation_callback
         armv2_t *cpu
         void *extra
 

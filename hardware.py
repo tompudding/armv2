@@ -333,6 +333,15 @@ class Display(armv2.Device):
             pygame.display.update(self.dirty_rects.keys())
             self.dirty_rects = {}
 
+class Clock(armv2.Device):
+    """
+    A clock device
+    """
+    id = 0x92d177b0
+    def operationCallback(self, arg0, arg1):
+        print 'clock badger',arg0, arg1
+        return 0
+
 
 class MemPassthrough(object):
     def __init__(self,cv,accessor):

@@ -33,7 +33,7 @@ uint64_t wait_for_interrupt() {
     asm("pop {r7}");
 }
 
-void set_alarm() {
+void set_alarm(int milliseconds) {
     asm("push {r7}");
     asm("mov r7,#3");
     asm("swi #0");

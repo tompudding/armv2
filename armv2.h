@@ -136,6 +136,7 @@ typedef struct {
 } regs_t;
 
 typedef uint32_t (*access_callback_t)(void *extra, uint32_t addr, uint32_t value);
+typedef uint32_t (*operation_callback_t)(void *extra, uint32_t arg0, uint32_t arg1);
 
 typedef struct {
     uint32_t          *memory;
@@ -156,6 +157,7 @@ typedef struct {
     access_callback_t write_callback;
     access_callback_t read_byte_callback;
     access_callback_t write_byte_callback;
+    operation_callback_t operation_callback;
     struct _armv2_t *cpu;
     void *extra;
 } hardware_device_t;
