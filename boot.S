@@ -1,23 +1,27 @@
 .syntax divided
 .code 32
 
-num_devices_opcode  = 0
-map_memory_opcode   = 1
-device_id_opcode    = 2
+num_devices_opcode   = 0
+map_memory_opcode    = 1
+device_id_opcode     = 2
 interrupt_data_opcode = 3
 wait_for_interrupt_opcode = 4
-gettime_opcode      = 5
-mov_register_opcode = 0
-hw_manager          = 1
-keyboard_device_id  = 0x41414141
-display_device_id   = 0x9d99389e
-tape_device_id      = 0x2730eb6c
-keyboard_map_start  = 0x01000000
-keyboard_map_end    = 0x01001000
-display_map_start   = 0x01001000
-display_map_end     = 0x01002000
-tape_map_start      = 0x01002000
-tape_map_end        = 0x01003000
+gettime_opcode       = 5
+mov_register_opcode  = 0
+hw_manager           = 1
+keyboard_device_id   = 0x41414141
+display_device_id    = 0x9d99389e
+tape_device_id       = 0x2730eb6c
+keyboard_map_start   = 0x01000000
+keyboard_map_end     = 0x01001000
+display_map_start    = 0x01001000
+display_map_end      = 0x01002000
+tape_map_start       = 0x01002000
+tape_map_end         = 0x01003000
+interrupt_ringbuffer = 0x000bff00
+interrupt_ringbuffer_pos = 0x000bfefc
+wfi_ringbuffer_pos       = 0x000bfef8
+FLAG_I                   = 0x08000000
 
 /* Syscalls */
 sys_wait_for_interrupt  = 17
@@ -51,19 +55,12 @@ start:
         MOV SP,#0x100000
         SUB SP,SP,#4
         @ Now switch to IRQ mode to set that stack up...
-        ADR R0,setup_irq_stack
-        AND R0,R0,#0x03fffffc
-        ORR R0,R0,#2
-        MOVS PC,R0
-setup_irq_stack:
+        ORRS PC,PC,#2
+        NOP
         MOV SP,#0xe0000
         SUB SP,SP,#4
-        ADR R0,start_sup
-        AND R0,R0,#0x03fffffc
-        ORR R0,R0,#3
-        MOVS PC,R0
-start_sup:
-
+        ORRS PC,PC,#3
+        NOP
         LDR R6,=keyboard_device_id
         LDR R7,=display_device_id
         LDR R8,=tape_device_id
@@ -136,19 +133,23 @@ usr_mode:
 exit:
         SWI #8
 interrupt_handler:
-        PUSH {R8-R10}
+        PUSH {R8-R12}
         @Let's ask the hw manager what the id and code of the interrupt was
         CDP 1,#interrupt_data_opcode,CR0,CR0,CR0
         @Put CR0 into R8
         MRC 1,#mov_register_opcode,R8,CR0,CR0
         @Put CR1 into R1
         MRC 1,#mov_register_opcode,R9,CR1,CR0
-        LDR R10,=keyboard_device_id
-        CMP R8,R10
-        BNE interrupt_done
-        MOV R8,#0
-interrupt_done:
-        POP {R8-R10}
+        LDR R10,=interrupt_ringbuffer_pos
+        LDR R11,[R10]
+        LDR R12,=interrupt_ringbuffer
+        ADD R12,R11
+        STR R8,[R12],#4
+        STR R9,[R12],#4
+        ADD R11,#8
+        AND R11,#0xff
+        STR R11,[R10]
+        POP {R8-R12}
         SUBS PC,LR,#4
 
 software_interrupt:
@@ -167,7 +168,33 @@ gettime:
         MOV R0,R3
         B software_interrupt_done
 wfi:
+        MOV R0,#FLAG_I
+        ORRS PC,R0,PC
+        NOP
+        PUSH {R8-R12}
+        LDR R10,=interrupt_ringbuffer_pos
+        LDR R8,=wfi_ringbuffer_pos
+        LDR R9,[R8]
+check_position:
+        LDR R11,[R10]
+        CMP R9,R11
+        BNE return_interrupt
+        /* Clear the interrupt flag again by setting the mode to SUP*/
+        ORRS PC,PC,#3
+        NOP
         CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0
+        ORRS PC,R0,PC
+        NOP
+        B check_position
+return_interrupt:
+        LDR R10,=interrupt_ringbuffer
+        LDR R0,[R10,R9]
+        ADD R9,#4
+        LDR R1,[R10,R9]
+        ADD R9,#4
+        AND R9,#0xff
+        STR R9,[R8]
+        POP {R8-R12}
 software_interrupt_done:
         SUBS PC,LR,#4
 

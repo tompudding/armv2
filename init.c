@@ -18,7 +18,7 @@ enum armv2_status init(armv2_t *cpu, uint32_t memsize) {
     //round memsize up to a full page
     memsize = (memsize + PAGE_MASK)&(~PAGE_MASK);
     if(memsize&PAGE_MASK) {
-        LOG("Page mask erro\n");
+        LOG("Page mask error\n");
         return ARMV2STATUS_VALUE_ERROR;
     }
     num_pages = memsize>>PAGE_SIZE_BITS;

@@ -63,12 +63,12 @@ uint32_t OperandShift(armv2_t *cpu, uint32_t bits, uint32_t type_flag, uint32_t 
         shift_amount = (bits>>7)&0x1f;
     }
     op2 = GETREG(cpu,rm);
-    if(rm == PC) {
-        op2 += 8;
-        if(type_flag) {
-            op2 += 4;
-        }
-    }
+    /* if(rm == PC) { */
+    /*     op2 += 8; */
+    /*     if(type_flag) { */
+    /*         op2 += 4; */
+    /*     } */
+    /* } */
 
     switch(shift_type) {
     case ALU_SHIFT_LSL:

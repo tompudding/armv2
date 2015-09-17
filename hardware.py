@@ -268,7 +268,7 @@ class Display(armv2.Device):
     def readCallback(self,addr,value):
         #The display has a secret RNG, did you know that?
         if addr == self.letter_end:
-            return random.getrandbits(32)
+            return int(random.getrandbits(32))
         bytes = [self.readByteCallback(addr + i, 0) for i in xrange(4)]
         return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
 
