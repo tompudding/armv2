@@ -131,8 +131,11 @@ keyboard_map:
         LDR R2,=keyboard_map_end
         BL map_device
 
+/* set the clock firing */
         LDR R0,clock_index
         MCR 1,#mov_register_opcode,R0,CR0,CR0
+        MOV R0,#500
+        MCR 1,#mov_register_opcode,R0,CR1,CR1
         CDP 1,#device_operation_opcode,CR0,CR1,CR2
 
         ADR R0,usr_mode

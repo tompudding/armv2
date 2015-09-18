@@ -47,10 +47,13 @@ void set_command() {
     //should be null terminated due to size
 }
 
-void newline() {
+void newline(int reset_square) {
     if(processing) {
         //handle the command
         set_command();
+    }
+    if(reset_square) {
+        *(palette_data+cursor_pos) = normal;
     }
     cursor_pos = ((cursor_pos/WIDTH)+1)*WIDTH + border_size;
     if(cursor_pos >= FINAL_CURSOR_POS) {
@@ -65,18 +68,20 @@ void newline() {
 void process_char(uint8_t c) {
     if(isprint(c)) {
         size_t line_pos;
+        *(palette_data+cursor_pos) = normal;
         letter_data[cursor_pos++] = c;
         line_pos = cursor_pos%WIDTH;
         if(line_pos >= WIDTH-border_size) {
-            newline();
+            newline(0);
         }
     }
     else {
         if(c == '\r') {
-            newline();
+            newline(1);
         }
         else if(c == 8) {
             //backspace
+            *(palette_data+cursor_pos) = normal;
             if((cursor_pos%WIDTH) > border_size+1) { //1 for the prompt
                 cursor_pos--;
                 letter_data[cursor_pos] = ' ';
@@ -151,8 +156,15 @@ void process_text() {
         uint8_t new_pos;
         while(last_pos == (new_pos = *ringbuffer_pos)) {
             uint64_t int_info = wait_for_interrupt();
-            uint32_t int_id = int_info>>32;
-            //*(palette_data+cursor_pos)^=0xff;
+            uint32_t int_id = int_info&0xffffffff;
+            if(int_id == 0x92d177b0) {
+                if(*(palette_data+cursor_pos) == normal) {
+                    *(palette_data+cursor_pos) = inverted;
+                }
+                else {
+                    *(palette_data+cursor_pos) = normal;
+                }
+            }
         }
         while(last_pos != new_pos) {
             uint8_t c;

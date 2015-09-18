@@ -28,6 +28,9 @@ def mainloop(dbg):
         if event.type == pygame.locals.QUIT:
             return True
 
+        if event.type == pygame.USEREVENT:
+            dbg.machine.clock.fired()
+
         if event.type == pygame.locals.KEYDOWN:
             key = event.key
             try:

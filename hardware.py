@@ -339,8 +339,11 @@ class Clock(armv2.Device):
     """
     id = 0x92d177b0
     def operationCallback(self, arg0, arg1):
-        print 'clock badger',arg0, arg1
+        pygame.time.set_timer(pygame.USEREVENT, arg0)
         return 0
+
+    def fired(self):
+        self.cpu.Interrupt(self.id, 0)
 
 
 class MemPassthrough(object):
