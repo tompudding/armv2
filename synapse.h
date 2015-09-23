@@ -36,6 +36,8 @@ enum colours    {
 #define HEIGHT 30
 #define RINGBUFFER_SIZE 128
 #define PALETTE(background,foreground) ((background<<4)|foreground)
+#define INT_ID(info) ((info)&0xffffffff)
+#define CLOCK_ID 0x92d177b0
 
 extern uint8_t *palette_data;
 extern uint8_t *letter_data;
@@ -46,6 +48,10 @@ extern struct tape_control *tape_control;
 extern uint8_t *tape_load_area;
 extern uint32_t *rng;
 extern void **crash_handler_word;
+
+uint64_t wait_for_interrupt();
+void set_alarm(int milliseconds);
+void toggle_pos(size_t pos, uint32_t normal, uint32_t inverted);
 
 void clear_screen(enum colours background, enum colours foreground);
 void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size);

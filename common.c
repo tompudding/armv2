@@ -13,6 +13,29 @@ uint8_t *tape_load_area = (void*)0xf0000;
 uint32_t *rng = (void*)0x01001000 + WIDTH*HEIGHT*2;
 void **crash_handler_word = (void*)0x20000;
 
+uint64_t wait_for_interrupt() {
+    asm("push {r7}");
+    asm("mov r7,#0");
+    asm("swi #0");
+    asm("pop {r7}");
+}
+
+void set_alarm(int milliseconds) {
+    asm("push {r7}");
+    asm("mov r7,#3");
+    asm("swi #0");
+    asm("pop {r7}");
+}
+
+void toggle_pos(size_t pos, uint32_t normal, uint32_t inverted) {
+     if(*(palette_data+pos) == normal) {
+         *(palette_data+pos) = inverted;
+     }
+     else {
+         *(palette_data+pos) = normal;
+     }
+}
+
 void clear_screen(enum colours background, enum colours foreground) {
     uint8_t palette_byte = background << 4 | foreground;
     memset(palette_data, palette_byte, WIDTH*HEIGHT);

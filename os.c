@@ -26,20 +26,6 @@ size_t command_size = 0;
 uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
-uint64_t wait_for_interrupt() {
-    asm("push {r7}");
-    asm("mov r7,#0");
-    asm("swi #0");
-    asm("pop {r7}");
-}
-
-void set_alarm(int milliseconds) {
-    asm("push {r7}");
-    asm("mov r7,#3");
-    asm("swi #0");
-    asm("pop {r7}");
-}
-
 void set_command() {
     size_t row_start = (cursor_pos/WIDTH)*WIDTH + border_size + 1;
     command_size = (cursor_pos - row_start);
@@ -156,14 +142,8 @@ void process_text() {
         uint8_t new_pos;
         while(last_pos == (new_pos = *ringbuffer_pos)) {
             uint64_t int_info = wait_for_interrupt();
-            uint32_t int_id = int_info&0xffffffff;
-            if(int_id == 0x92d177b0) {
-                if(*(palette_data+cursor_pos) == normal) {
-                    *(palette_data+cursor_pos) = inverted;
-                }
-                else {
-                    *(palette_data+cursor_pos) = normal;
-                }
+            if(INT_ID(int_info) == CLOCK_ID) {
+                toggle_pos(cursor_pos, normal, inverted);
             }
         }
         while(last_pos != new_pos) {

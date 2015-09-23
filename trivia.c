@@ -11,6 +11,12 @@ size_t border_size = 1;
 size_t cursor_pos = 0;
 size_t processing = 0;
 
+#define BACKGROUND WHITE
+#define FOREGROUND BLACK
+uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
+uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
+
+
 char *banner_lines[] = {
     "      Buffy Trivia\r",
     "      ------------\r",
@@ -178,13 +184,6 @@ char *episodes[7][22] = { {"Welcome to the Hellmouth",
 char input[64] = {0};
 size_t input_size = 0;
 
-void wait_for_interrupt() {
-    asm("push {r7}");
-    asm("mov r7,#17");
-    asm("swi #0");
-    asm("pop {r7}");
-}
-
 void set_input() {
     size_t row_start = (cursor_pos/WIDTH)*WIDTH + border_size + 1;
     input_size = (cursor_pos - row_start);
@@ -192,7 +191,10 @@ void set_input() {
     //should be null terminated due to size
 }
 
-void newline() {
+void newline(int reset_square) {
+    if(reset_square) {
+        *(palette_data+cursor_pos) = normal;
+    }
     cursor_pos = ((cursor_pos/WIDTH)+1)*WIDTH + border_size;
     if(cursor_pos >= FINAL_CURSOR_POS) {
         //move all rows up one
@@ -205,10 +207,11 @@ void newline() {
 
 void process_char(uint8_t c, int is_input) {
     if(c == '\r') {
-        newline();
+        newline(1);
     }
     else if(c == 8) {
         //backspace
+        *(palette_data+cursor_pos) = normal;
         if((cursor_pos%WIDTH) > border_size+1) { //1 for the prompt
             cursor_pos--;
             letter_data[cursor_pos] = ' ';
@@ -220,13 +223,14 @@ void process_char(uint8_t c, int is_input) {
     }
     else {
         size_t line_pos;
+        *(palette_data+cursor_pos) = normal;
         letter_data[cursor_pos++] = c;
         if(is_input) {
             input[input_size++] = c;
         }
         line_pos = cursor_pos%WIDTH;
         if(line_pos >= WIDTH-border_size) {
-            newline();
+            newline(0);
         }
     }
 }
@@ -244,7 +248,10 @@ void process_text(char *in_buffer) {
     while(1) {
         uint8_t new_pos;
         while(last_pos == (new_pos = *ringbuffer_pos)) {
-            wait_for_interrupt();
+            uint64_t info = wait_for_interrupt();
+            if(INT_ID(info) == CLOCK_ID) {
+                toggle_pos(cursor_pos, normal, inverted);
+            }
         }
         while(last_pos != new_pos) {
             uint8_t c;
@@ -306,7 +313,7 @@ int _start(void) {
     crash_handler_word[0] = crash_handler;
     int max = 1000;
     cursor_pos = INITIAL_CURSOR_POS;
-    clear_screen_with_border(WHITE, BLACK, border_size);
+    clear_screen_with_border(BACKGROUND, FOREGROUND, border_size);
     banner();
     uint32_t number = (getrand()%max)+1;
     int remaining = 1337;
@@ -317,7 +324,7 @@ int _start(void) {
         int season = getrand()%7;;
         int episode_number;
         if(season == 0) {
-            episode_number = getrand()%13;
+            episode_number = getrand()%12;
         }
         else {
             episode_number = getrand()%22;
