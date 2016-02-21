@@ -14,11 +14,11 @@ width,height = (1280, 720)
 pygame.init()
 
 def new_machine(screen):
-    machine = hardware.Machine(cpu_size = 2**21, cpu_rom = 'boot.rom')
-    machine.AddHardware(hardware.Keyboard(machine),name='keyboard')
+    machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
+    machine.AddHardware(hardware.Keyboard(machine), name='keyboard')
     machine.AddHardware(hardware.Display(machine,screen,scale_factor=3),name='display')
     machine.AddHardware(hardware.Clock(machine), name='clock')
-    machine.AddHardware(hardware.TapeDrive(machine),name='tape_drive')
+    machine.AddHardware(hardware.TapeDrive(machine), name='tape_drive')
     return machine
 
 def mainloop(dbg):
@@ -40,19 +40,8 @@ def mainloop(dbg):
                 key = ord(event.unicode)
             except (TypeError,AttributeError):
                 pass
-            if key == pygame.locals.K_ESCAPE and not dbg.stopped:
-                dbg.Stop()
-                return
-            if dbg.stopped:
-                if False == dbg.KeyPress(key):
-                    screen = dbg.machine.display.screen
-                    dbg.machine.Delete()
-
-                    dbg.machine = new_machine(screen)
-                    dbg.Reset()
-            else:
-                if key < 256:
-                    dbg.machine.keyboard.KeyDown(key)
+            if key < 256:
+                dbg.machine.keyboard.KeyDown(key)
         elif event.type == pygame.locals.KEYUP:
             key = event.key
             try:
@@ -61,7 +50,7 @@ def mainloop(dbg):
                 key = ord(event.unicode)
             except (TypeError,AttributeError):
                 pass
-            if not dbg.stopped and key < 256:
+            if key < 256:
                 dbg.machine.keyboard.KeyUp(key)
     dbg.machine.display.Update()
     pygame.display.flip()
