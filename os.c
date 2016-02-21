@@ -49,6 +49,9 @@ void newline(int reset_square) {
         cursor_pos = ((cursor_pos/WIDTH)*WIDTH) + border_size - WIDTH;
         //cursor_pos = INITIAL_CURSOR_POS;
     }
+    if(processing && command_size == 0) {
+        process_char('>');
+    }
 }
 
 void process_char(uint8_t c) {
