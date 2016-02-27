@@ -16,124 +16,16 @@ class WindowControl:
     POPUP_GOTO = 6
 
 class View(object):
-    def __init__(self,parent,tl,br):
-        self.tl     = tl
-        self.br     = br
-        self.width  = br[0]-tl[0]
-        self.height = br[1]-tl[1]
+    def __init__(self,parent):
         self.parent = parent
-        self.rect   = pygame.Rect(self.tl, (self.width, self.height))
-        self.colour = pygame.Color(0,255,0,255)
-        self.border_colour = pygame.Color(0,64,0,255)
-        self.background = pygame.Color(0,0,0,255)
-        self.row_height = self.parent.font.render('dummy', False, self.colour, self.background).get_rect().height
-        self.rows = self.height / self.row_height
-
-    def Centre(self,pos):
-        pass
-
-    def Select(self,pos):
-        pass
-
-    def TakeInput(self):
-        return WindowControl.SAME
 
     def Update(self):
-        #Draw a rectangle around ourself, the subclasses can draw the other stuff
-        if self.parent.current_view is self:
-            colour = self.colour
-        else:
-            #blank it...
-            colour = self.border_colour
-        pygame.draw.rect(self.parent.screen, colour, self.rect, 2)
-
-    def DrawText(self, line, row, xoffset=0, inverted=False):
-        if inverted:
-            fore,back = self.background, self.colour
-        else:
-            fore,back = self.colour, self.background
-        text = self.parent.font.render(line, False, fore, back)
-        rect = text.get_rect()
-        rect.centery = (self.row_height*(row+0.5))+self.rect.top+2
-        rect.left = self.rect.left+4+xoffset
-        if rect.right >= self.rect.right-1:
-            rect.width = rect.width - (rect.right - (self.rect.right-1))
-            area = pygame.Rect((0,0),(rect.width,rect.height))
-            self.parent.screen.blit(text, rect, area)
-        else:
-            self.parent.screen.blit(text, rect)
-
-class Goto(View):
-    MAX_LEN = 8
-    def __init__(self,parent,view,tl,br):
-        super(Goto,self).__init__(parent,tl,br)
-        self.text_buffer = []
-        self.view = view
-        self.invalid_text = None
-        self.Update()
-
-    def KeyPress(self, key):
-        if key >= 256:
-            return
-        if key == pygame.locals.K_BACKSPACE:
-            self.text_buffer = self.text_buffer[:-1]
-            self.invalid_text = None
-            self.Update()
-        elif key == pygame.locals.K_RETURN:
-            buffer = ''.join(self.text_buffer)
-            register = self.GetRegister(buffer)
-            if None != register:
-                return self.Dismiss(self.parent.machine.regs[register])
-            try:
-                value = int(buffer,16)
-            except ValueError:
-                return self.Invalid()
-
-            self.Dismiss(value)
-        elif key == pygame.locals.K_ESCAPE:
-            self.Dismiss(None)
-
-        elif len(self.text_buffer) < self.MAX_LEN and chr(key) in string.printable:
-            self.text_buffer.append(chr(key))
-            self.invalid_text = None
-            self.Update()
-
-    def Dismiss(self, value):
-        self.parent.current_view = self.view
-        self.parent.goto_window = None
-        if None != value:
-            #Centre the view on this value
-            self.view.Select(value)
-            self.view.Centre(value)
-        self.view.Update()
-
-    def GetRegister(self, key):
-        key = key.lower()
-        try:
-            return ['r%d' % i for i in xrange(16)].index(key)
-        except ValueError:
-            pass
-        try:
-            return ('sl','fp','ip','sp','lr','pc').index(key) + 10
-        except ValueError:
-            pass
-
-    def Invalid(self):
-        self.invalid_text = '** INVALID **'
-        self.Update()
-
-    def Update(self):
-        pygame.draw.rect(self.parent.screen, self.background, self.rect, 0)
-        super(Goto,self).Update()
-        self.DrawText('Goto addr or register : %s' % ''.join(self.text_buffer), 0, 10)
-        if self.invalid_text:
-            self.DrawText(self.invalid_text,1)
+        self.parent.send_message()
 
 class Debug(View):
     label_width = 14
     def __init__(self,debugger,tl,br):
         super(Debug,self).__init__(debugger,tl,br)
-        self.selected = 0
         self.debugger = debugger
         self.disassembly = None
 
@@ -403,35 +295,20 @@ class Memdump(View):
 class Debugger(object):
     BKPT = 0xef000000 | armv2.SWI_BREAKPOINT
     FRAME_CYCLES = 66666
+    PORT = 16705
     def __init__(self,machine,screen):
         self.machine          = machine
         self.screen           = screen
         self.breakpoints      = {}
-        self.selected         = 0
-        self.font             = pygame.font.Font(os.path.join('fonts','TerminusTTF-4.39.ttf'),12)
-        #self.labels           = Labels(labels)
-        self.current_view     = None
+        self.connection       = messages.Server(port = self.PORT)
 
-        self.h,self.w       = self.screen.get_height(),self.screen.get_width()
-        padding = 6
-        pos = 0
-        self.code_window    = Debug(self,(self.machine.display.pixel_width(),pos),(self.w,200))
-        pos = self.code_window.rect.height + padding
-        self.state_window   = State(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 114))
-        pos += self.state_window.rect.height + padding
-        self.memdump_window = Memdump(self,(self.machine.display.pixel_width(),pos),(self.w,pos + 190))
-        pos += self.memdump_window.rect.height + padding/2
-        self.tape_window    = TapeSelector(self,(self.machine.display.pixel_width(),pos),(self.w,self.h-90-padding))
-        self.help_window    = Help(self,(self.machine.display.pixel_width(),self.h-90),(self.w,self.h))
-        self.goto_window    = None
+        self.code_window    = Debug(self, self.connection)
+        self.state_window   = State(self, self.connection)
+        self.memdump_window = Memdump(self, self.connection)
+        self.tape_window    = TapeSelector(self, self.connection)
 
-        # self.window_choices = [self.code_window,self.memdump_window]
-        # self.draw_windows = self.state_window,self.memdump_window,self.code_window
-        self.draw_windows = [self.code_window,self.state_window,self.memdump_window,self.help_window,self.tape_window]
-        self.window_choices = [self.code_window,self.memdump_window,self.tape_window]
-        self.current_view   = self.code_window
-        self.current_view.Select(self.machine.pc)
-        self.current_view.Centre(self.machine.pc)
+        self.draw_windows = [self.code_window,self.state_window,self.memdump_window,self.tape_window]
+
         self.num_to_step    = 0
         #stopped means that the debugger has halted execution and is waiting for input
         self.stopped        = False
@@ -477,7 +354,6 @@ class Debugger(object):
     def Continue(self, explicit=False):
         result = None
         self.stopped = False
-        self.help_window.Update()
         status = self.StepNumInternal(self.num_to_step, skip_breakpoint=explicit)
         if armv2.Status.Breakpoint == status:
             print '**************** GOT BREAKPOINT **************'
@@ -499,9 +375,6 @@ class Debugger(object):
     def Update(self):
         for window in self.draw_windows:
             window.Update()
-
-        if self.goto_window:
-            self.goto_window.Update(True)
 
     def OuterKeyPress(self,key):
         try:
@@ -552,18 +425,5 @@ class Debugger(object):
         elif result == WindowControl.EXIT:
             raise SystemExit
 
-
-
-    def Reset(self):
-        self.code_window.Select(self.machine.pc)
-        self.code_window.Centre(self.machine.pc)
-        self.memdump_window.Centre(self.machine.pc)
-        self.help_window.Update()
-        self.tape_window.Reset()
-
     def Stop(self):
-        armv2.DebugLog("Stopped called")
         self.stopped = True
-        self.code_window.Select(self.machine.pc)
-        self.code_window.Centre(self.machine.pc)
-        self.help_window.Update()

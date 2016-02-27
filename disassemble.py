@@ -296,5 +296,5 @@ def Disassemble(cpu,breakpoints,start,end):
             word = 0
             for byte in ((ord(cpu.mem[addr+i]) << ((3-i)*8)) for i in xrange(4)):
                 word |= byte
-        out = InstructionFactory(addr,word,cpu)
-        yield out
+        yield InstructionFactory(addr,word,cpu)
+
