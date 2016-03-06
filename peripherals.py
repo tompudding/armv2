@@ -1,5 +1,6 @@
 import Tkinter
 import random
+import disassemble
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):

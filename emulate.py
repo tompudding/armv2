@@ -82,6 +82,7 @@ def main():
             done = mainloop(dbg)
 
     finally:
+        dbg.exit()
         armv2.DebugLog('deleting machine')
         try:
             dbg.machine.Delete()
