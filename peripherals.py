@@ -1,6 +1,7 @@
 import Tkinter
 import random
 import disassemble
+import messages
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -93,5 +94,6 @@ root = Tkinter.Tk()
 root.tk_setPalette(background='black',
                    highlightbackground='lawn green')
 app = Application(master=root)
-app.mainloop()
+with messages.Client('localhost', 0x4141, callback=None) as client:
+    app.mainloop()
 root.destroy()

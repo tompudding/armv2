@@ -9,7 +9,7 @@ import threading
 from pygame.locals import *
 from optparse import OptionParser
 
-width,height = (1280, 720)
+width,height = (960, 720)
 
 pygame.init()
 

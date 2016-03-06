@@ -28,6 +28,7 @@ class Debugger(object):
                     messages.Types.UNWATCH   : self.handle_memory_unwatch}
 
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
+        self.connection.start()
 
         self.num_to_step    = 0
         #stopped means that the debugger has halted execution and is waiting for input
