@@ -6,12 +6,11 @@ import sys
 import hardware
 import pygame
 import threading
+import drawing
 from pygame.locals import *
 from optparse import OptionParser
 
 width,height = (960, 720)
-
-pygame.init()
 
 def new_machine(screen):
     machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
@@ -24,7 +23,6 @@ def new_machine(screen):
 def mainloop(dbg):
     dbg.StepNum(dbg.FRAME_CYCLES)
     for event in pygame.event.get():
-
         if event.type == pygame.locals.QUIT:
             return True
 
@@ -52,7 +50,9 @@ def mainloop(dbg):
                 pass
             if key < 256:
                 dbg.machine.keyboard.KeyUp(key)
+    drawing.NewFrame()
     dbg.machine.display.Update()
+    drawing.EndFrame()
     pygame.display.flip()
     return False
 
@@ -64,11 +64,14 @@ def main():
         os.chdir(sys._MEIPASS)
 
     (options, args) = parser.parse_args()
+    pygame.init()
     pygame.display.set_caption('Synapse')
-    pygame.mouse.set_visible(0)
+    #pygame.mouse.set_visible(0)
     pygame.key.set_repeat(500,50)
 
-    screen = pygame.display.set_mode((width, height))
+
+    screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
+    drawing.Init(width, height)
     machine = new_machine(screen)
     try:
         dbg = debugger.Debugger(machine, screen)

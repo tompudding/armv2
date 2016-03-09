@@ -5,6 +5,7 @@ import traceback
 import signal
 import time
 import random
+import drawing
 
 class Keyboard(armv2.Device):
     """
@@ -228,12 +229,12 @@ class Display(armv2.Device):
         super(Display,self).__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
-        self.screen = screen
-        self.font_surface = pygame.Surface((self.cell_size,self.cell_size),depth=8)
-        self.font_surface.set_palette(((0, 0, 0, 255),)*256)
-        self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
-        self.font_surfaces = {}
-        self.screen.fill((0,0,0,255))
+        # self.screen = screen
+        # self.font_surface = pygame.Surface((self.cell_size,self.cell_size),depth=8)
+        # self.font_surface.set_palette(((0, 0, 0, 255),)*256)
+        # self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
+        # self.font_surfaces = {}
+        # self.screen.fill((0,0,0,255))
         self.palette = [ (0, 0, 0, 255),
                          (255, 255, 255, 255),
                          (136, 0, 0, 255),
@@ -251,18 +252,18 @@ class Display(armv2.Device):
                          (0, 136, 255, 255),
                          (187, 187, 187, 255), ]
 
-        self.pixels = pygame.PixelArray(self.font_surface)
+        # self.pixels = pygame.PixelArray(self.font_surface)
         self.font_data = [0 for i in xrange(256)]
         self.letter_data = [0 for i in xrange(self.width*self.height)]
         self.palette_data = [0 for i in xrange(self.width*self.height)]
 
-        with open('petscii.txt','rb') as f:
-            for line in f:
-                i,dummy,word = line.strip().split()
-                i,word= [int(v,16) for v in i,word]
-                self.font_data[i] = word
-                SetPixels(self.pixels,self.font_data[i])
-                self.font_surfaces[i] = pygame.transform.scale(self.font_surface,(self.cell_size*self.scale_factor,self.cell_size*self.scale_factor))
+        # with open('petscii.txt','rb') as f:
+        #     for line in f:
+        #         i,dummy,word = line.strip().split()
+        #         i,word= [int(v,16) for v in i,word]
+        #         self.font_data[i] = word
+        #         SetPixels(self.pixels,self.font_data[i])
+        #         self.font_surfaces[i] = pygame.transform.scale(self.font_surface,(self.cell_size*self.scale_factor,self.cell_size*self.scale_factor))
 
 
     def readCallback(self,addr,value):
@@ -319,19 +320,20 @@ class Display(armv2.Device):
         palette = self.palette_data[pos]
         back_colour = self.palette[(palette>>4)&0xf]
         fore_colour = self.palette[(palette)&0xf]
-        tile = self.font_surfaces[letter]
-        tile.set_palette((back_colour,fore_colour))
-        dirty = (x*self.cell_size*self.scale_factor,
-                 y*self.cell_size*self.scale_factor,
-                 (x+1)*self.cell_size*self.scale_factor,
-                 (y+1)*self.cell_size*self.scale_factor)
-        self.screen.blit(tile,(dirty[0],dirty[1]))
-        self.dirty_rects[dirty] = True
+        # tile = self.font_surfaces[letter]
+        # tile.set_palette((back_colour,fore_colour))
+        # dirty = (x*self.cell_size*self.scale_factor,
+        #          y*self.cell_size*self.scale_factor,
+        #          (x+1)*self.cell_size*self.scale_factor,
+        #          (y+1)*self.cell_size*self.scale_factor)
+        # self.screen.blit(tile,(dirty[0],dirty[1]))
+        # self.dirty_rects[dirty] = True
 
     def Update(self):
-        if self.dirty_rects:
-            pygame.display.update(self.dirty_rects.keys())
-            self.dirty_rects = {}
+        # if self.dirty_rects:
+        #     pygame.display.update(self.dirty_rects.keys())
+        #     self.dirty_rects = {}
+        pass
 
 class Clock(armv2.Device):
     """
