@@ -91,9 +91,11 @@ def main():
 
 if __name__ == '__main__':
     from multiprocessing import Process
-    #import peripherals,time
-    p = Process(target=main)
-    p.start()
-    #time.sleep(1)
-    #peripherals.main()
-    p.join()
+    import peripherals,time
+
+    p = Process(target=peripherals.main)
+    #p.start()
+    main()
+    pygame.display.quit()
+    #p.join()
+

@@ -1,6 +1,7 @@
 import socket
 import threading
 import SocketServer
+import time
 
 class Types:
     RESUME    = 0
@@ -42,9 +43,11 @@ class Comms(object):
     def connect(self, host, port):
         self.remote_host = host
         self.remote_port = port
-        if not self.send_socket:
-            self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.send_socket.connect((self.remote_host,self.remote_port))
+        if self.send_socket:
+            self.send_socket.close()
+
+        self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.send_socket.connect((self.remote_host,self.remote_port))
 
 
     def exit(self):
@@ -58,15 +61,54 @@ class Server(Comms):
     pass
 
 class Client(Comms):
+    reconnect_interval = 0.1
+
     def __init__(self, host, port, callback):
         super(Client,self).__init__(port=0, callback=callback)
         self.host, self.port = self.server.server_address
-        self.connect(host, port)
-        self.start_handshake()
+        self.remote_host = host
+        self.remote_port = port
+        self.connected = False
+        self.done = False
+        self.cv = threading.Condition()
+        self.connect_thread = threading.Thread(target = self.connect_thread_main)
+
+    def connect_thread_main(self):
+        while not self.done:
+            with self.cv:
+                while not self.done and self.connected:
+                    self.cv.wait()
+
+            while not self.done and not self.connected:
+                self.initiate_connection()
+                if not self.connected:
+                    time.sleep(self.reconnect_interval)
+
+    def __enter__(self):
+        super(Client,self).__enter__()
+        self.connect_thread.start()
+
+    def __exit__(self, type, value, tb):
+        self.done = True
+        with self.cv:
+            self.cv.notify()
+        self.connect_thread.join()
+        super(Client,self).__exit__(type, value, tb)
+
+    def initiate_connection(self):
+        try:
+            self.connect(self.remote_host, self.remote_port)
+            print 'connect1'
+            self.start_handshake()
+        except socket.error as e:
+            return
+        self.connected = True
+        print 'connected!'
 
     def start_handshake(self):
         #Send a handshake message with our listen port
         print 'Sending a handshake message with',(self.host,self.port)
         self.send_socket.send('jim')
+
 
 
