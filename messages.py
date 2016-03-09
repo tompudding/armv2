@@ -19,7 +19,7 @@ class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
         print 'Handle message'
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
-    pass
+    allow_reuse_address = True
 
 class Comms(object):
     def __init__(self, port, callback):
@@ -35,7 +35,7 @@ class Comms(object):
 
     def __enter__(self):
         self.start()
-        
+
     def __exit__(self, type, value, tb):
         self.exit()
 
@@ -45,7 +45,7 @@ class Comms(object):
         if not self.send_socket:
             self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.send_socket.connect((self.remote_host,self.remote_port))
-        
+
 
     def exit(self):
         self.server.shutdown()
@@ -53,7 +53,7 @@ class Comms(object):
         print 'joining thread'
         self.thread.join()
         print 'joined'
-        
+
 class Server(Comms):
     pass
 
@@ -68,5 +68,5 @@ class Client(Comms):
         #Send a handshake message with our listen port
         print 'Sending a handshake message with',(self.host,self.port)
         self.send_socket.send('jim')
-        
-    
+
+

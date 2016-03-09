@@ -90,10 +90,16 @@ class Application(Tkinter.Frame):
         self.pack()
         self.createWidgets()
 
-root = Tkinter.Tk()
-root.tk_setPalette(background='black',
-                   highlightbackground='lawn green')
-app = Application(master=root)
-with messages.Client('localhost', 0x4141, callback=None) as client:
-    app.mainloop()
-root.destroy()
+
+
+def main():
+    root = Tkinter.Tk()
+    root.tk_setPalette(background='black',
+                       highlightbackground='lawn green')
+    app = Application(master=root)
+    with messages.Client('localhost', 0x4141, callback=None) as client:
+        app.mainloop()
+    root.destroy()
+
+if __name__ == '__main__':
+    main()

@@ -90,4 +90,10 @@ def main():
             pass
 
 if __name__ == '__main__':
-    main()
+    from multiprocessing import Process
+    #import peripherals,time
+    p = Process(target=main)
+    p.start()
+    #time.sleep(1)
+    #peripherals.main()
+    p.join()
