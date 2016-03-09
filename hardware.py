@@ -224,6 +224,7 @@ class Display(armv2.Device):
     width  = 40
     height = 30
     cell_size = 8
+    pixel_size = (width*cell_size, height*cell_size)
     palette_start = 0
     letter_start  = width*height
     letter_end    = width*height*2

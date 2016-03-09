@@ -61,9 +61,64 @@ class ShaderData(object):
     def fragment_shader_attrib_binding(self):
         pass
 
-default_shader   = ShaderData()
+class CrtBuffer(object):
+    TEXTURE_TYPE_SHADOW = 0
+    NUM_TEXTURES        = 1
+    #WIDTH               = 1024
+    #HEIGHT              = 256
 
-def Init(w,h):
+    def __init__(self, width, height):
+        self.WIDTH = width
+        self.HEIGHT = height
+        self.fbo = glGenFramebuffers(1)
+        self.BindForWriting()
+        try:
+            self.InitBound(width,height)
+        finally:
+            self.Unbind()
+
+    def InitBound(self,width,height):
+        self.textures      = glGenTextures(self.NUM_TEXTURES)
+        if self.NUM_TEXTURES == 1:
+            #Stupid inconsistent interface
+            self.textures = [self.textures]
+        #self.depth_texture = glGenTextures(1)
+        glActiveTexture(GL_TEXTURE0)
+
+        for i in xrange(self.NUM_TEXTURES):
+            glBindTexture(GL_TEXTURE_2D, self.textures[i])
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, None)
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, self.textures[i], 0)
+
+        #glBindTexture(GL_TEXTURE_2D, self.depth_texture)
+        #glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
+        #glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self.depth_texture, 0)
+        glDrawBuffers([GL_COLOR_ATTACHMENT0])
+
+        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
+            print 'crapso1'
+            raise SystemExit
+
+    def BindForWriting(self):
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.fbo)
+
+    def BindForReading(self,offset):
+        self.Unbind()
+        for i,texture in enumerate(self.textures):
+            glActiveTexture(GL_TEXTURE0 + i + offset)
+            glBindTexture(GL_TEXTURE_2D, texture)
+
+    def Unbind(self):
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+
+
+default_shader   = ShaderData()
+crt_shader       = ShaderData()
+crt_buffer       = None
+
+def Init(w, h, pixel_size):
     default_shader.Load('default',
                         uniforms = ('tex','translation','scale',
                                     'screen_dimensions',
@@ -71,6 +126,14 @@ def Init(w,h):
                         attributes = ('vertex_data',
                                       'tc_data',
                                       'colour_data'))
+
+    crt_shader.Load('crt',
+                    uniforms = ('tex','translation','scale',
+                                'screen_dimensions'),
+                    attributes = ('vertex_data',
+                                  'tc_data'))
+
+    crt_buffer = CrtBuffer(*pixel_size)
 
     glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)

@@ -80,7 +80,7 @@ def main():
 
 
     screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
-    drawing.Init(width, height)
+    drawing.Init(width, height, hardware.Display.pixel_size)
     drawing.InitDrawing()
     machine = new_machine()
 
