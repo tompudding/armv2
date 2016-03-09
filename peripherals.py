@@ -11,6 +11,7 @@ def insert_wrapper(func):
     return wrapper
 
 Tkinter.Text.insert = insert_wrapper(Tkinter.Text.insert)
+Tkinter.Text.delete = insert_wrapper(Tkinter.Text.delete)
 
 class Application(Tkinter.Frame):
     def __init__(self, *args, **kwargs):
@@ -21,6 +22,7 @@ class Application(Tkinter.Frame):
         self.stopped = True
         self.stop_button['text'] = 'resume'
         self.stop_button['command'] = self.resume
+        self.disconnected()
 
     def resume(self):
         self.stopped = False
@@ -41,6 +43,8 @@ class Application(Tkinter.Frame):
                                         highlightthickness=1,
                                         state=Tkinter.DISABLED,
                                         relief=Tkinter.SOLID)
+        self.disassembly.num_lines = self.disassembly.config()['height'][-1]
+        self.disassembly.width = self.disassembly.config()['width'][-1]
         self.disassembly.pack(padx=5,pady=5)
         for i in xrange(14):
             self.disassembly.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
@@ -84,6 +88,20 @@ class Application(Tkinter.Frame):
         self.stop_button["command"] =  self.stop
 
         self.stop_button.pack({"side": "left"})
+        self.disconnected()
+
+    def message_handler(self, message):
+        print 'got client message',message
+
+    def disconnected(self):
+        """Update the views to show that we're disconnected"""
+        self.disassembly.delete('1.0',Tkinter.END)
+        for i in xrange(self.disassembly.num_lines):
+            if i == self.disassembly.num_lines/2:
+                content = '*** DISCONNECTED ***'.center(self.disassembly.width)
+            else:
+                content = ' '*self.disassembly.width
+            self.disassembly.insert('%d.0' % (i+1), content + '\n')
 
     def __init__(self, master=None):
         Tkinter.Frame.__init__(self, master)
@@ -97,7 +115,8 @@ def main():
     root.tk_setPalette(background='black',
                        highlightbackground='lawn green')
     app = Application(master=root)
-    with messages.Client('localhost', 0x4141, callback=None) as client:
+    with messages.Client('localhost', 0x4141, callback=app.message_handler) as client:
+        app.client = client
         app.mainloop()
     root.destroy()
 

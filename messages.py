@@ -98,12 +98,11 @@ class Client(Comms):
     def initiate_connection(self):
         try:
             self.connect(self.remote_host, self.remote_port)
-            print 'connect1'
+            self.connected = True
             self.start_handshake()
         except socket.error as e:
             return
-        self.connected = True
-        print 'connected!'
+
 
     def start_handshake(self):
         #Send a handshake message with our listen port
