@@ -14,12 +14,13 @@ from optparse import OptionParser
 
 width,height = (960, 720)
 globals.screen = Point(width,height)
+clock = pygame.time.Clock()
 
-def new_machine(screen):
+def new_machine():
     machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
     try:
         machine.AddHardware(hardware.Keyboard(machine), name='keyboard')
-        machine.AddHardware(hardware.Display(machine,screen,scale_factor=3),name='display')
+        machine.AddHardware(hardware.Display(machine,scale_factor=1),name='display')
         machine.AddHardware(hardware.Clock(machine), name='clock')
         machine.AddHardware(hardware.TapeDrive(machine), name='tape_drive')
     except:
@@ -81,7 +82,7 @@ def main():
     screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
     drawing.Init(width, height)
     drawing.InitDrawing()
-    machine = new_machine(screen)
+    machine = new_machine()
 
     try:
         dbg = debugger.Debugger(machine, screen)

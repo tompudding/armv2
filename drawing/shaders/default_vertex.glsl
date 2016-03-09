@@ -17,5 +17,5 @@ void main()
                         -vertex_data.z/screen_dimensions.z,
                         1.0) ;
     texcoord    = tc_data;
-    colour      = colour_data;
+    colour      = colour_data / 256.0;
 }

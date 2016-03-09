@@ -83,11 +83,11 @@ def Init(w,h):
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 def NewFrame():
-    default_shader.Use()
-    glDepthMask(GL_TRUE)
-    glClearColor(0.0, 0.0, 0.0, 1.0)
+    #default_shader.Use()
+    #glDepthMask(GL_TRUE)
+    #glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glEnable(GL_DEPTH_TEST)
+    #glEnable(GL_DEPTH_TEST)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
@@ -101,7 +101,7 @@ def InitDrawing():
     generally try to keep them all on
     """
     default_shader.Use()
-    glUniform3f(default_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, 10000)
+    glUniform3f(default_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, 10)
     glUniform1i(default_shader.locations.tex, 0)
     glUniform2f(default_shader.locations.translation, 0, 0)
     glUniform2f(default_shader.locations.scale, 1, 1)

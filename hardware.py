@@ -227,7 +227,7 @@ class Display(armv2.Device):
     palette_start = 0
     letter_start  = width*height
     letter_end    = width*height*2
-    def __init__(self, cpu, screen, scale_factor):
+    def __init__(self, cpu, scale_factor):
         super(Display,self).__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
