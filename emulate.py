@@ -7,6 +7,7 @@ import hardware
 import pygame
 import threading
 import drawing
+import globals
 from pygame.locals import *
 from optparse import OptionParser
 
@@ -72,6 +73,7 @@ def main():
     pygame.display.set_caption('Synapse')
     #pygame.mouse.set_visible(0)
     pygame.key.set_repeat(500,50)
+    globals.dirs = globals.types.Directories('resource')
 
 
     screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)

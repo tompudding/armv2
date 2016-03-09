@@ -6,6 +6,8 @@ import signal
 import time
 import random
 import drawing
+import os
+from globals.types import Point
 
 class Keyboard(armv2.Device):
     """
@@ -235,6 +237,21 @@ class Display(armv2.Device):
         # self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
         # self.font_surfaces = {}
         # self.screen.fill((0,0,0,255))
+        self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts','petscii.png'))
+
+        self.back_quads_buffer = drawing.QuadBuffer(self.width*self.height)
+        self.fore_quads_buffer = drawing.QuadBuffer(self.width*self.height)
+        self.back_quads = [drawing.Quad(self.back_quads_buffer) for i in xrange(self.width*self.height)]
+        self.fore_quads = [drawing.Quad(self.fore_quads_buffer) for i in xrange(self.width*self.height)]
+
+        for z,quad_list in enumerate((self.back_quads,self.fore_quads)):
+            for pos,quad in enumerate(quad_list):
+                x = pos%self.width
+                y = pos/self.width
+                bl = Point(x*self.cell_size, y*self.cell_size)
+                tr = bl + Point(self.cell_size, self.cell_size)
+                quad.SetVertices(bl, tr, z)
+
         self.palette = [ (0, 0, 0, 255),
                          (255, 255, 255, 255),
                          (136, 0, 0, 255),
@@ -256,6 +273,10 @@ class Display(armv2.Device):
         self.font_data = [0 for i in xrange(256)]
         self.letter_data = [0 for i in xrange(self.width*self.height)]
         self.palette_data = [0 for i in xrange(self.width*self.height)]
+
+        #initialise the whole screen
+        for pos in xrange(len(self.letter_data)):
+            self.redraw(pos)
 
         # with open('petscii.txt','rb') as f:
         #     for line in f:
@@ -320,6 +341,8 @@ class Display(armv2.Device):
         palette = self.palette_data[pos]
         back_colour = self.palette[(palette>>4)&0xf]
         fore_colour = self.palette[(palette)&0xf]
+        self.back_quads[pos].SetColour(back_colour)
+        self.fore_quads[pos].SetColour(fore_colour)
         # tile = self.font_surfaces[letter]
         # tile.set_palette((back_colour,fore_colour))
         # dirty = (x*self.cell_size*self.scale_factor,

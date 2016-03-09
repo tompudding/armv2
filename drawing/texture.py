@@ -51,7 +51,7 @@ class Texture(object):
         #They need to all be the same size...
         if len(set((im.width,im.height) for im in self.textures)) != 1:
             raise TypeError('Invalid texture sizes')
-        
+
         self.width = self.textures[0].width
         self.height = self.textures[0].height
         self.texture = self.textures[0].texture
@@ -63,7 +63,7 @@ class Texture(object):
             setattr(self,name,t)
 
 class RenderTarget(object):
-    """ 
+    """
     Create a texture for rendering onto. Call Target on the object, do some rendering, then call
     detarget. Hey presto, self.texture is now a texture containing that drawing!
     """
@@ -84,12 +84,12 @@ class RenderTarget(object):
         glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, self.depthbuffer)
         glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, self.x, self.y)
         glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER_EXT, self.depthbuffer)
-        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.texture, 0); 
+        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.texture, 0);
         if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
             print 'crapso'
             raise SystemExit
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
-        
+
     def Target(self):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
         if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
@@ -100,7 +100,7 @@ class RenderTarget(object):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
 
 
-#texture atlas code taken from 
+#texture atlas code taken from
 #http://omnisaurusgames.com/2011/06/texture-atlas-generation-using-python/
 #I'm assuming it's open source!
 
@@ -118,7 +118,7 @@ class SubImage(object):
 class TextureAtlas(object):
     def __init__(self,image_filename,data_filename):
         extra_names = [image_filename[:-4] + extra + image_filename[-4:] for extra in '_normal','_occlude','_displace']
-            
+
         self.texture = Texture(image_filename,*extra_names)
         self.subimages = {}
         data_filename = os.path.join(globals.dirs.resource,data_filename)
@@ -147,7 +147,7 @@ class TextureAtlas(object):
     def TransformCoord(self,subimage,value):
         value[0] = subimage.pos.x + value[0]*(float(subimage.size.x)/self.texture.width)
         value[1] = subimage.pos.y + value[1]*(float(subimage.size.y)/self.texture.height)
-    
+
     def TransformCoords(self,subimage,tc):
         subimage = '_'.join(subimage.split(os.path.sep))
         subimage = self.subimages[subimage]
@@ -180,7 +180,7 @@ class PetsciiAtlas(TextureAtlas):
             w = 8
             h = 8
             self.subimages[subimage_name] = SubImage(Point(float(x)/self.texture.width,float(y)/self.texture.height),(Point(w,h)))
-            
+
 
 class TextTypes:
     SCREEN_RELATIVE = 1
@@ -190,46 +190,4 @@ class TextTypes:
     LEVELS          = {SCREEN_RELATIVE : constants.DrawLevels.text,
                        CUSTOM          : constants.DrawLevels.text,
                        GRID_RELATIVE   : constants.DrawLevels.grid + 0.1,
-                       MOUSE_RELATIVE  : constants.DrawLevels.text}         
-
-class TextAlignments:
-    LEFT            = 1
-    RIGHT           = 2
-    CENTRE          = 3
-    JUSTIFIED       = 4
-
-class TextManager(object):
-    def __init__(self):
-        #fontname,fontdataname = (os.path.join('fonts',name) for name in ('pixelmix.png','pixelmix.txt'))
-        #self.atlas = TextureAtlas(fontname,fontdataname)
-        self.atlas = PetsciiAtlas(os.path.join('fonts','petscii.png'))
-        self.font_height = max(subimage.size.y for subimage in self.atlas.subimages.values())
-        self.quads = quads.QuadBuffer(131072,ui = True) #these are reclaimed when out of use so this means 131072 concurrent chars
-        TextTypes.BUFFER = {TextTypes.SCREEN_RELATIVE : self.quads,
-                            TextTypes.GRID_RELATIVE   : globals.nonstatic_text_buffer,
-                            TextTypes.MOUSE_RELATIVE  : globals.mouse_relative_buffer}
-
-
-    def Letter(self,char,textType,userBuffer = None):
-        """ Given a character, return a quad with the corresponding letter on it in this textManager's font """
-        quad = quads.Quad(userBuffer if textType == TextTypes.CUSTOM else TextTypes.BUFFER[textType])    
-        quad.tc[0:4]  = self.atlas.TextureCoords(char)
-        #this is a bit dodge, should get its own class if I want to store extra things in it
-        quad.width,quad.height = self.atlas.Subimage(char).size
-        quad.letter = char
-        return quad
-
-    def GetSize(self,text,scale):
-        """
-        How big would the text be if drawn on a single row in the given size?
-        """
-        sizes = [self.atlas.Subimage(char).size*scale*global_scale for char in text]
-        out = Point(sum(item.x for item in sizes),max(item.y for item in sizes))
-        return out
-    
-    def Draw(self):
-        glLoadIdentity()
-        opengl.DrawAll(self.quads,self.atlas.texture)
-
-    def Purge(self):
-        self.quads.truncate(0)
+                       MOUSE_RELATIVE  : constants.DrawLevels.text}
