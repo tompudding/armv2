@@ -14,10 +14,14 @@ width,height = (960, 720)
 
 def new_machine(screen):
     machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
-    machine.AddHardware(hardware.Keyboard(machine), name='keyboard')
-    machine.AddHardware(hardware.Display(machine,screen,scale_factor=3),name='display')
-    machine.AddHardware(hardware.Clock(machine), name='clock')
-    machine.AddHardware(hardware.TapeDrive(machine), name='tape_drive')
+    try:
+        machine.AddHardware(hardware.Keyboard(machine), name='keyboard')
+        machine.AddHardware(hardware.Display(machine,screen,scale_factor=3),name='display')
+        machine.AddHardware(hardware.Clock(machine), name='clock')
+        machine.AddHardware(hardware.TapeDrive(machine), name='tape_drive')
+    except:
+        machine.Delete()
+        raise
     return machine
 
 def mainloop(dbg):
