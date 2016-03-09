@@ -43,7 +43,7 @@ class ShapeBuffer(object):
 
         out = self.current_size
         self.current_size += self.num_points
-        if self.current_size >= self.max_size:
+        if self.current_size > self.max_size:
             raise NotImplemented
             # self.max_size *= 2
             # self.vertex_data.resize( (self.max_size,3) )
