@@ -180,6 +180,10 @@ class PetsciiAtlas(TextureAtlas):
             w = 8
             h = 8
             self.subimages[subimage_name] = SubImage(Point(float(x)/self.texture.width,float(y)/self.texture.height),(Point(w,h)))
+        for i in xrange(256):
+            c = chr(i)
+            if c not in self.subimages:
+                self.subimages[c] = self.subimages[' ']
 
 
 class TextTypes:

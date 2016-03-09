@@ -8,10 +8,12 @@ import pygame
 import threading
 import drawing
 import globals
+from globals.types import Point
 from pygame.locals import *
 from optparse import OptionParser
 
 width,height = (960, 720)
+globals.screen = Point(width,height)
 
 def new_machine(screen):
     machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
@@ -78,7 +80,9 @@ def main():
 
     screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
     drawing.Init(width, height)
+    drawing.InitDrawing()
     machine = new_machine(screen)
+
     try:
         dbg = debugger.Debugger(machine, screen)
     except:

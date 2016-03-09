@@ -247,7 +247,7 @@ class Display(armv2.Device):
         for z,quad_list in enumerate((self.back_quads,self.fore_quads)):
             for pos,quad in enumerate(quad_list):
                 x = pos%self.width
-                y = pos/self.width
+                y = self.height - 1 - (pos/self.width)
                 bl = Point(x*self.cell_size, y*self.cell_size)
                 tr = bl + Point(self.cell_size, self.cell_size)
                 quad.SetVertices(bl, tr, z)
@@ -335,14 +335,14 @@ class Display(armv2.Device):
 
     def redraw(self,pos):
         #armv2.DebugLog('redraw %d' % pos)
-        x = pos%self.width
-        y = pos/self.width
         letter = self.letter_data[pos]
         palette = self.palette_data[pos]
         back_colour = self.palette[(palette>>4)&0xf]
         fore_colour = self.palette[(palette)&0xf]
         self.back_quads[pos].SetColour(back_colour)
         self.fore_quads[pos].SetColour(fore_colour)
+        tc = self.atlas.TextureCoords(chr(letter))
+        self.fore_quads[pos].SetTextureCoordinates(tc)
         # tile = self.font_surfaces[letter]
         # tile.set_palette((back_colour,fore_colour))
         # dirty = (x*self.cell_size*self.scale_factor,
@@ -353,10 +353,8 @@ class Display(armv2.Device):
         # self.dirty_rects[dirty] = True
 
     def Update(self):
-        # if self.dirty_rects:
-        #     pygame.display.update(self.dirty_rects.keys())
-        #     self.dirty_rects = {}
-        pass
+        drawing.DrawNoTexture(self.back_quads_buffer)
+        drawing.DrawAll(self.fore_quads_buffer, self.atlas.texture)
 
 class Clock(armv2.Device):
     """

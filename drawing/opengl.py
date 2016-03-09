@@ -101,7 +101,7 @@ def InitDrawing():
     generally try to keep them all on
     """
     default_shader.Use()
-    glUniform3f(default_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, z_max)
+    glUniform3f(default_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, 10000)
     glUniform1i(default_shader.locations.tex, 0)
     glUniform2f(default_shader.locations.translation, 0, 0)
     glUniform2f(default_shader.locations.scale, 1, 1)
