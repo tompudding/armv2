@@ -11,63 +11,151 @@ in vec3 screen_dimensions;
 
 out vec4 out_colour;
 
-/* void main() */
-/* { */
-/*     out_colour = texture(tex, texcoord); */
-/* } */
+/*    Phosphor-21x
+    Copyright (C) 2011 caligari
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the Free
+    Software Foundation; either version 2 of the License, or (at your option)
+    any later version.
+    (caligari gave their consent to have this shader distributed under the GPL
+    in this message:
+        http://board.byuu.org/viewtopic.php?p=36219#p36219
+        "As I said to Hyllian by PM, I'm fine with the GPL (not really a big
+        deal...)"
+   )
+*/
 
-vec2 curve(vec2 uv)
-{
-	uv = (uv - 0.5) * 2.0;
-	uv *= 1.1;
-	uv.x *= 1.0 + pow((abs(uv.y) / 5.0), 2.0);
-	uv.y *= 1.0 + pow((abs(uv.x) / 4.0), 2.0);
-	uv  = (uv / 2.0) + 0.5;
-	uv =  uv *0.92 + 0.04;
-	return uv;
-}
-void main()
-{
-    vec2 q = texcoord;
-    vec2 uv = q;
-    //float global_time = 1.0;
-    uv = curve( uv );
-    vec3 oricol = texture2D( tex, vec2(q.x,q.y) ).xyz;
-    vec3 col;
-    float x =  sin(0.3*global_time+uv.y*21.0)*sin(0.7*global_time+uv.y*29.0)*sin(0.3+0.33*global_time+uv.y*31.0)*0.0017;
+//#version 150
 
-    col.r = texture2D(tex,vec2(x+uv.x+0.001,uv.y+0.001)).x+0.05;
-    col.g = texture2D(tex,vec2(x+uv.x+0.000,uv.y-0.002)).y+0.05;
-    col.b = texture2D(tex,vec2(x+uv.x-0.002,uv.y+0.000)).z+0.05;
-    col.r += 0.08*texture2D(tex,0.75*vec2(x+0.025, -0.027)+vec2(uv.x+0.001,uv.y+0.001)).x;
-    col.g += 0.05*texture2D(tex,0.75*vec2(x+-0.022, -0.02)+vec2(uv.x+0.000,uv.y-0.002)).y;
-    col.b += 0.08*texture2D(tex,0.75*vec2(x+-0.02, -0.018)+vec2(uv.x-0.002,uv.y+0.000)).z;
+//uniform sampler2D tex[];
+//uniform vec4 sourceSize[];
+//uniform vec4 screen_dimensions;
+vec2 sourceSize = vec2(320,240);
+//in Vertex {
+//  vec2 texcoord;
+//};
 
-    col = clamp(col*0.6+0.4*col*col*1.0,0.0,1.0);
+//out vec4 out_colour;
 
-    float vig = (0.0 + 1.0*16.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y));
-    col *= vec3(pow(vig,0.3));
+//	#define TRIAD1
+//	#define TRIAD2
+//	#define distortion 0.15
 
-    col *= vec3(0.95,1.05,0.95);
-    col *= 2.8;
+// Uncomment to use neighbours from previous and next scanlines
+//#define USE_ALL_NEIGHBOURS
+#define distortion 0.2
 
-    float scans = 0.7;
+	// 0.5 = same width as original pixel	1.0-1.2 seems nice
+	#define SPOT_WIDTH	1.2
+	// Shape of the spots	1.0 = circle, 4.0 = ellipse with width = 2*height  ************/
+    #define X_SIZE_ADJUST	2.0
+/******************************** To increase bloom / luminosity play with this parameter ************/
+    #define FACTOR_ADJUST 2.5
 
-    float s = pow(scans,1.7);
-    col = col*vec3( 0.4+0.7*s) ;
+#ifdef distortion
+    vec2 barrelDistortion(vec2 coord) {
+      vec2 cc = coord - 0.5;
+      float dist = dot(cc, cc);
+      return 0.5 + cc * (1.0 + (dist + distortion * dist * dist) * distortion) / (1.0 + (0.25 + distortion * 0.25 * 0.25) * distortion);
+    }
 
-    col *= 1.0+0.01*sin(110.0*global_time);
-    if (uv.x < 0.0 || uv.x > 1.0)
-        col *= 0.0;
-    if (uv.y < 0.0 || uv.y > 1.0)
-        col *= 0.0;
+    #define TEXCOORDS	barrelDistortion(texcoord * sourceSize / sourceSize) * sourceSize / sourceSize
+#else
+    #define TEXCOORDS	texcoord.xy
+#endif
 
-    col*=1.0-0.65*vec3(clamp((mod(gl_FragCoord.x, 2.0)-1.0)*2.0,0.0,1.0));
+	#define SCALE	21.0
+    // Constants
+    vec4 luminosity_weights = vec4( 0.2126, 0.7152, 0.0722, 0.0 );		//  Y = 0.2126 R + 0.7152 G + 0.0722 B
+	//vec4 luminosity_weights = vec4( 0.6, 0.3, 0.1, 0.0 );
 
-    float comp = smoothstep( 0.1, 0.9, sin(global_time) );
+    vec2 onex = vec2( 1.0 / sourceSize.x, 0.0 );
+    #ifdef USE_ALL_NEIGHBOURS
+    vec2 oney = vec2( 0.0, 1.0 / sourceSize.y);
+    #endif
 
-    // Remove the next line to stop cross-fade between original and postprocess
-//	col = mix( col, oricol, comp );
+    float factor( float lumi, vec2 dxy)
+	{
+		float dist = sqrt( dxy.x * dxy.x + dxy.y * dxy.y * X_SIZE_ADJUST  ) / SCALE;
+		return (2.0 + lumi ) * (1.0 - smoothstep( 0.0, SPOT_WIDTH, dist ) ) / FACTOR_ADJUST ;
+	}
 
-    out_colour = vec4(col,1.0);
+    void main(void) {
+    	vec2 coords_scaled = floor( TEXCOORDS * sourceSize.xy * SCALE );
+    	vec2 coords_snes = floor( coords_scaled / SCALE );	//TEXCOORDS * sourceSize ) ;
+    	vec2 coords_texture = ( coords_snes + vec2(0.5) ) / sourceSize.xy;
+
+    	vec2 ecart = coords_scaled - ( SCALE * coords_snes + vec2( SCALE * 0.5 - 0.5 ) ) ;
+
+    	vec4 color = texture(tex, coords_texture );
+    	float luminosity = dot( color, luminosity_weights );
+
+    	color *= factor( luminosity, ecart );
+
+    	// RIGHT NEIGHBOUR
+    	vec4 pcol = texture(tex, coords_texture + onex);
+    	luminosity = dot( pcol, luminosity_weights );
+    	color += pcol * factor( luminosity, ecart + vec2( -SCALE , 0.0) );
+
+    	// LEFT NEIGHBOUR
+	   	pcol = texture(tex, coords_texture - onex);
+    	luminosity = dot( pcol, luminosity_weights );
+    	color += pcol * factor( luminosity, ecart + vec2( SCALE , 0.0) );
+
+#ifdef USE_ALL_NEIGHBOURS
+    	// TOP
+	   	pcol = texture(tex, coords_texture + oney);
+    	luminosity = dot( pcol, luminosity_weights );
+    	color += pcol * factor( luminosity, ecart + vec2( 0.0, -SCALE) );
+
+    	// TOP-LEFT
+	   	pcol = texture(tex, coords_texture + oney - onex);
+    	luminosity = dot( pcol, luminosity_weights );
+    	color += pcol * factor( luminosity, ecart + vec2( SCALE, -SCALE) );
+
+    	// TOP-RIGHT
+	   	pcol = texture(tex, coords_texture + oney + onex);
+    	luminosity = dot( pcol, luminosity_weights );
+    	color += pcol * factor( luminosity, ecart + vec2( -SCALE, -SCALE) );
+
+    	// BOTTOM
+	   	pcol = texture(tex, coords_texture - oney);
+    	luminosity = dot( pcol, luminosity_weights );
+    	color += pcol * factor( luminosity, ecart + vec2( 0.0, SCALE) );
+
+    	// BOTTOM-LEFT
+	   	pcol = texture(tex, coords_texture - oney - onex);
+    	luminosity = dot( pcol, luminosity_weights );
+    	color += pcol * factor( luminosity, ecart + vec2( SCALE, SCALE) );
+
+    	// BOTTOM-RIGHT
+	   	pcol = texture(tex, coords_texture - oney + onex);
+    	luminosity = dot( pcol, luminosity_weights );
+    	color += pcol * factor( luminosity, ecart + vec2( -SCALE, SCALE) );
+#endif
+
+#ifdef TRIAD1
+    	vec2 coords_screen = floor( texcoord.xy * screen_dimensions.xy );
+
+		float modulo = mod( coords_screen.y + coords_screen.x , 3.0 );
+		if ( modulo == 0.0 )
+			color.rgb *= vec3(1.0,0.5,0.5);
+		else if  ( modulo <= 1.0 )
+			color.rgb *= vec3(0.5,1.0,0.5);
+		else
+			color.rgb *= vec3(0.5,0.5,1.0);
+#endif
+
+#ifdef TRIAD2
+		color = clamp( color, 0.0, 1.0 );
+
+		vec2 coords_screen = floor( texcoord.xy * screen_dimensions.xy );
+
+		float modulo = mod( coords_screen.x , 3.0 );
+		if ( modulo == 0.0 )		color.gb *= 0.8;
+		else if (  modulo == 1.0 )	color.rb *= 0.8;
+		else						color.rg *= 0.8;
+#endif
+
+   		out_colour = clamp( color, 0.0, 1.0 );
 }
