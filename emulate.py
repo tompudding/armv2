@@ -29,6 +29,7 @@ def new_machine():
     return machine
 
 def mainloop(dbg):
+    globals.t = pygame.time.get_ticks()
     dbg.StepNum(dbg.FRAME_CYCLES)
     for event in pygame.event.get():
         if event.type == pygame.locals.QUIT:

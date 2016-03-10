@@ -128,7 +128,7 @@ def Init(w, h, pixel_size):
 
     crt_shader.Load('crt',
                     uniforms = ('tex','translation','scale',
-                                'screen_dimensions'),
+                                'screen_dimensions','global_time'),
                     attributes = ('vertex_data',
                                   'tc_data'))
 
@@ -156,6 +156,7 @@ def NewFrame():
 
 def EndFrame():
     crt_shader.Use()
+    glUniform1f(crt_shader.locations.global_time, globals.t/1000.0)
     crt_buffer.BindForReading(0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glEnableVertexAttribArray( crt_shader.locations.vertex_data );

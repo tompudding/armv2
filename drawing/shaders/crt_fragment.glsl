@@ -5,6 +5,7 @@
 
 
 uniform sampler2D tex;
+uniform float global_time;
 in vec2 texcoord;
 in vec3 screen_dimensions;
 
@@ -29,11 +30,11 @@ void main()
 {
     vec2 q = texcoord;
     vec2 uv = q;
-    float iGlobalTime = 1.0;
+    //float global_time = 1.0;
     uv = curve( uv );
     vec3 oricol = texture2D( tex, vec2(q.x,q.y) ).xyz;
     vec3 col;
-    float x =  sin(0.3*iGlobalTime+uv.y*21.0)*sin(0.7*iGlobalTime+uv.y*29.0)*sin(0.3+0.33*iGlobalTime+uv.y*31.0)*0.0017;
+    float x =  sin(0.3*global_time+uv.y*21.0)*sin(0.7*global_time+uv.y*29.0)*sin(0.3+0.33*global_time+uv.y*31.0)*0.0017;
 
     col.r = texture2D(tex,vec2(x+uv.x+0.001,uv.y+0.001)).x+0.05;
     col.g = texture2D(tex,vec2(x+uv.x+0.000,uv.y-0.002)).y+0.05;
@@ -50,12 +51,12 @@ void main()
     col *= vec3(0.95,1.05,0.95);
     col *= 2.8;
 
-    float scans = clamp( 0.35+0.35*sin(3.5*iGlobalTime+uv.y*screen_dimensions.y*1.5), 0.0, 1.0);
+    float scans = 0.7;
 
     float s = pow(scans,1.7);
     col = col*vec3( 0.4+0.7*s) ;
 
-    col *= 1.0+0.01*sin(110.0*iGlobalTime);
+    col *= 1.0+0.01*sin(110.0*global_time);
     if (uv.x < 0.0 || uv.x > 1.0)
         col *= 0.0;
     if (uv.y < 0.0 || uv.y > 1.0)
@@ -63,7 +64,7 @@ void main()
 
     col*=1.0-0.65*vec3(clamp((mod(gl_FragCoord.x, 2.0)-1.0)*2.0,0.0,1.0));
 
-    float comp = smoothstep( 0.1, 0.9, sin(iGlobalTime) );
+    float comp = smoothstep( 0.1, 0.9, sin(global_time) );
 
     // Remove the next line to stop cross-fade between original and postprocess
 //	col = mix( col, oricol, comp );
