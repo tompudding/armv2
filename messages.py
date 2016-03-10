@@ -49,6 +49,13 @@ class Comms(object):
         self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.send_socket.connect((self.remote_host,self.remote_port))
 
+    def send(self, message):
+        if self.connected:
+            try:
+                self.send_socket.send(message.to_binary())
+            except socket.error:
+                self.connected = False
+                print 'got disconnected'
 
     def exit(self):
         self.server.shutdown()
@@ -101,13 +108,14 @@ class Client(Comms):
             self.connected = True
             self.start_handshake()
         except socket.error as e:
+            self.connected = False
             return
 
 
     def start_handshake(self):
         #Send a handshake message with our listen port
         print 'Sending a handshake message with',(self.host,self.port)
-        self.send_socket.send('jim')
+        self.send(Handshake())
 
 
 
