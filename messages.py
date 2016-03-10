@@ -2,22 +2,75 @@ import socket
 import threading
 import SocketServer
 import time
+import select
+import struct
+
+end_tag = '\r\nEND\r\n'
 
 class Types:
-    RESUME    = 0
-    STEP      = 1
-    RESTART   = 2
-    SETBKPT   = 3
-    UNSETBKPT = 4
-    MEMGET    = 5
-    MEMWATCH  = 6
-    UNWATCH   = 7
-    CONNECT   = 8
+    UNKNOWN   = 0
+    RESUME    = 1
+    STEP      = 2
+    RESTART   = 3
+    SETBKPT   = 4
+    UNSETBKPT = 5
+    MEMGET    = 6
+    MEMWATCH  = 7
+    UNWATCH   = 8
+    CONNECT   = 9
+
+class Message(object):
+    type = Types.UNKNOWN
+
+    def to_binary(self):
+        return struct.pack('>I',self.type)
+
+class Handshake(Message):
+    type = Types.CONNECT
+
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+
+    def to_binary(self):
+        first = super(Handshake,self).to_binary()
+        last = struct.pack('>H',self.port) + self.host + end_tag
+        return first + last
+
+    @staticmethod
+    def from_binary(data):
+        port = struct.unpack('>H',data[:2])[0]
+        host = data[2:]
+        return Handshake(host, port)
+
+messages_by_type = {Types.CONNECT : Handshake}
+
+def MessageFactory(data):
+    type = struct.unpack('>I',data[:4])[0]
+    try:
+        return messages_by_type[type].from_binary(data[4:])
+    except KeyError:
+        print 'Unknown message type %d' % type
+
 
 class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
+    select_timeout = 0.5
+    total_timeout = 1.0
     def handle(self):
-        data = self.request.recv(1024)
-        print 'Handle message'
+        data = []
+        end_time = time.time() + self.total_timeout
+        while time.time() < end_time:
+            ready = select.select([self.request], [], [], self.select_timeout)
+            if ready[0]:
+                new_data = self.request.recv(1024)
+                data.append(new_data)
+                if end_tag in new_data:
+                    print 'Got message'
+                    data = ''.join(data).split(end_tag)[0]
+                    message = MessageFactory(data)
+                    if message:
+                        return self.server.comms.handle(message)
+        print 'Discarding invalid message'
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     allow_reuse_address = True
@@ -27,6 +80,7 @@ class Comms(object):
         self.port = port
         self.callback = callback
         self.server = ThreadedTCPServer(('0.0.0.0',self.port),ThreadedTCPRequestHandler)
+        self.server.comms = self
         self.thread = threading.Thread(target=self.server.serve_forever)
         self.send_socket = None
 
@@ -57,6 +111,9 @@ class Comms(object):
                 self.connected = False
                 print 'got disconnected'
 
+    def handle(self, message):
+        print 'Got message',message
+
     def exit(self):
         self.server.shutdown()
         self.server.server_close()
@@ -65,7 +122,11 @@ class Comms(object):
         print 'joined'
 
 class Server(Comms):
-    pass
+    def handle(self, message):
+        if message.type == Types.CONNECT:
+            self.connect(message.host, message.port)
+        else:
+            super(Server,self).handle(message)
 
 class Client(Comms):
     reconnect_interval = 0.1
@@ -73,6 +134,7 @@ class Client(Comms):
     def __init__(self, host, port, callback):
         super(Client,self).__init__(port=0, callback=callback)
         self.host, self.port = self.server.server_address
+        self.host = '127.0.0.1'
         self.remote_host = host
         self.remote_port = port
         self.connected = False
@@ -111,11 +173,10 @@ class Client(Comms):
             self.connected = False
             return
 
-
     def start_handshake(self):
         #Send a handshake message with our listen port
         print 'Sending a handshake message with',(self.host,self.port)
-        self.send(Handshake())
+        self.send(Handshake(self.host,self.port))
 
 
 
