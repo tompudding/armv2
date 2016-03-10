@@ -14,9 +14,13 @@ Tkinter.Text.insert = insert_wrapper(Tkinter.Text.insert)
 Tkinter.Text.delete = insert_wrapper(Tkinter.Text.delete)
 
 class Application(Tkinter.Frame):
-    def __init__(self, *args, **kwargs):
-        super(Application, self).__init__(*args, **kwargs)
+    def __init__(self, master):
+        self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
+                                 messages.Types.CONNECT    : self.connected}
+        Tkinter.Frame.__init__(self, master)
         self.stopped = False
+        self.pack()
+        self.createWidgets()
 
     def stop(self):
         self.stopped = True
@@ -95,24 +99,29 @@ class Application(Tkinter.Frame):
         self.disconnected()
 
     def message_handler(self, message):
-        print 'got client message',message
+        try:
+            handler = self.message_handlers[message.type]
+        except KeyError:
+            print 'Unexpected message %d' % message.type
+            return
+        handler(message)
 
-    def disconnected(self):
+    def status_update(self, message):
         """Update the views to show that we're disconnected"""
         for view in self.views:
             view.delete('1.0',Tkinter.END)
             for i in xrange(view.num_lines):
                 if i == view.num_lines/2:
-                    content = '*** DISCONNECTED ***'.center(view.width)
+                    content = ('*** %s ***' % message).center(view.width)
                 else:
                     content = ' '*view.width
                 view.insert('%d.0' % (i+1), content + '\n')
 
-    def __init__(self, master=None):
-        Tkinter.Frame.__init__(self, master)
-        self.pack()
-        self.createWidgets()
+    def disconnected(self, message=None):
+        self.status_update('DISCONNECTED')
 
+    def connected(self, message=None):
+        self.status_update('CONNECTED')
 
 
 def main():
