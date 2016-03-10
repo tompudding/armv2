@@ -88,6 +88,10 @@ class Application(Tkinter.Frame):
         self.stop_button["command"] =  self.stop
 
         self.stop_button.pack({"side": "left"})
+        self.views = [self.disassembly, self.memory, self.registers]
+        for view in self.views:
+            view.num_lines = view.config()['height'][-1]
+            view.width = view.config()['width'][-1]
         self.disconnected()
 
     def message_handler(self, message):
@@ -95,13 +99,14 @@ class Application(Tkinter.Frame):
 
     def disconnected(self):
         """Update the views to show that we're disconnected"""
-        self.disassembly.delete('1.0',Tkinter.END)
-        for i in xrange(self.disassembly.num_lines):
-            if i == self.disassembly.num_lines/2:
-                content = '*** DISCONNECTED ***'.center(self.disassembly.width)
-            else:
-                content = ' '*self.disassembly.width
-            self.disassembly.insert('%d.0' % (i+1), content + '\n')
+        for view in self.views:
+            view.delete('1.0',Tkinter.END)
+            for i in xrange(view.num_lines):
+                if i == view.num_lines/2:
+                    content = '*** DISCONNECTED ***'.center(view.width)
+                else:
+                    content = ' '*view.width
+                view.insert('%d.0' % (i+1), content + '\n')
 
     def __init__(self, master=None):
         Tkinter.Frame.__init__(self, master)
