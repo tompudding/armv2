@@ -77,7 +77,9 @@ def main():
     #pygame.mouse.set_visible(0)
     pygame.key.set_repeat(500,50)
     globals.dirs = globals.types.Directories('resource')
-
+    globals.screen_quadbuffer     = drawing.QuadBuffer(16)
+    globals.screen.full_quad      = drawing.Quad(globals.screen_quadbuffer)
+    globals.screen.full_quad.SetVertices(Point(0,0),globals.screen,0.01)
 
     screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
     drawing.Init(width, height, hardware.Display.pixel_size)

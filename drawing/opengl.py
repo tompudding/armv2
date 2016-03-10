@@ -68,8 +68,6 @@ class CrtBuffer(object):
     #HEIGHT              = 256
 
     def __init__(self, width, height):
-        self.WIDTH = width
-        self.HEIGHT = height
         self.fbo = glGenFramebuffers(1)
         self.BindForWriting()
         try:
@@ -119,6 +117,7 @@ crt_shader       = ShaderData()
 crt_buffer       = None
 
 def Init(w, h, pixel_size):
+    global crt_buffer
     default_shader.Load('default',
                         uniforms = ('tex','translation','scale',
                                     'screen_dimensions',
@@ -146,7 +145,8 @@ def Init(w, h, pixel_size):
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 def NewFrame():
-    #default_shader.Use()
+    default_shader.Use()
+    crt_buffer.BindForWriting()
     #glDepthMask(GL_TRUE)
     #glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -155,7 +155,16 @@ def NewFrame():
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 def EndFrame():
-    pass
+    crt_shader.Use()
+    crt_buffer.BindForReading(0)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glEnableVertexAttribArray( crt_shader.locations.vertex_data );
+    glEnableVertexAttribArray( crt_shader.locations.tc_data );
+    #glUniform2f(crt_shader.locations.scale, 0.33333, 0.3333)
+    glVertexAttribPointer( crt_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, globals.screen_quadbuffer.vertex_data );
+    glVertexAttribPointer( crt_shader.locations.tc_data, 2, GL_FLOAT, GL_FALSE, 0, drawing.constants.full_tc );
+
+    glDrawElements(GL_QUADS,globals.screen_quadbuffer.current_size,GL_UNSIGNED_INT,globals.screen_quadbuffer.indices)
 
 def InitDrawing():
     """
@@ -168,6 +177,12 @@ def InitDrawing():
     glUniform1i(default_shader.locations.tex, 0)
     glUniform2f(default_shader.locations.translation, 0, 0)
     glUniform2f(default_shader.locations.scale, 1, 1)
+
+    crt_shader.Use()
+    glUniform3f(crt_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, 10)
+    glUniform1i(crt_shader.locations.tex, 0)
+    glUniform2f(crt_shader.locations.translation, 0, 0)
+    glUniform2f(crt_shader.locations.scale, 1, 1)
 
 
 def DrawAll(quad_buffer,texture):
