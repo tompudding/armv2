@@ -51,18 +51,23 @@ class Handshake(Message):
 class MachineState(Message):
     type = Types.STATE
 
-    def __init__(self, regs):
+    def __init__(self, regs, mode, pc):
         self.registers = [regs[i] for i in xrange(16)]
+        self.mode = mode
+        self.pc = pc
 
     def to_binary(self):
         first = super(MachineState,self).to_binary()
-        last = ''.join(struct.pack('>I',reg) for reg in self.registers) + end_tag
-        return first + last
+        regs = ''.join(struct.pack('>I',reg) for reg in self.registers)
+        mode = struct.pack('>I',self.mode)
+        pc = struct.pack('>I',self.pc)
+        return first + regs + mode + pc + end_tag
 
     @staticmethod
     def from_binary(data):
         regs = [struct.unpack('>I',data[i*4:(i+1)*4])[0] for i in xrange(16)]
-        return MachineState(regs)
+        mode,pc = struct.unpack('>II',data[16*4:])
+        return MachineState(regs,mode,pc)
 
 class Disconnect(Message):
     type = Types.DISCONNECT

@@ -13,11 +13,13 @@ def insert_wrapper(func):
 Tkinter.Text.insert = insert_wrapper(Tkinter.Text.insert)
 Tkinter.Text.delete = insert_wrapper(Tkinter.Text.delete)
 
+mode_names = ['USR','FIQ','IRQ','SUP']
+
 def register_name(i):
     if i < 12:
         return 'r%d' % i
     else:
-        return ['fp','sp','lr','pc'][i-12]
+        return ['fp','sp','lr','r15'][i-12]
 
 class Application(Tkinter.Frame):
     def __init__(self, master):
@@ -136,6 +138,10 @@ class Application(Tkinter.Frame):
         col_width = view.width/3
         for i,reg in enumerate(message.registers):
             lines[i%len(lines)].append( ('%3s : %08x' % (register_name(i),reg)).ljust(col_width) )
+
+        pos = len(message.registers)
+        lines[pos%len(lines)].append( ('%5s : %8s' % ('MODE',mode_names[message.mode]) ))
+        lines[(pos+1)%len(lines)].append( ('%5s : %08x' % ('PC',message.pc) ))
         self.registers.delete('1.0',Tkinter.END)
         for i,line in enumerate(lines):
             line = ''.join(line).ljust(view.width)

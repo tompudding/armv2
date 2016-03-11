@@ -77,7 +77,7 @@ class Debugger(object):
         self.send_register_update()
 
     def send_register_update(self):
-        self.connection.send(messages.MachineState(self.machine.regs))
+        self.connection.send(messages.MachineState(self.machine.regs,self.machine.mode,self.machine.pc))
 
     def AddBreakpoint(self,addr):
         if addr&3:
