@@ -13,10 +13,17 @@ def insert_wrapper(func):
 Tkinter.Text.insert = insert_wrapper(Tkinter.Text.insert)
 Tkinter.Text.delete = insert_wrapper(Tkinter.Text.delete)
 
+def register_name(i):
+    if i < 12:
+        return 'r%d' % i
+    else:
+        return ['fp','sp','lr','pc'][i-12]
+
 class Application(Tkinter.Frame):
     def __init__(self, master):
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
-                                 messages.Types.CONNECT    : self.connected}
+                                 messages.Types.CONNECT    : self.connected,
+                                 messages.Types.STATE      : self.receive_register_state}
         Tkinter.Frame.__init__(self, master)
         self.stopped = False
         self.pack()
@@ -26,7 +33,6 @@ class Application(Tkinter.Frame):
         self.stopped = True
         self.stop_button['text'] = 'resume'
         self.stop_button['command'] = self.resume
-        self.disconnected()
 
     def resume(self):
         self.stopped = False
@@ -122,6 +128,19 @@ class Application(Tkinter.Frame):
 
     def connected(self, message=None):
         self.status_update('CONNECTED')
+
+    def receive_register_state(self, message):
+        #We'll do 3 columns
+        view = self.registers
+        lines = [list() for i in xrange(view.num_lines)]
+        col_width = view.width/3
+        for i,reg in enumerate(message.registers):
+            lines[i%len(lines)].append( ('%3s : %08x' % (register_name(i),reg)).ljust(col_width) )
+        self.registers.delete('1.0',Tkinter.END)
+        for i,line in enumerate(lines):
+            line = ''.join(line).ljust(view.width)
+            view.insert('%d.0' % (i+1), line + '\n')
+
 
 
 def main():

@@ -111,8 +111,8 @@ if __name__ == '__main__':
     import peripherals,time
 
     p = Process(target=peripherals.main)
-    #p.start()
+    p.start()
     main()
     pygame.display.quit()
-    #p.join()
+    p.join()
 

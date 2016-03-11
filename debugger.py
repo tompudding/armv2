@@ -18,23 +18,28 @@ class Debugger(object):
         self.machine          = machine
         self.screen           = screen
         self.breakpoints      = {}
-        handlers = {messages.Types.RESUME    : self.handle_resume,
-                    messages.Types.STEP      : self.handle_step,
-                    messages.Types.RESTART   : self.handle_restart,
-                    messages.Types.SETBKPT   : self.handle_set_breakpoint,
-                    messages.Types.UNSETBKPT : self.handle_unset_breakpoint,
-                    messages.Types.MEMGET    : self.handle_memory_get,
-                    messages.Types.MEMWATCH  : self.handle_memory_watch,
-                    messages.Types.UNWATCH   : self.handle_memory_unwatch}
+        self.handlers = {messages.Types.RESUME    : self.handle_resume,
+                         messages.Types.STEP      : self.handle_step,
+                         messages.Types.RESTART   : self.handle_restart,
+                         messages.Types.SETBKPT   : self.handle_set_breakpoint,
+                         messages.Types.UNSETBKPT : self.handle_unset_breakpoint,
+                         messages.Types.MEMGET    : self.handle_memory_get,
+                         messages.Types.MEMWATCH  : self.handle_memory_watch,
+                         messages.Types.UNWATCH   : self.handle_memory_unwatch,
+                         messages.Types.CONNECT   : self.handle_connect}
 
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
 
-        self.num_to_step    = 0
-        #stopped means that the debugger has halted execution and is waiting for input
-        self.stopped        = False
-        # self.help_window.Draw()
-        self.Update()
+        try:
+            self.num_to_step    = 0
+            #stopped means that the debugger has halted execution and is waiting for input
+            self.stopped        = False
+            # self.help_window.Draw()
+            self.Update()
+        except:
+            self.exit()
+            raise
 
     def handle_message(self,message):
         try:
@@ -66,6 +71,14 @@ class Debugger(object):
     def handle_memory_unwatch(self, message):
         print 'Got memory unwatch'
 
+    def handle_connect(self, message):
+        print 'Got connect in debugger'
+        #On connect we send an initial update
+        self.send_register_update()
+
+    def send_register_update(self):
+        self.connection.send(messages.MachineState(self.machine.regs))
+
     def AddBreakpoint(self,addr):
         if addr&3:
             raise ValueError()
@@ -95,7 +108,9 @@ class Debugger(object):
                 num -= 1
         if num > 0:
             status = self.machine.StepAndWait(num)
+
         #self.state_window.Update()
+        self.send_register_update()
         #self.memdump_window.Update()
         return status
 
@@ -121,10 +136,10 @@ class Debugger(object):
 
         #disassembly = disassemble.Disassemble(cpu.mem)
         #We're stopped, so display and wait for a keypress
-        #self.Update()
+        self.Update()
 
     def Update(self):
-        pass
+        self.send_register_update()
 
     def exit(self):
         self.connection.exit()

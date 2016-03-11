@@ -19,6 +19,10 @@ class Types:
     UNWATCH    = 8
     CONNECT    = 9
     DISCONNECT = 10
+    STATE      = 11
+
+class DynamicObject(object):
+    pass
 
 class Message(object):
     type = Types.UNKNOWN
@@ -44,10 +48,27 @@ class Handshake(Message):
         host = data[2:]
         return Handshake(host, port)
 
+class MachineState(Message):
+    type = Types.STATE
+
+    def __init__(self, regs):
+        self.registers = [regs[i] for i in xrange(16)]
+
+    def to_binary(self):
+        first = super(MachineState,self).to_binary()
+        last = ''.join(struct.pack('>I',reg) for reg in self.registers) + end_tag
+        return first + last
+
+    @staticmethod
+    def from_binary(data):
+        regs = [struct.unpack('>I',data[i*4:(i+1)*4])[0] for i in xrange(16)]
+        return MachineState(regs)
+
 class Disconnect(Message):
     type = Types.DISCONNECT
 
-messages_by_type = {Types.CONNECT : Handshake}
+messages_by_type = {Types.CONNECT : Handshake,
+                    Types.STATE   : MachineState}
 
 def MessageFactory(data):
     type = struct.unpack('>I',data[:4])[0]
@@ -69,7 +90,6 @@ class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
                 raise socket.error()
             data.append(new_data)
             if end_tag in new_data:
-                print 'Got message'
                 message = MessageFactory(''.join(data).split(end_tag)[0])
                 data = []
                 if message:
@@ -91,6 +111,7 @@ class Comms(object):
     def __init__(self, port, callback):
         self.port = port
         self.callback = callback
+        self.connected = False
         self.server = ThreadedTCPServer(('0.0.0.0',self.port),ThreadedTCPRequestHandler)
         self.server.comms = self
         self.server.done = False
@@ -118,9 +139,10 @@ class Comms(object):
         self.connected = True
 
     def disconnect(self):
-        self.send_socket.close()
-        self.send_socket = None
-        self.connected = False
+        if self.send_socket:
+            self.send_socket.close()
+            self.send_socket = None
+            self.connected = False
 
     def send(self, message):
         if self.connected:
@@ -131,9 +153,11 @@ class Comms(object):
                 print 'got disconnected'
 
     def handle(self, message):
-        print 'Got message',message
+        if self.callback:
+            self.callback(message)
 
     def exit(self):
+        self.disconnect()
         self.server.done = True
         self.server.shutdown()
         self.server.server_close()
@@ -145,8 +169,7 @@ class Server(Comms):
     def handle(self, message):
         if message.type == Types.CONNECT:
             self.connect(message.host, message.port)
-        else:
-            super(Server,self).handle(message)
+        super(Server,self).handle(message)
 
 class Client(Comms):
     reconnect_interval = 0.1
