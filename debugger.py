@@ -23,13 +23,13 @@ class Debugger(object):
                          messages.Types.RESTART   : self.handle_restart,
                          messages.Types.SETBKPT   : self.handle_set_breakpoint,
                          messages.Types.UNSETBKPT : self.handle_unset_breakpoint,
-                         messages.Types.MEMGET    : self.handle_memory_get,
                          messages.Types.MEMWATCH  : self.handle_memory_watch,
                          messages.Types.UNWATCH   : self.handle_memory_unwatch,
                          messages.Types.CONNECT   : self.handle_connect}
 
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
+        self.mem_watches = {}
 
         try:
             self.num_to_step    = 0
@@ -62,14 +62,13 @@ class Debugger(object):
     def handle_unset_breakpoint(self,message):
         print 'Got unset breakpoint'
 
-    def handle_memory_get(self, message):
-        print 'Got memory get'
-
     def handle_memory_watch(self, message):
         print 'Got memory watch'
+        self.mem_watches[message.id] = message
 
     def handle_memory_unwatch(self, message):
         print 'Got memory unwatch'
+        del self.mem_watches[message.id]
 
     def handle_connect(self, message):
         print 'Got connect in debugger'
@@ -78,6 +77,11 @@ class Debugger(object):
 
     def send_register_update(self):
         self.connection.send(messages.MachineState(self.machine.regs,self.machine.mode,self.machine.pc))
+
+    def send_mem_update(self):
+        for message in self.mem_watches.iterkeys():
+            data = self.machine.mem[message.start:message.start + message.size]
+            self.connection.send(messages.MemViewReply(message.id,message.start,data))
 
     def AddBreakpoint(self,addr):
         if addr&3:
@@ -111,7 +115,7 @@ class Debugger(object):
 
         #self.state_window.Update()
         self.send_register_update()
-        #self.memdump_window.Update()
+        self.send_mem_update()
         return status
 
     def Step(self, explicit=False):
@@ -140,6 +144,7 @@ class Debugger(object):
 
     def Update(self):
         self.send_register_update()
+        self.send_mem_update()
 
     def exit(self):
         self.connection.exit()

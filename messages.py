@@ -5,8 +5,6 @@ import time
 import select
 import struct
 
-end_tag = '\r\nEND\r\n'
-
 class Types:
     UNKNOWN    = 0
     RESUME     = 1
@@ -14,7 +12,7 @@ class Types:
     RESTART    = 3
     SETBKPT    = 4
     UNSETBKPT  = 5
-    MEMGET     = 6
+    MEMDATA    = 6
     MEMWATCH   = 7
     UNWATCH    = 8
     CONNECT    = 9
@@ -39,7 +37,7 @@ class Handshake(Message):
 
     def to_binary(self):
         first = super(Handshake,self).to_binary()
-        last = struct.pack('>H',self.port) + self.host + end_tag
+        last = struct.pack('>H',self.port) + self.host
         return first + last
 
     @staticmethod
@@ -61,7 +59,7 @@ class MachineState(Message):
         regs = ''.join(struct.pack('>I',reg) for reg in self.registers)
         mode = struct.pack('>I',self.mode)
         pc = struct.pack('>I',self.pc)
-        return first + regs + mode + pc + end_tag
+        return first + regs + mode + pc
 
     @staticmethod
     def from_binary(data):
@@ -69,11 +67,61 @@ class MachineState(Message):
         mode,pc = struct.unpack('>II',data[16*4:])
         return MachineState(regs,mode,pc)
 
+class MemView(Message):
+    type = Types.MEMWATCH
+    class Types:
+        MEMDUMP     = 0
+        DISASSEMBLY = 1
+
+    def __init__(self, id, start, size):
+        self.id = id
+        self.start = start
+        self.size = size
+
+    def to_binary(self):
+        first = super(MemView,self).to_binary()
+        data = struct.pack('>III',self.id,self.start,self.size)
+        return first + data
+
+    @staticmethod
+    def from_binary(data):
+        id,start,size = struct.unpack('>III',data)
+        return MemView(id, start,size)
+
+class MemdumpView(MemView):
+    id = MemView.Types.MEMDUMP
+    def __init__(self, start, size):
+        super(MemdumpView,self).__init__(self.id, start, size)
+
+class MemViewReply(MemView):
+    type = Types.MEMDATA
+    def __init__(self, id, start, data):
+        super(MemViewReply,self).__init__(id, start, len(data))
+        self.data = data
+
+    def to_binary(self):
+        first = super(MemViewReply,self).to_binary()
+        return first + self.data
+
+    @staticmethod
+    def from_binary(data):
+        id,start,size = struct.unpack('>III',data[:12])
+        data = data[12:]
+        if len(data) != size:
+            print 'Error mismatch lengths %d %d' % (len(data),size)
+            return None
+        return MemViewReply(id,start,data)
+
+
+class DisassemblyView(MemdumpView):
+    id = MemView.Types.DISASSEMBLY
+
 class Disconnect(Message):
     type = Types.DISCONNECT
 
-messages_by_type = {Types.CONNECT : Handshake,
-                    Types.STATE   : MachineState}
+messages_by_type = {Types.CONNECT  : Handshake,
+                    Types.STATE    : MachineState,
+                    Types.MEMWATCH : MemView}
 
 def MessageFactory(data):
     type = struct.unpack('>I',data[:4])[0]
@@ -89,13 +137,22 @@ class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
     def dispatch_message(self):
         data = []
         ready = select.select([self.request], [], [], self.select_timeout)
+        needed = None
         if ready[0]:
             new_data = self.request.recv(1024)
             if not new_data:
                 raise socket.error()
             data.append(new_data)
-            if end_tag in new_data:
-                message = MessageFactory(''.join(data).split(end_tag)[0])
+            if needed == None:
+                #We haven't received a length yet
+                sofar = ''.join(data)
+                if len(sofar) > 4:
+                    needed = struct.unpack('>I',sofar[:4])[0]
+                    data = [sofar[4:]]
+                    print 'Got needed %d' % needed
+            if needed != None and sum((len(d) for d in data)) >= needed:
+                print 'Got a message!'
+                message = MessageFactory(''.join(data))
                 data = []
                 if message:
                     return self.server.comms.handle(message)
@@ -129,6 +186,7 @@ class Comms(object):
 
     def __enter__(self):
         self.start()
+        return self
 
     def __exit__(self, type, value, tb):
         self.exit()
@@ -152,7 +210,8 @@ class Comms(object):
     def send(self, message):
         if self.connected:
             try:
-                self.send_socket.send(message.to_binary())
+                m = message.to_binary()
+                self.send_socket.send(struct.pack('>I',len(m)) + m)
             except socket.error:
                 self.connected = False
                 print 'got disconnected'
@@ -204,6 +263,7 @@ class Client(Comms):
     def __enter__(self):
         super(Client,self).__enter__()
         self.connect_thread.start()
+        return self
 
     def __exit__(self, type, value, tb):
         self.done = True

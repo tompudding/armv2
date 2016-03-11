@@ -93,7 +93,6 @@ class Application(Tkinter.Frame):
         for i in xrange(13):
             self.memory.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
 
-
         self.stop_button = Tkinter.Button(self, width=10)
         self.stop_button["text"] = "stop"
         self.stop_button["fg"]   = "red"
@@ -104,6 +103,13 @@ class Application(Tkinter.Frame):
         for view in self.views:
             view.num_lines = view.config()['height'][-1]
             view.width = view.config()['width'][-1]
+
+        self.memory.view_start = 0
+        self.memory.view_size  = self.memory.num_lines * 8
+
+        self.disassembly.view_start = 0
+        self.disassembly.view_size  = self.disassembly.num_lines * 4
+
         self.disconnected()
 
     def message_handler(self, message):
@@ -130,6 +136,8 @@ class Application(Tkinter.Frame):
 
     def connected(self, message=None):
         self.status_update('CONNECTED')
+        self.client.send(messages.MemdumpView(self.memory.view_start, self.memory.view_size))
+        self.client.send(messages.DisassemblyView(self.disassembly.view_start, self.disassembly.view_size))
 
     def receive_register_state(self, message):
         #We'll do 3 columns
@@ -155,6 +163,7 @@ def main():
                        highlightbackground='lawn green')
     app = Application(master=root)
     with messages.Client('localhost', 0x4141, callback=app.message_handler) as client:
+        print client
         app.client = client
         app.mainloop()
     root.destroy()
