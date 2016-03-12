@@ -124,7 +124,9 @@ class Disconnect(Message):
 
 messages_by_type = {Types.CONNECT  : Handshake,
                     Types.STATE    : MachineState,
-                    Types.MEMWATCH : MemView}
+                    Types.MEMWATCH : MemView,
+                    Types.MEMDATA  : MemViewReply,
+}
 
 def MessageFactory(data):
     type = struct.unpack('>I',data[:4])[0]

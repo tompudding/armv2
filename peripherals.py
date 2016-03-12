@@ -132,7 +132,11 @@ class Application(Tkinter.Frame):
                 view.insert('%d.0' % (i+1), content + '\n')
 
     def disconnected(self, message=None):
-        self.status_update('DISCONNECTED')
+        try:
+            self.status_update('DISCONNECTED')
+        except (Tkinter.TclError,RuntimeError) as e:
+            #This can happen if we're bringing everything down
+            print 'Ignoring TCL error during disconnect'
 
     def connected(self, message=None):
         self.status_update('CONNECTED')
