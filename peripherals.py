@@ -2,6 +2,7 @@ import Tkinter
 import random
 import disassemble
 import messages
+import string
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -25,7 +26,9 @@ class Application(Tkinter.Frame):
     def __init__(self, master):
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
                                  messages.Types.CONNECT    : self.connected,
-                                 messages.Types.STATE      : self.receive_register_state}
+                                 messages.Types.STATE      : self.receive_register_state,
+                                 messages.Types.MEMDATA    : self.receive_memdata,
+        }
         Tkinter.Frame.__init__(self, master)
         self.stopped = False
         self.pack()
@@ -158,6 +161,32 @@ class Application(Tkinter.Frame):
         for i,line in enumerate(lines):
             line = ''.join(line).ljust(view.width)
             view.insert('%d.0' % (i+1), line + '\n')
+
+    def receive_disassembly(self, message):
+        pass
+
+    def receive_memdump(self, message):
+        view = self.memory
+        display_width = 8
+        view.delete('1.0',Tkinter.END)
+        for i in xrange(view.num_lines):
+            addr = view.view_start + i*display_width
+            data = message.data[i*display_width:(i+1)*display_width]
+            if len(data) < display_width:
+                data += '??'*(display_width-len(data))
+            data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(display_width))
+            ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in string.printable else '.') for i in xrange(display_width)))
+            line = '%07x : %s   %s' % (addr,data_string,ascii_string)
+            if 0:# or addr == self.selected:
+                view.insert('%d.0' % (i+1), line + '\n')
+            else:
+                view.insert('%d.0' % (i+1), line + '\n')
+
+    def receive_memdata(self, message):
+        if message.id == messages.MemView.Types.MEMDUMP:
+            self.receive_memdump(message)
+        else:
+            self.receive_disassembly(message)
 
 
 

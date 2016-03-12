@@ -301,7 +301,8 @@ class Client(Comms):
         print 'Sending a handshake message with',(self.host,self.port)
         handshake = Handshake(self.host,self.port)
         self.send(handshake)
-        self.callback(handshake)
+        if self.connected:
+            self.callback(handshake)
 
 
 
