@@ -6,18 +6,19 @@ import select
 import struct
 
 class Types:
-    UNKNOWN    = 0
-    RESUME     = 1
-    STEP       = 2
-    RESTART    = 3
-    SETBKPT    = 4
-    UNSETBKPT  = 5
-    MEMDATA    = 6
-    MEMWATCH   = 7
-    UNWATCH    = 8
-    CONNECT    = 9
-    DISCONNECT = 10
-    STATE      = 11
+    UNKNOWN     = 0
+    RESUME      = 1
+    STEP        = 2
+    RESTART     = 3
+    SETBKPT     = 4
+    UNSETBKPT   = 5
+    MEMDATA     = 6
+    MEMWATCH    = 7
+    UNWATCH     = 8
+    CONNECT     = 9
+    DISCONNECT  = 10
+    STATE       = 11
+    DISASSEMBLY = 12
 
 class DynamicObject(object):
     pass
@@ -116,8 +117,17 @@ class MemViewReply(MemView):
         return MemViewReply(id,start,data)
 
 
-class DisassemblyView(MemdumpView):
+class DisassemblyView(MemView):
+    type = Types.DISASSEMBLY
     id = MemView.Types.DISASSEMBLY
+
+    def __init__(self, start, size):
+        super(DisassemblyView, self).__init__(self.id, start, size)
+
+    @staticmethod
+    def from_binary(data):
+        id,start,size = struct.unpack('>III',data)
+        return DisassemblyView(start,size)
 
 class Disconnect(Message):
     type = Types.DISCONNECT
@@ -126,6 +136,7 @@ messages_by_type = {Types.CONNECT  : Handshake,
                     Types.STATE    : MachineState,
                     Types.MEMWATCH : MemView,
                     Types.MEMDATA  : MemViewReply,
+                    Types.DISASSEMBLY : DisassemblyView,
 }
 
 def MessageFactory(data):

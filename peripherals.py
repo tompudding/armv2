@@ -165,7 +165,7 @@ class Application(Tkinter.Frame):
     def receive_disassembly(self, message):
         pass
 
-    def receive_memdump(self, message):
+    def receive_memdata(self, message):
         view = self.memory
         display_width = 8
         view.delete('1.0',Tkinter.END)
@@ -181,14 +181,6 @@ class Application(Tkinter.Frame):
                 view.insert('%d.0' % (i+1), line + '\n')
             else:
                 view.insert('%d.0' % (i+1), line + '\n')
-
-    def receive_memdata(self, message):
-        if message.id == messages.MemView.Types.MEMDUMP:
-            self.receive_memdump(message)
-        else:
-            self.receive_disassembly(message)
-
-
 
 def main():
     root = Tkinter.Tk()

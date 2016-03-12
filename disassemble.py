@@ -297,13 +297,3 @@ def Disassemble(cpu,breakpoints,start,end):
             for byte in ((ord(cpu.mem[addr+i]) << ((3-i)*8)) for i in xrange(4)):
                 word |= byte
         yield InstructionFactory(addr,word,cpu)
-
-def DisassembleData(cpu, breakpoints, data, start):
-    for i in xrange(0,len(data),4):
-        addr = start + i
-        if addr in breakpoints:
-            word = breakpoints[addr]
-        else:
-            word = struct.unpack('<I',data[i:i+4])[0]
-        yield InstructionFactory(addr, word)
-        

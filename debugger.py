@@ -6,6 +6,7 @@ import os
 import string
 import glob
 import messages
+import disassemble
 from pygame.locals import *
 
 
@@ -25,7 +26,9 @@ class Debugger(object):
                          messages.Types.UNSETBKPT : self.handle_unset_breakpoint,
                          messages.Types.MEMWATCH  : self.handle_memory_watch,
                          messages.Types.UNWATCH   : self.handle_memory_unwatch,
-                         messages.Types.CONNECT   : self.handle_connect}
+                         messages.Types.CONNECT   : self.handle_connect,
+                         messages.Types.DISASSEMBLY : self.handle_disassembly,
+        }
 
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
@@ -74,6 +77,11 @@ class Debugger(object):
         print 'Got connect in debugger'
         #On connect we send an initial update
         self.send_register_update()
+
+    def handle_disassembly(self, message):
+        print 'jim'
+        dis = disassemble.Disassemble(self.machine, self.breakpoints, message.start, message.start + message.size)
+        print dis
 
     def send_register_update(self):
         self.connection.send(messages.MachineState(self.machine.regs,self.machine.mode,self.machine.pc))
