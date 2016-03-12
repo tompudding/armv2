@@ -67,6 +67,7 @@ class MachineState(Message):
         mode,pc = struct.unpack('>II',data[16*4:])
         return MachineState(regs,mode,pc)
 
+
 class MemView(Message):
     type = Types.MEMWATCH
     class Types:
@@ -88,10 +89,12 @@ class MemView(Message):
         id,start,size = struct.unpack('>III',data)
         return MemView(id, start,size)
 
+
 class MemdumpView(MemView):
     id = MemView.Types.MEMDUMP
     def __init__(self, start, size):
         super(MemdumpView,self).__init__(self.id, start, size)
+
 
 class MemViewReply(MemView):
     type = Types.MEMDATA
@@ -134,33 +137,38 @@ def MessageFactory(data):
 class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
     select_timeout = 0.5
     total_timeout = 1.0
-    def dispatch_message(self):
-        data = []
+    def read_message(self):
         ready = select.select([self.request], [], [], self.select_timeout)
-        needed = None
         if ready[0]:
             new_data = self.request.recv(1024)
             if not new_data:
                 raise socket.error()
-            data.append(new_data)
-            if needed == None:
-                #We haven't received a length yet
-                sofar = ''.join(data)
-                if len(sofar) > 4:
-                    needed = struct.unpack('>I',sofar[:4])[0]
-                    data = [sofar[4:]]
-                    print 'Got needed %d' % needed
-            if needed != None and sum((len(d) for d in data)) >= needed:
-                print 'Got a message!'
-                message = MessageFactory(''.join(data))
-                data = []
-                if message:
-                    return self.server.comms.handle(message)
+            self.process_data(new_data)
+
+    def set_needed(self):
+        self.needed = None
+        if len(self.data) > 4:
+            self.needed = struct.unpack('>I',self.data[:4])[0]
+            self.data = self.data[4:]
+            #print 'Got needed %d' % self.needed
+
+    def process_data(self, data):
+        self.data = self.data + data
+        if self.needed == None:
+            self.set_needed()
+        while self.needed != None and len(self.data) >= self.needed:
+            message = MessageFactory(self.data[:self.needed])
+            self.data = self.data[self.needed:]
+            self.set_needed()
+            if message:
+                self.server.comms.handle(message)
 
     def handle(self):
         try:
+            self.data = ''
+            self.needed = None
             while not self.server.done:
-                self.dispatch_message()
+                self.read_message()
         except socket.error as e:
             print 'Got socket error'
             self.server.comms.disconnect()
