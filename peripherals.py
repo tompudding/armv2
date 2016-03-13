@@ -3,6 +3,7 @@ import random
 import disassemble
 import messages
 import string
+import struct
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -28,9 +29,12 @@ class Application(Tkinter.Frame):
                                  messages.Types.CONNECT    : self.connected,
                                  messages.Types.STATE      : self.receive_register_state,
                                  messages.Types.MEMDATA    : self.receive_memdata,
+                                 messages.Types.DISASSEMBLYDATA : self.receive_disassembly,
         }
         Tkinter.Frame.__init__(self, master)
         self.stopped = False
+        self.pc = None
+        self.breakpoints = {}
         self.pack()
         self.createWidgets()
 
@@ -151,6 +155,7 @@ class Application(Tkinter.Frame):
         view = self.registers
         lines = [list() for i in xrange(view.num_lines)]
         col_width = view.width/3
+        self.pc = message.pc
         for i,reg in enumerate(message.registers):
             lines[i%len(lines)].append( ('%3s : %08x' % (register_name(i),reg)).ljust(col_width) )
 
@@ -163,7 +168,15 @@ class Application(Tkinter.Frame):
             view.insert('%d.0' % (i+1), line + '\n')
 
     def receive_disassembly(self, message):
-        pass
+        view = self.disassembly
+        view.delete('1.0',Tkinter.END)
+        for i,dis in enumerate(message.lines):
+            addr = message.start + i*4
+            word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
+            arrow = '>' if addr == self.pc else ''
+            bpt   = '*' if addr in self.breakpoints else ' '
+            line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
+            view.insert('%d.0' % (i+1), line+'\n')
 
     def receive_memdata(self, message):
         view = self.memory

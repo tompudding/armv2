@@ -79,9 +79,12 @@ class Debugger(object):
         self.send_register_update()
 
     def handle_disassembly(self, message):
-        print 'jim'
-        dis = disassemble.Disassemble(self.machine, self.breakpoints, message.start, message.start + message.size)
-        print dis
+        start = message.start
+        end   = message.start + message.size
+        dis   = list(disassemble.Disassemble(self.machine, self.breakpoints, message.start, message.start + message.size))
+        lines = [ins.ToString() for ins in dis]
+        mem   = self.machine.mem[start:end]
+        self.connection.send(messages.DisassemblyViewReply(start, mem, lines))
 
     def send_register_update(self):
         self.connection.send(messages.MachineState(self.machine.regs,self.machine.mode,self.machine.pc))

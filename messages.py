@@ -5,6 +5,9 @@ import time
 import select
 import struct
 
+class Error(Exception):
+    pass
+
 class Types:
     UNKNOWN     = 0
     RESUME      = 1
@@ -19,6 +22,7 @@ class Types:
     DISCONNECT  = 10
     STATE       = 11
     DISASSEMBLY = 12
+    DISASSEMBLYDATA = 13
 
 class DynamicObject(object):
     pass
@@ -129,6 +133,32 @@ class DisassemblyView(MemView):
         id,start,size = struct.unpack('>III',data)
         return DisassemblyView(start,size)
 
+class DisassemblyViewReply(Message):
+    type = Types.DISASSEMBLYDATA
+    def __init__(self, start, memory, lines):
+        self.start  = start
+        self.memory = memory
+        self.lines  = lines
+
+    def to_binary(self):
+        first = super(DisassemblyViewReply,self).to_binary()
+        start = struct.pack('>I',self.start)
+        mem   = struct.pack('>I',len(self.memory)) + self.memory
+        lines = '\n'.join(self.lines)
+        return first + start + mem + lines
+        
+    @staticmethod
+    def from_binary(data):
+        start,mem_length = struct.unpack('>II',data[:8])
+        mem = data[8:8+mem_length]
+        if mem_length != len(mem):
+            raise Error('Dissasembly length mismatch %d %d' % (mem_length,len(mem)))
+        lines = data[8+mem_length:].split('\n')
+        if len(lines) != mem_length/4:
+            raise Error('Dissasembly num_lines %d should be %d' % (len(lines),mem_length/4))
+        return DisassemblyViewReply(start, mem, lines)
+        
+
 class Disconnect(Message):
     type = Types.DISCONNECT
 
@@ -137,6 +167,7 @@ messages_by_type = {Types.CONNECT  : Handshake,
                     Types.MEMWATCH : MemView,
                     Types.MEMDATA  : MemViewReply,
                     Types.DISASSEMBLY : DisassemblyView,
+                    Types.DISASSEMBLYDATA : DisassemblyViewReply,
 }
 
 def MessageFactory(data):
@@ -145,6 +176,8 @@ def MessageFactory(data):
         return messages_by_type[type].from_binary(data[4:])
     except KeyError:
         print 'Unknown message type %d' % type
+    except Error as e:
+        print 'Error (%s) while receiving message of type %d' % (e,type)
 
 
 class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
