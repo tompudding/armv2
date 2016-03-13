@@ -80,7 +80,7 @@ void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
         p = "ILLEGAL INSTRUCTION";
         break;
     case 1:
-        p = "PREFECT ERROR";
+        p = "PREFETCH ERROR";
         break;
     case 2:
         p = "DATA ABORT";
