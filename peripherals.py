@@ -4,6 +4,7 @@ import disassemble
 import messages
 import string
 import struct
+import itertools
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -34,44 +35,59 @@ class Disassembly(View):
         self.height = height
         self.width  = width
         self.app    = app
-        self.widget = Tkinter.Text(app, 
-                                   width = self.width,
-                                   height = self.height,
-                                   font='TkFixedFont',
+        self.widgets = []
+        self.frame = Tkinter.Frame(app,
+                                   width=self.width,
+                                   height=self.height,
                                    borderwidth=4,
                                    bg='black',
-                                   fg='lawn green',
                                    highlightbackground='lawn green',
                                    highlightcolor='lawn green',
                                    highlightthickness=1,
-                                   state=Tkinter.DISABLED,
                                    relief=Tkinter.SOLID)
-        self.widget.pack(padx=5,pady=5)
-        super(Disassembly, self).__init__()
-        for i in xrange(self.num_lines):
-            self.widget.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
+        self.frame.pack(padx=5,pady=5)
+        self.labels = []
+        for i in xrange(self.height):
+            sv = Tkinter.StringVar()
+            sv.set('bobbins')
+            widget = Tkinter.Label(self.frame, 
+                                   width = self.width,
+                                   height = 1,
+                                   font='TkFixedFont',
+                                   bg='black',
+                                   fg='lawn green',
+                                   anchor='w',
+                                   textvariable=sv,
+                                   relief=Tkinter.SOLID)
+            widget.pack(padx=5,pady=0)
+            self.widgets.append(widget)
+            self.labels.append(sv)
+            
+        #super(Disassembly, self).__init__()
+        self.num_lines = self.height
+        self.num_cols = self.width
+        #for i in xrange(self.num_lines):
+        #    self.widget.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
 
         self.view_start = 0
         self.view_size = self.num_lines * 4
 
     def status_update(self, message):
-        self.widget.delete('1.0',Tkinter.END)
-        for i in xrange(self.num_lines):
+        for i,label in enumerate(self.labels):
             if i == self.num_lines/2:
                 content = ('*** %s ***' % message).center(self.width)
             else:
                 content = ' '*self.width
-            self.widget.insert('%d.0' % (i+1), content + '\n')
+            label.set(str(content))
 
     def receive(self, message):
-        self.widget.delete('1.0',Tkinter.END)
-        for i,dis in enumerate(message.lines):
+        for i,(dis,label) in enumerate(itertools.izip(message.lines,self.labels)):
             addr = message.start + i*4
             word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
             arrow = '>' if addr == self.app.pc else ''
             bpt   = '*' if addr in self.app.breakpoints else ' '
             line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
-            self.widget.insert('%d.0' % (i+1), line+'\n')
+            label.set(line)
 
 
 
