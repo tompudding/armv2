@@ -23,6 +23,58 @@ def register_name(i):
     else:
         return ['fp','sp','lr','r15'][i-12]
 
+class View(object):
+    def __init__(self):
+        self.num_lines = self.widget.config()['height'][-1]
+        self.num_cols  = self.widget.config()['width'][-1]
+        
+class Disassembly(View):
+    def __init__(self, app, height, width):
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        self.height = height
+        self.width  = width
+        self.app    = app
+        self.widget = Tkinter.Text(app, 
+                                   width = self.width,
+                                   height = self.height,
+                                   font='TkFixedFont',
+                                   borderwidth=4,
+                                   bg='black',
+                                   fg='lawn green',
+                                   highlightbackground='lawn green',
+                                   highlightcolor='lawn green',
+                                   highlightthickness=1,
+                                   state=Tkinter.DISABLED,
+                                   relief=Tkinter.SOLID)
+        self.widget.pack(padx=5,pady=5)
+        super(Disassembly, self).__init__()
+        for i in xrange(self.num_lines):
+            self.widget.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
+
+        self.view_start = 0
+        self.view_size = self.num_lines * 4
+
+    def status_update(self, message):
+        self.widget.delete('1.0',Tkinter.END)
+        for i in xrange(self.num_lines):
+            if i == self.num_lines/2:
+                content = ('*** %s ***' % message).center(self.width)
+            else:
+                content = ' '*self.width
+            self.widget.insert('%d.0' % (i+1), content + '\n')
+
+    def receive(self, message):
+        self.widget.delete('1.0',Tkinter.END)
+        for i,dis in enumerate(message.lines):
+            addr = message.start + i*4
+            word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
+            arrow = '>' if addr == self.app.pc else ''
+            bpt   = '*' if addr in self.app.breakpoints else ' '
+            line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
+            self.widget.insert('%d.0' % (i+1), line+'\n')
+
+
+
 class Application(Tkinter.Frame):
     def __init__(self, master):
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
@@ -50,23 +102,7 @@ class Application(Tkinter.Frame):
 
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
-        self.disassembly = Tkinter.Text(self,
-                                        width=50,
-                                        height=14,
-                                        font='TkFixedFont',
-                                        borderwidth=4,
-                                        bg='black',
-                                        fg='lawn green',
-                                        highlightbackground='lawn green',
-                                        highlightcolor='lawn green',
-                                        highlightthickness=1,
-                                        state=Tkinter.DISABLED,
-                                        relief=Tkinter.SOLID)
-        self.disassembly.num_lines = self.disassembly.config()['height'][-1]
-        self.disassembly.width = self.disassembly.config()['width'][-1]
-        self.disassembly.pack(padx=5,pady=5)
-        for i in xrange(14):
-            self.disassembly.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
+        self.disassembly = Disassembly(self, width=50, height=14)
 
         self.registers = Tkinter.Text(self,
                                       width=50,
@@ -107,15 +143,12 @@ class Application(Tkinter.Frame):
 
         self.stop_button.pack({"side": "left"})
         self.views = [self.disassembly, self.memory, self.registers]
-        for view in self.views:
+        for view in self.views[1:]:
             view.num_lines = view.config()['height'][-1]
             view.width = view.config()['width'][-1]
 
         self.memory.view_start = 0
         self.memory.view_size  = self.memory.num_lines * 8
-
-        self.disassembly.view_start = 0
-        self.disassembly.view_size  = self.disassembly.num_lines * 4
 
         self.disconnected()
 
@@ -129,7 +162,10 @@ class Application(Tkinter.Frame):
 
     def status_update(self, message):
         """Update the views to show that we're disconnected"""
-        for view in self.views:
+        for view in self.views[:1]:
+            view.status_update(message)
+
+        for view in self.views[1:]:
             view.delete('1.0',Tkinter.END)
             for i in xrange(view.num_lines):
                 if i == view.num_lines/2:
@@ -168,15 +204,7 @@ class Application(Tkinter.Frame):
             view.insert('%d.0' % (i+1), line + '\n')
 
     def receive_disassembly(self, message):
-        view = self.disassembly
-        view.delete('1.0',Tkinter.END)
-        for i,dis in enumerate(message.lines):
-            addr = message.start + i*4
-            word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
-            arrow = '>' if addr == self.pc else ''
-            bpt   = '*' if addr in self.breakpoints else ' '
-            line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
-            view.insert('%d.0' % (i+1), line+'\n')
+        self.disassembly.receive(message)
 
     def receive_memdata(self, message):
         view = self.memory
