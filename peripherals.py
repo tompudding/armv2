@@ -4,6 +4,9 @@ import disassemble
 import messages
 import string
 import struct
+import itertools
+import sys
+import Queue
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -23,8 +26,75 @@ def register_name(i):
     else:
         return ['fp','sp','lr','r15'][i-12]
 
+class View(object):
+    def __init__(self):
+        self.num_lines = self.widget.config()['height'][-1]
+        self.num_cols  = self.widget.config()['width'][-1]
+
+class Disassembly(View):
+    def __init__(self, app, height, width):
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        self.height = height
+        self.width  = width
+        self.app    = app
+        self.widgets = []
+        self.frame = Tkinter.Frame(app,
+                                   width=self.width,
+                                   height=self.height,
+                                   borderwidth=4,
+                                   bg='black',
+                                   highlightbackground='lawn green',
+                                   highlightcolor='lawn green',
+                                   highlightthickness=1,
+                                   relief=Tkinter.SOLID)
+        self.frame.pack(padx=5,pady=5)
+        self.labels = []
+        for i in xrange(self.height):
+            sv = Tkinter.StringVar()
+            sv.set('bobbins')
+            widget = Tkinter.Label(self.frame,
+                                   width = self.width,
+                                   height = 1,
+                                   font='TkFixedFont',
+                                   bg='black',
+                                   fg='lawn green',
+                                   anchor='w',
+                                   textvariable=sv,
+                                   relief=Tkinter.SOLID)
+            widget.pack(padx=5,pady=0)
+            self.widgets.append(widget)
+            self.labels.append(sv)
+
+        #super(Disassembly, self).__init__()
+        self.num_lines = self.height
+        self.num_cols = self.width
+        #for i in xrange(self.num_lines):
+        #    self.widget.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
+
+        self.view_start = 0
+        self.view_size = self.num_lines * 4
+
+    def status_update(self, message):
+        for i,label in enumerate(self.labels):
+            if i == self.num_lines/2:
+                content = ('*** %s ***' % message).center(self.width)
+            else:
+                content = ' '*self.width
+            label.set(str(content))
+
+    def receive(self, message):
+        for i,(dis,label) in enumerate(itertools.izip(message.lines,self.labels)):
+            addr = message.start + i*4
+            word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
+            arrow = '>' if addr == self.app.pc else ''
+            bpt   = '*' if addr in self.app.breakpoints else ' '
+            line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
+            label.set(line)
+
+
 class Application(Tkinter.Frame):
     def __init__(self, master):
+        self.queue = Queue.Queue()
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
                                  messages.Types.CONNECT    : self.connected,
                                  messages.Types.STATE      : self.receive_register_state,
@@ -37,6 +107,20 @@ class Application(Tkinter.Frame):
         self.breakpoints = {}
         self.pack()
         self.createWidgets()
+        self.process_messages()
+
+    def process_messages(self):
+        try:
+            while True:
+                message = self.queue.get_nowait()
+                try:
+                    handler = self.message_handlers[message.type]
+                    handler(message)
+                except KeyError:
+                    print 'Unexpected message %d' % message.type
+        except Queue.Empty:
+            pass
+        self.after(100, self.process_messages)
 
     def stop(self):
         self.stopped = True
@@ -50,24 +134,9 @@ class Application(Tkinter.Frame):
 
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
-        self.disassembly = Tkinter.Text(self,
-                                        width=50,
-                                        height=14,
-                                        font='TkFixedFont',
-                                        borderwidth=4,
-                                        bg='black',
-                                        fg='lawn green',
-                                        highlightbackground='lawn green',
-                                        highlightcolor='lawn green',
-                                        highlightthickness=1,
-                                        state=Tkinter.DISABLED,
-                                        relief=Tkinter.SOLID)
-        self.disassembly.num_lines = self.disassembly.config()['height'][-1]
-        self.disassembly.width = self.disassembly.config()['width'][-1]
-        self.disassembly.pack(padx=5,pady=5)
-        for i in xrange(14):
-            self.disassembly.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
 
+        self.dead = False
+        self.disassembly = Disassembly(self, width=50, height=14)
         self.registers = Tkinter.Text(self,
                                       width=50,
                                       height=8,
@@ -107,29 +176,24 @@ class Application(Tkinter.Frame):
 
         self.stop_button.pack({"side": "left"})
         self.views = [self.disassembly, self.memory, self.registers]
-        for view in self.views:
+        for view in self.views[1:]:
             view.num_lines = view.config()['height'][-1]
             view.width = view.config()['width'][-1]
 
         self.memory.view_start = 0
         self.memory.view_size  = self.memory.num_lines * 8
-
-        self.disassembly.view_start = 0
-        self.disassembly.view_size  = self.disassembly.num_lines * 4
-
-        self.disconnected()
+        self.queue.put(messages.Disconnect())
 
     def message_handler(self, message):
-        try:
-            handler = self.message_handlers[message.type]
-        except KeyError:
-            print 'Unexpected message %d' % message.type
-            return
-        handler(message)
+        if not self.dead:
+            self.queue.put(message)
 
     def status_update(self, message):
         """Update the views to show that we're disconnected"""
-        for view in self.views:
+        for view in self.views[:1]:
+            view.status_update(message)
+
+        for view in self.views[1:]:
             view.delete('1.0',Tkinter.END)
             for i in xrange(view.num_lines):
                 if i == view.num_lines/2:
@@ -138,12 +202,13 @@ class Application(Tkinter.Frame):
                     content = ' '*view.width
                 view.insert('%d.0' % (i+1), content + '\n')
 
-    def disconnected(self, message=None):
+    def disconnected(self, message):
         try:
             self.status_update('DISCONNECTED')
         except (Tkinter.TclError,RuntimeError) as e:
+            self.dead = True
             #This can happen if we're bringing everything down
-            print 'Ignoring TCL error during disconnect'
+            print 'Ignoring TCL error during disconnect',self.dead
 
     def connected(self, message=None):
         self.status_update('CONNECTED')
@@ -168,15 +233,7 @@ class Application(Tkinter.Frame):
             view.insert('%d.0' % (i+1), line + '\n')
 
     def receive_disassembly(self, message):
-        view = self.disassembly
-        view.delete('1.0',Tkinter.END)
-        for i,dis in enumerate(message.lines):
-            addr = message.start + i*4
-            word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
-            arrow = '>' if addr == self.pc else ''
-            bpt   = '*' if addr in self.breakpoints else ' '
-            line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
-            view.insert('%d.0' % (i+1), line+'\n')
+        self.disassembly.receive(message)
 
     def receive_memdata(self, message):
         view = self.memory
@@ -196,6 +253,7 @@ class Application(Tkinter.Frame):
                 view.insert('%d.0' % (i+1), line + '\n')
 
 def main():
+    #import hanging_threads
     root = Tkinter.Tk()
     root.tk_setPalette(background='black',
                        highlightbackground='lawn green')
