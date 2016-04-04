@@ -91,7 +91,6 @@ class Disassembly(View):
             line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
             label.set(line)
 
-
 class Application(Tkinter.Frame):
     def __init__(self, master):
         self.queue = Queue.Queue()
@@ -134,7 +133,6 @@ class Application(Tkinter.Frame):
 
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
-
         self.dead = False
         self.disassembly = Disassembly(self, width=50, height=14)
         self.registers = Tkinter.Text(self,
@@ -182,6 +180,7 @@ class Application(Tkinter.Frame):
 
         self.memory.view_start = 0
         self.memory.view_size  = self.memory.num_lines * 8
+
         self.queue.put(messages.Disconnect())
 
     def message_handler(self, message):
