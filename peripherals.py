@@ -289,6 +289,7 @@ def main():
             emulator = emulate.Emulator()
             embed.bind("<Key>", emulator.key_up)
             embed.bind("<KeyRelease>", emulator.key_down)
+            embed.bind("<Button-1>", lambda x: embed.focus_set())
             emulator.run( callback=app.update )
     finally:
         try:
