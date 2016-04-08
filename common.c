@@ -119,5 +119,6 @@ void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
     dump_hex(pc-8,cursor_pos);
 
     while(1) {
+        wait_for_interrupt();
     }
 }

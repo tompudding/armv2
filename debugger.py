@@ -15,9 +15,8 @@ class Debugger(object):
     FRAME_CYCLES = 66666
     PORT = 16705
 
-    def __init__(self,machine,screen):
+    def __init__(self,machine):
         self.machine          = machine
-        self.screen           = screen
         self.breakpoints      = {}
         self.handlers = {messages.Types.RESUME    : self.handle_resume,
                          messages.Types.STEP      : self.handle_step,

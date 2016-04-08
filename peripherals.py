@@ -251,7 +251,7 @@ class Application(Tkinter.Frame):
             else:
                 view.insert('%d.0' % (i+1), line + '\n')
 
-def main():
+def run():
     #import hanging_threads
     root = Tkinter.Tk()
     root.tk_setPalette(background='black',
@@ -262,6 +262,39 @@ def main():
         app.client = client
         app.mainloop()
     root.destroy()
+
+def main():
+    import pygame
+    import emulate
+    import os
+    root = Tkinter.Tk()
+    root.tk_setPalette(background='black',
+                       highlightbackground='lawn green')
+    embed = Tkinter.Frame(root, width = 960, height = 720)
+    os.environ['SDL_WINDOWID'] = str(embed.winfo_id())
+    debugger = Tkinter.Frame(root)
+    embed.pack(side=Tkinter.LEFT)
+    app = Application(master=debugger)
+    debugger.pack(side=Tkinter.RIGHT)
+
+    try:
+        with messages.Client('localhost', 0x4141, callback=app.message_handler) as client:
+            print client
+            app.client = client
+            #app.mainloop()
+            app.update()
+            #os.environ['SDL_VIDEODRIVER'] = 'windib'
+            embed.focus_set()
+            emulate.init()
+            emulator = emulate.Emulator()
+            embed.bind("<Key>", emulator.key_up)
+            embed.bind("<KeyRelease>", emulator.key_down)
+            emulator.run( callback=app.update )
+    finally:
+        try:
+            root.destroy()
+        except Tkinter.TclError as e:
+            pass
 
 if __name__ == '__main__':
     main()

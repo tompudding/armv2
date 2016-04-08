@@ -14,7 +14,6 @@ from optparse import OptionParser
 
 width,height = (960, 720)
 globals.screen = Point(width,height)
-clock = pygame.time.Clock()
 
 def new_machine():
     machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
@@ -28,51 +27,91 @@ def new_machine():
         raise
     return machine
 
-def mainloop(dbg):
-    globals.t = pygame.time.get_ticks()
-    dbg.StepNum(dbg.FRAME_CYCLES)
-    for event in pygame.event.get():
-        if event.type == pygame.locals.QUIT:
-            return True
+class Emulator(object):
+    def __init__(self,callback=None):
 
-        if event.type == pygame.USEREVENT:
-            if not dbg.stopped:
-                dbg.machine.clock.fired()
+        self.machine = new_machine()
 
-        if event.type == pygame.locals.KEYDOWN:
-            key = event.key
+        try:
+            self.dbg = debugger.Debugger(self.machine)
+        except:
+            self.machine.Delete()
+            raise
+
+    def run(self, callback=None):
+        try:
+            done = False
+            while not done:
+                done = self.mainloop(callback)
+
+        finally:
+            self.dbg.exit()
+            armv2.DebugLog('deleting machine')
             try:
-                #Try to use the unicode field instead. If it doesn't work for some reason,
-                #use the old value
-                key = ord(event.unicode)
-            except (TypeError,AttributeError):
+                self.dbg.machine.Delete()
+            except:
                 pass
-            if key < 256:
-                dbg.machine.keyboard.KeyDown(key)
-        elif event.type == pygame.locals.KEYUP:
-            key = event.key
+
+    def key_up(self, event):
+        try:
+            key = ord(event.char)
+        except TypeError:
+            return
+        self.dbg.machine.keyboard.KeyDown(key)
+
+    def key_down(self, event):
+        try:
+            key = ord(event.char)
+        except TypeError:
+            return
+        self.dbg.machine.keyboard.KeyUp(key)
+
+    def mainloop(self, callback):
+        globals.t = pygame.time.get_ticks()
+        self.dbg.StepNum(self.dbg.FRAME_CYCLES)
+        for event in pygame.event.get():
+            if event.type == pygame.locals.QUIT:
+                return True
+
+            if event.type == pygame.USEREVENT:
+                if not self.dbg.stopped:
+                    self.dbg.machine.clock.fired()
+
+            if event.type == pygame.locals.KEYDOWN:
+                key = event.key
+                try:
+                    #Try to use the unicode field instead. If it doesn't work for some reason,
+                    #use the old value
+                    key = ord(event.unicode)
+                except (TypeError,AttributeError):
+                    pass
+                if key < 256:
+                    self.dbg.machine.keyboard.KeyDown(key)
+            elif event.type == pygame.locals.KEYUP:
+                key = event.key
+                try:
+                    #Try to use the unicode field instead. If it doesn't work for some reason,
+                    #use the old value
+                    key = ord(event.unicode)
+                except (TypeError,AttributeError):
+                    pass
+                if key < 256:
+                    self.dbg.machine.keyboard.KeyUp(key)
+        drawing.NewFrame()
+        self.dbg.machine.display.Update()
+        drawing.EndFrame()
+        pygame.display.flip()
+        if callback:
             try:
-                #Try to use the unicode field instead. If it doesn't work for some reason,
-                #use the old value
-                key = ord(event.unicode)
-            except (TypeError,AttributeError):
-                pass
-            if key < 256:
-                dbg.machine.keyboard.KeyUp(key)
-    drawing.NewFrame()
-    dbg.machine.display.Update()
-    drawing.EndFrame()
-    pygame.display.flip()
-    return False
+                callback()
+            except:
+                callback = None
+        return False
 
-def main():
-    parser = OptionParser(usage="usage: %prog [options] filename",
-                          version="%prog 1.0")
-
+def init():
     if hasattr(sys, "_MEIPASS"):
         os.chdir(sys._MEIPASS)
 
-    (options, args) = parser.parse_args()
     pygame.init()
     pygame.display.set_caption('Synapse')
     #pygame.mouse.set_visible(0)
@@ -85,34 +124,16 @@ def main():
     screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
     drawing.Init(width, height, hardware.Display.pixel_size)
     drawing.InitDrawing()
-    machine = new_machine()
-
-    try:
-        dbg = debugger.Debugger(machine, screen)
-    except:
-        machine.Delete()
-        raise
-
-    try:
-        done = False
-        while not done:
-            done = mainloop(dbg)
-
-    finally:
-        dbg.exit()
-        armv2.DebugLog('deleting machine')
-        try:
-            dbg.machine.Delete()
-        except:
-            pass
 
 if __name__ == '__main__':
     from multiprocessing import Process
     import peripherals,time
 
-    p = Process(target=peripherals.main)
+    p = Process(target=peripherals.run)
     p.start()
-    main()
+    init()
+    emulator = Emulator()
+    emulator.run()
     pygame.display.quit()
     p.join()
 
