@@ -47,7 +47,7 @@ class Disassembly(View):
                                    highlightcolor='lawn green',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
-        self.frame.pack(padx=5,pady=5)
+        self.frame.pack(padx=5,pady=5,side=Tkinter.TOP)
         self.labels = []
         for i in xrange(self.height):
             sv = Tkinter.StringVar()
@@ -55,6 +55,8 @@ class Disassembly(View):
             widget = Tkinter.Label(self.frame,
                                    width = self.width,
                                    height = 1,
+                                   borderwidth = 0,
+                                   pady=0,
                                    font='TkFixedFont',
                                    bg='black',
                                    fg='lawn green',
@@ -275,7 +277,7 @@ def main():
     debugger = Tkinter.Frame(root)
     embed.pack(side=Tkinter.LEFT)
     app = Application(master=debugger)
-    debugger.pack(side=Tkinter.RIGHT)
+    debugger.pack(side=Tkinter.TOP)
 
     try:
         with messages.Client('localhost', 0x4141, callback=app.message_handler) as client:
