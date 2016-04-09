@@ -32,12 +32,18 @@ class View(object):
         self.num_cols  = self.widget.config()['width'][-1]
 
 class Disassembly(View):
+    unselected_fg = 'lawn green'
+    unselected_bg = 'black'
+    #Inverted for selected
+    selected_fg = unselected_bg
+    selected_bg = unselected_fg
     def __init__(self, app, height, width):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.height = height
         self.width  = width
         self.app    = app
         self.widgets = []
+        self.selected = None
         self.frame = Tkinter.Frame(app,
                                    width=self.width,
                                    height=self.height,
@@ -48,6 +54,8 @@ class Disassembly(View):
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
         self.frame.pack(padx=5,pady=5,side=Tkinter.TOP)
+        self.frame.bind("<KeyRelease>", self.key_up)
+        self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.labels = []
         for i in xrange(self.height):
             sv = Tkinter.StringVar()
@@ -58,11 +66,12 @@ class Disassembly(View):
                                    borderwidth = 0,
                                    pady=0,
                                    font='TkFixedFont',
-                                   bg='black',
-                                   fg='lawn green',
+                                   bg=self.unselected_bg,
+                                   fg=self.unselected_fg,
                                    anchor='w',
                                    textvariable=sv,
                                    relief=Tkinter.SOLID)
+            widget.bind("<Button-1>", lambda x,i=i: [self.select(i),self.frame.focus_set()])
             widget.pack(padx=5,pady=0)
             self.widgets.append(widget)
             self.labels.append(sv)
@@ -75,6 +84,22 @@ class Disassembly(View):
 
         self.view_start = 0
         self.view_size = self.num_lines * 4
+        self.select(0)
+
+    def select(self, num):
+        if num == self.selected:
+            return
+        #turn off the old one
+        if self.selected is not None:
+            self.widgets[self.selected].configure(fg=self.unselected_fg, bg=self.unselected_bg)
+        self.selected = num
+        #turn on the new one
+        if self.selected is not None:
+            self.widgets[self.selected].configure(fg=self.selected_fg, bg=self.selected_bg)
+
+
+    def key_up(self, event):
+        print event
 
     def status_update(self, message):
         for i,label in enumerate(self.labels):
