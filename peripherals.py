@@ -54,7 +54,7 @@ class Disassembly(View):
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
         self.frame.pack(padx=5,pady=5,side=Tkinter.TOP)
-        self.frame.bind("<KeyRelease>", self.key_up)
+        self.frame.bind("<Key>", self.key_down)
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.labels = []
         for i in xrange(self.height):
@@ -98,7 +98,7 @@ class Disassembly(View):
             self.widgets[self.selected].configure(fg=self.selected_fg, bg=self.selected_bg)
 
 
-    def key_up(self, event):
+    def key_down(self, event):
         print event
 
     def status_update(self, message):
