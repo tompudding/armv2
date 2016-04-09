@@ -39,7 +39,8 @@ class Disassembly(View):
     selected_bg = unselected_fg
     word_size = 4
 
-    view_min = 0
+    buffer = 20 #number of lines above and below to cache
+    view_min = -buffer*word_size
     view_max = 1<<26
     def __init__(self, app, height, width):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
@@ -63,37 +64,44 @@ class Disassembly(View):
         self.frame.bind("<Down>", self.keyboard_down)
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.labels = []
-        for i in xrange(self.height):
+        for i in xrange(self.height + self.buffer*2):
             sv = Tkinter.StringVar()
             sv.set('bobbins')
-            widget = Tkinter.Label(self.frame,
-                                   width = self.width,
-                                   height = 1,
-                                   borderwidth = 0,
-                                   pady=0,
-                                   font='TkFixedFont',
-                                   bg=self.unselected_bg,
-                                   fg=self.unselected_fg,
-                                   anchor='w',
-                                   textvariable=sv,
-                                   relief=Tkinter.SOLID)
-            widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.word_size),self.frame.focus_set()])
-            widget.pack(padx=5,pady=0)
-            self.widgets.append(widget)
+            if 0 <= i-self.buffer < self.height:
+                widget = Tkinter.Label(self.frame,
+                                       width = self.width,
+                                       height = 1,
+                                       borderwidth = 0,
+                                       pady=0,
+                                       font='TkFixedFont',
+                                       bg=self.unselected_bg,
+                                       fg=self.unselected_fg,
+                                       anchor='w',
+                                       textvariable=sv,
+                                       relief=Tkinter.SOLID)
+                widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.word_size),self.frame.focus_set()])
+                widget.pack(padx=5,pady=0)
+                self.widgets.append(widget)
             self.labels.append(sv)
 
         #super(Disassembly, self).__init__()
-        self.num_lines = self.height
+        self.num_lines = self.height + self.buffer*2
         self.num_cols = self.width
         #for i in xrange(self.num_lines):
         #    self.widget.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
 
-        self.view_start = 0
+        self.view_start = -self.buffer*self.word_size
         self.view_size = self.num_lines * self.word_size
         self.select(0)
 
     def update(self):
-        self.app.send_message(messages.DisassemblyView(self.view_start, self.view_size))
+        view_start = self.view_start
+        view_size = self.view_size
+        if view_start < 0:
+            view_size += view_start
+            view_start = 0
+        if view_size > 0:
+            self.app.send_message(messages.DisassemblyView(view_start, view_size))
 
     def select(self, addr):
         selected = (addr - self.view_start)/self.word_size
@@ -101,12 +109,17 @@ class Disassembly(View):
             selected = None
         #turn off the old one
         if self.selected is not None:
-            self.widgets[self.selected].configure(fg=self.unselected_fg, bg=self.unselected_bg)
+            widget_selected = self.selected - self.buffer
+            if widget_selected >= 0 and widget_selected < len(self.widgets):
+                self.widgets[widget_selected].configure(fg=self.unselected_fg, bg=self.unselected_bg)
+
         self.selected = selected
         self.selected_addr = addr
         #turn on the new one
         if self.selected is not None:
-            self.widgets[self.selected].configure(fg=self.selected_fg, bg=self.selected_bg)
+            widget_selected = self.selected - self.buffer
+            if widget_selected >= 0 and widget_selected < len(self.widgets):
+                self.widgets[widget_selected].configure(fg=self.selected_fg, bg=self.selected_bg)
 
 
     def keyboard_up(self, event):
@@ -145,7 +158,6 @@ class Disassembly(View):
                 unknown_size = adjust
 
             for i in xrange(start, step, stride):
-                print i,amount
                 if i + amount >= 0 and i + amount < len(self.labels):
                     new_value = self.labels[i+amount].get()
                 else:
@@ -153,6 +165,12 @@ class Disassembly(View):
                 self.labels[i].set(new_value)
 
         #we now need an update for the region we don't have
+        if unknown_start < 0:
+            unknown_size += unknown_start
+            unknown_start = 0
+        if unknown_size <= 0:
+            #no point
+            return
         self.app.send_message(messages.DisassemblyView(unknown_start, unknown_size))
 
         #self.update()
