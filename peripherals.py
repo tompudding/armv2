@@ -62,6 +62,9 @@ class Disassembly(View):
         self.frame.pack(padx=5,pady=5,side=Tkinter.TOP)
         self.frame.bind("<Up>", self.keyboard_up)
         self.frame.bind("<Down>", self.keyboard_down)
+        self.frame.bind("<Next>", self.keyboard_page_down)
+        self.frame.bind("<Prior>", self.keyboard_page_up)
+
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.labels = []
         for i in xrange(self.height + self.buffer*2):
@@ -128,6 +131,12 @@ class Disassembly(View):
     def keyboard_down(self, event):
         self.adjust_view(1)
 
+    def keyboard_page_up(self, event):
+        self.adjust_view(-self.height)
+
+    def keyboard_page_down(self, event):
+        self.adjust_view(self.height)
+
     def adjust_view(self, amount):
         if amount == 0:
             return
@@ -187,7 +196,7 @@ class Disassembly(View):
         for (i,dis) in enumerate(message.lines):
             addr = message.start + i*4
             label_index = (addr - self.view_start)/self.word_size
-            if label_index < 0 or label_index > len(self.labels):
+            if label_index < 0 or label_index >= len(self.labels):
                 continue
             word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
             arrow = '>' if addr == self.app.pc else ''
