@@ -40,7 +40,7 @@ class Disassembly(View):
     word_size = 4
 
     view_min = 0
-    view_max = 100
+    view_max = 1<<26
     def __init__(self, app, height, width):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.height = height
@@ -48,6 +48,7 @@ class Disassembly(View):
         self.app    = app
         self.widgets = []
         self.selected = None
+        self.selected_addr = None
         self.frame = Tkinter.Frame(app,
                                    width=self.width,
                                    height=self.height,
@@ -76,7 +77,7 @@ class Disassembly(View):
                                    anchor='w',
                                    textvariable=sv,
                                    relief=Tkinter.SOLID)
-            widget.bind("<Button-1>", lambda x,i=i: [self.select(i),self.frame.focus_set()])
+            widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.word_size),self.frame.focus_set()])
             widget.pack(padx=5,pady=0)
             self.widgets.append(widget)
             self.labels.append(sv)
@@ -94,17 +95,18 @@ class Disassembly(View):
     def update(self):
         self.app.send_message(messages.DisassemblyView(self.view_start, self.view_size))
 
-    def select(self, num):
-        if num == self.selected:
-            return
+    def select(self, addr):
+        selected = (addr - self.view_start)/self.word_size
+        if selected < 0 or selected >= len(self.labels):
+            selected = None
         #turn off the old one
         if self.selected is not None:
             self.widgets[self.selected].configure(fg=self.unselected_fg, bg=self.unselected_bg)
-        self.selected = num
+        self.selected = selected
+        self.selected_addr = addr
         #turn on the new one
         if self.selected is not None:
             self.widgets[self.selected].configure(fg=self.selected_fg, bg=self.selected_bg)
-            self.selected_addr = self.view_start + self.selected * self.word_size
 
 
     def keyboard_up(self, event):
@@ -128,6 +130,8 @@ class Disassembly(View):
         adjust = new_start - self.view_start
         amount = adjust / self.word_size
         self.view_start = new_start
+
+        self.select(self.selected_addr)
 
         if abs(amount) < self.view_size/self.word_size:
             #we can reuse some labels
