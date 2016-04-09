@@ -37,6 +37,10 @@ class Disassembly(View):
     #Inverted for selected
     selected_fg = unselected_bg
     selected_bg = unselected_fg
+    word_size = 4
+
+    view_min = 0
+    view_max = 100
     def __init__(self, app, height, width):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.height = height
@@ -54,7 +58,8 @@ class Disassembly(View):
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
         self.frame.pack(padx=5,pady=5,side=Tkinter.TOP)
-        self.frame.bind("<Key>", self.key_down)
+        self.frame.bind("<Up>", self.keyboard_up)
+        self.frame.bind("<Down>", self.keyboard_down)
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.labels = []
         for i in xrange(self.height):
@@ -83,8 +88,11 @@ class Disassembly(View):
         #    self.widget.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
 
         self.view_start = 0
-        self.view_size = self.num_lines * 4
+        self.view_size = self.num_lines * self.word_size
         self.select(0)
+
+    def update(self):
+        self.app.send_message(messages.DisassemblyView(self.view_start, self.view_size))
 
     def select(self, num):
         if num == self.selected:
@@ -96,10 +104,54 @@ class Disassembly(View):
         #turn on the new one
         if self.selected is not None:
             self.widgets[self.selected].configure(fg=self.selected_fg, bg=self.selected_bg)
+            self.selected_addr = self.view_start + self.selected * self.word_size
 
 
-    def key_down(self, event):
-        print event
+    def keyboard_up(self, event):
+        self.adjust_view(-1)
+
+    def keyboard_down(self, event):
+        self.adjust_view(1)
+
+    def adjust_view(self, amount):
+        if amount == 0:
+            return
+        new_start = self.view_start + amount*self.word_size
+        if new_start < self.view_min:
+            new_start = self.view_min
+        if new_start > self.view_max:
+            new_start = self.view_max
+
+        if new_start == self.view_start:
+            return
+
+        adjust = new_start - self.view_start
+        amount = adjust / self.word_size
+        self.view_start = new_start
+
+        if abs(amount) < self.view_size/self.word_size:
+            #we can reuse some labels
+            if amount < 0:
+                start,step,stride = len(self.labels)-1, -1, -1
+                unknown_start = self.view_start
+                unknown_size = -adjust
+            else:
+                start,step,stride = 0, len(self.labels), 1
+                unknown_start = self.view_start + self.view_size -adjust
+                unknown_size = adjust
+
+            for i in xrange(start, step, stride):
+                print i,amount
+                if i + amount >= 0 and i + amount < len(self.labels):
+                    new_value = self.labels[i+amount].get()
+                else:
+                    new_value = ' '*self.width
+                self.labels[i].set(new_value)
+
+        #we now need an update for the region we don't have
+        self.app.send_message(messages.DisassemblyView(unknown_start, unknown_size))
+
+        #self.update()
 
     def status_update(self, message):
         for i,label in enumerate(self.labels):
@@ -110,13 +162,16 @@ class Disassembly(View):
             label.set(str(content))
 
     def receive(self, message):
-        for i,(dis,label) in enumerate(itertools.izip(message.lines,self.labels)):
+        for (i,dis) in enumerate(message.lines):
             addr = message.start + i*4
+            label_index = (addr - self.view_start)/self.word_size
+            if label_index < 0 or label_index > len(self.labels):
+                continue
             word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
             arrow = '>' if addr == self.app.pc else ''
             bpt   = '*' if addr in self.app.breakpoints else ' '
             line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
-            label.set(line)
+            self.labels[label_index].set(line)
 
 class Application(Tkinter.Frame):
     def __init__(self, master):
@@ -210,6 +265,9 @@ class Application(Tkinter.Frame):
 
         self.queue.put(messages.Disconnect())
 
+    def send_message(self, message):
+        self.client.send(message)
+
     def message_handler(self, message):
         if not self.dead:
             self.queue.put(message)
@@ -239,7 +297,8 @@ class Application(Tkinter.Frame):
     def connected(self, message=None):
         self.status_update('CONNECTED')
         self.client.send(messages.MemdumpView(self.memory.view_start, self.memory.view_size))
-        self.client.send(messages.DisassemblyView(self.disassembly.view_start, self.disassembly.view_size))
+        self.disassembly.update()
+
 
     def receive_register_state(self, message):
         #We'll do 3 columns
