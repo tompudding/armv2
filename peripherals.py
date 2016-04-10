@@ -31,6 +31,12 @@ class View(object):
         self.num_lines = self.widget.config()['height'][-1]
         self.num_cols  = self.widget.config()['width'][-1]
 
+    def focus_set(self):
+        self.frame.focus_set()
+
+    def switch_from(self, event):
+        self.app.next_item(self).focus_set()
+        return 'break'
 
     def status_update(self, message):
         for i,label in enumerate(self.labels):
@@ -59,7 +65,7 @@ class Scrollable(View):
                                    borderwidth=4,
                                    bg='black',
                                    highlightbackground='lawn green',
-                                   highlightcolor='lawn green',
+                                   highlightcolor='white',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
         self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
@@ -70,6 +76,7 @@ class Scrollable(View):
         self.frame.bind("<MouseWheel>", self.mouse_wheel)
         self.frame.bind("<Button-4>", self.keyboard_up)
         self.frame.bind("<Button-5>", self.keyboard_down)
+        self.frame.bind("<Tab>", self.switch_from)
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.labels = []
@@ -259,9 +266,10 @@ class Registers(View):
                                    borderwidth=4,
                                    bg='black',
                                    highlightbackground='lawn green',
-                                   highlightcolor='lawn green',
+                                   highlightcolor='white',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
+        self.frame.bind("<Tab>", self.switch_from)
         self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
         self.labels = []
         for i in xrange(self.num_entries):
@@ -292,6 +300,10 @@ class Registers(View):
 
         self.labels[16].set(('%5s : %8s' % ('MODE',mode_names[message.mode]) ))
         self.labels[17].set(('%5s : %08x' % ('PC',message.pc)))
+
+    def focus_set(self):
+        self.frame.focus_set()
+        return 'break'
 
     def register_name(self, i):
         if i < 12:
@@ -332,8 +344,9 @@ class Application(Tkinter.Frame):
     selected_fg = unselected_bg
     selected_bg = unselected_fg
 
-    def __init__(self, master):
+    def __init__(self, master, emulator_frame):
         self.emulator = None
+        self.emulator_frame = emulator_frame
         self.queue = Queue.Queue()
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
                                  messages.Types.CONNECT    : self.connected,
@@ -387,6 +400,17 @@ class Application(Tkinter.Frame):
         if self.emulator:
             self.emulator.restart()
 
+    def next_item(self, item):
+        try:
+            index = self.views.index(item)
+        except ValueError:
+            return None
+        try:
+            return self.views[index + 1]
+        except IndexError:
+            #we go back to the emulator
+            return self.emulator_frame
+
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
@@ -402,7 +426,7 @@ class Application(Tkinter.Frame):
         self.restart_button = Button(self.frame, 'restart', self.restart)
         self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
 
-        self.views = [self.disassembly, self.memory, self.registers]
+        self.views = [self.disassembly, self.registers, self.memory]
 
         self.queue.put(messages.Disconnect())
 
@@ -453,6 +477,10 @@ def run():
         app.mainloop()
     root.destroy()
 
+def switch_to_disassembly(app, event):
+    app.disassembly.focus_set()
+    return 'break'
+
 def main():
     import pygame
     import emulate
@@ -464,7 +492,7 @@ def main():
     os.environ['SDL_WINDOWID'] = str(embed.winfo_id())
     debugger = Tkinter.Frame(root)
     embed.pack(side=Tkinter.LEFT)
-    app = Application(master=debugger)
+    app = Application(master=debugger, emulator_frame=embed)
     debugger.pack(side=Tkinter.TOP)
 
     try:
@@ -482,6 +510,9 @@ def main():
             root.bind("<Escape>", app.toggle_stop)
             embed.bind("<KeyRelease>", emulator.key_down)
             embed.bind("<Button-1>", lambda x: embed.focus_set())
+            #filthy hack to get tab order working
+            embed.bind("<Tab>", lambda event: switch_to_disassembly(app, event))
+
             emulator.run( callback=app.update )
     finally:
         try:
