@@ -53,6 +53,8 @@ class Emulator(object):
                 pass
 
     def key_up(self, event):
+        if self.dbg.stopped:
+            return
         try:
             key = ord(event.char)
         except TypeError:
@@ -60,11 +62,17 @@ class Emulator(object):
         self.dbg.machine.keyboard.KeyDown(key)
 
     def key_down(self, event):
+        if self.dbg.stopped:
+            return
         try:
             key = ord(event.char)
         except TypeError:
             return
         self.dbg.machine.keyboard.KeyUp(key)
+
+    def restart(self):
+        self.dbg.machine.Delete()
+        self.dbg.machine = new_machine()
 
     def mainloop(self, callback):
         globals.t = pygame.time.get_ticks()

@@ -232,12 +232,6 @@ class Display(armv2.Device):
         super(Display,self).__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
-        # self.screen = screen
-        # self.font_surface = pygame.Surface((self.cell_size,self.cell_size),depth=8)
-        # self.font_surface.set_palette(((0, 0, 0, 255),)*256)
-        # self.font_surface.set_palette(((0,0,0,255),(255, 255, 255, 255)))
-        # self.font_surfaces = {}
-        # self.screen.fill((0,0,0,255))
         self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts','petscii.png'))
 
         self.back_quads_buffer = drawing.QuadBuffer(self.width*self.height)
@@ -270,7 +264,6 @@ class Display(armv2.Device):
                          (0, 136, 255, 255),
                          (187, 187, 187, 255), ]
 
-        # self.pixels = pygame.PixelArray(self.font_surface)
         self.font_data = [0 for i in xrange(256)]
         self.letter_data = [0 for i in xrange(self.width*self.height)]
         self.palette_data = [0 for i in xrange(self.width*self.height)]
@@ -278,15 +271,6 @@ class Display(armv2.Device):
         #initialise the whole screen
         for pos in xrange(len(self.letter_data)):
             self.redraw(pos)
-
-        # with open('petscii.txt','rb') as f:
-        #     for line in f:
-        #         i,dummy,word = line.strip().split()
-        #         i,word= [int(v,16) for v in i,word]
-        #         self.font_data[i] = word
-        #         SetPixels(self.pixels,self.font_data[i])
-        #         self.font_surfaces[i] = pygame.transform.scale(self.font_surface,(self.cell_size*self.scale_factor,self.cell_size*self.scale_factor))
-
 
     def readCallback(self,addr,value):
         #The display has a secret RNG, did you know that?
@@ -335,7 +319,6 @@ class Display(armv2.Device):
         return 0
 
     def redraw(self,pos):
-        #armv2.DebugLog('redraw %d' % pos)
         letter = self.letter_data[pos]
         palette = self.palette_data[pos]
         back_colour = self.palette[(palette>>4)&0xf]
@@ -344,14 +327,6 @@ class Display(armv2.Device):
         self.fore_quads[pos].SetColour(fore_colour)
         tc = self.atlas.TextureCoords(chr(letter))
         self.fore_quads[pos].SetTextureCoordinates(tc)
-        # tile = self.font_surfaces[letter]
-        # tile.set_palette((back_colour,fore_colour))
-        # dirty = (x*self.cell_size*self.scale_factor,
-        #          y*self.cell_size*self.scale_factor,
-        #          (x+1)*self.cell_size*self.scale_factor,
-        #          (y+1)*self.cell_size*self.scale_factor)
-        # self.screen.blit(tile,(dirty[0],dirty[1]))
-        # self.dirty_rects[dirty] = True
 
     def Update(self):
         drawing.DrawNoTexture(self.back_quads_buffer)

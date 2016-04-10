@@ -53,7 +53,7 @@ class Scrollable(View):
         self.widgets = []
         self.selected = None
         self.selected_addr = None
-        self.frame = Tkinter.Frame(app,
+        self.frame = Tkinter.Frame(app.frame,
                                    width=self.width,
                                    height=self.height,
                                    borderwidth=4,
@@ -62,7 +62,7 @@ class Scrollable(View):
                                    highlightcolor='lawn green',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
-        self.frame.pack(padx=5,pady=5,side=Tkinter.TOP)
+        self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
         self.frame.bind("<Up>", self.keyboard_up)
         self.frame.bind("<Down>", self.keyboard_down)
         self.frame.bind("<Next>", self.keyboard_page_down)
@@ -253,7 +253,7 @@ class Registers(View):
         self.col_width = self.width/3
         self.app    = app
         self.widgets = []
-        self.frame = Tkinter.Frame(app,
+        self.frame = Tkinter.Frame(app.frame,
                                    width=self.width,
                                    height=self.height,
                                    borderwidth=4,
@@ -262,7 +262,7 @@ class Registers(View):
                                    highlightcolor='lawn green',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
-        self.frame.pack(padx=5,pady=5,side=Tkinter.TOP)
+        self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
         self.labels = []
         for i in xrange(self.num_entries):
             sv = Tkinter.StringVar()
@@ -299,10 +299,41 @@ class Registers(View):
         else:
             return ['fp','sp','lr','r15','MODE','PC'][i-12]
 
+class Button(Tkinter.Button):
+    unselected_fg = 'lawn green'
+    unselected_bg = 'black'
+    #Inverted for selected
+    selected_fg = unselected_bg
+    selected_bg = unselected_fg
 
+    def __init__(self, parent, text, callback):
+        self.parent = parent
+        self.callback = callback
+        Tkinter.Button.__init__(self,
+                                self.parent,
+                                width=6,
+                                pady=2,
+                                highlightbackground=self.unselected_fg,
+                                highlightcolor=self.unselected_fg,
+                                highlightthickness=1,
+                                fg=self.unselected_fg,
+                                bg=self.unselected_bg,
+                                activebackground=self.selected_bg,
+                                activeforeground=self.selected_fg,
+                                command=self.callback,
+                                text=text,
+                                relief=Tkinter.SOLID
+                                )
 
 class Application(Tkinter.Frame):
+    unselected_fg = 'lawn green'
+    unselected_bg = 'black'
+    #Inverted for selected
+    selected_fg = unselected_bg
+    selected_bg = unselected_fg
+
     def __init__(self, master):
+        self.emulator = None
         self.queue = Queue.Queue()
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
                                  messages.Types.CONNECT    : self.connected,
@@ -336,26 +367,35 @@ class Application(Tkinter.Frame):
         self.stop_button['text'] = 'resume'
         self.stop_button['command'] = self.resume
         self.send_message(messages.Stop())
+        #self.frame.configure(bg=self.disassembly.selected_bg)
 
     def resume(self):
         self.stopped = False
         self.stop_button['text'] = 'stop'
         self.stop_button['command'] = self.stop
         self.send_message(messages.Resume())
+        #self.frame.configure(bg=self.disassembly.unselected_bg)
+
+    def restart(self):
+        #self.send_message(messages.Restart())
+        if self.emulator:
+            self.emulator.restart()
 
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
+        self.frame = Tkinter.Frame(self, width = 240, height = 720)
+        self.frame.pack(side=Tkinter.TOP)
         self.disassembly = Disassembly(self, width=50, height=14)
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
 
-        self.stop_button = Tkinter.Button(self, width=10)
-        self.stop_button["text"] = "stop"
-        self.stop_button["fg"]   = "red"
-        self.stop_button["command"] =  self.stop
+        self.stop_button = Button(self.frame, 'stop', self.stop)
+        self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
 
-        self.stop_button.pack({"side": "left"})
+        self.restart_button = Button(self.frame, 'restart', self.restart)
+        self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
+
         self.views = [self.disassembly, self.memory, self.registers]
 
         self.queue.put(messages.Disconnect())
@@ -431,6 +471,7 @@ def main():
             embed.focus_set()
             emulate.init()
             emulator = emulate.Emulator()
+            app.emulator = emulator
             embed.bind("<Key>", emulator.key_up)
             embed.bind("<KeyRelease>", emulator.key_down)
             embed.bind("<Button-1>", lambda x: embed.focus_set())

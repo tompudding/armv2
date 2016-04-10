@@ -180,6 +180,13 @@ class Resume(Message):
     def from_binary(data):
         return Resume()
 
+class Restart(Message):
+    type = Types.RESTART
+
+    @staticmethod
+    def from_binary(data):
+        return Restart()
+
 messages_by_type = {Types.CONNECT  : Handshake,
                     Types.STATE    : MachineState,
                     Types.MEMWATCH : MemView,
@@ -188,6 +195,7 @@ messages_by_type = {Types.CONNECT  : Handshake,
                     Types.DISASSEMBLYDATA : DisassemblyViewReply,
                     Types.STOP     : Stop,
                     Types.RESUME   : Resume,
+                    Types.RESTART  : Restart,
 }
 
 def MessageFactory(data):
