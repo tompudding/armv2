@@ -41,12 +41,11 @@ class View(object):
             label.set(str(content))
 
 
-class Disassembly(View):
-    word_size = 4
-
+class Scrollable(View):
     buffer = 20 #number of lines above and below to cache
-    view_min = -buffer*word_size
-    view_max = 1<<26
+    view_min = None
+    view_max = None
+    message_class = None
     def __init__(self, app, height, width):
         self.height = height
         self.width  = width
@@ -90,7 +89,7 @@ class Disassembly(View):
                                        anchor='w',
                                        textvariable=sv,
                                        relief=Tkinter.SOLID)
-                widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.word_size),self.frame.focus_set()])
+                widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.line_size),self.frame.focus_set()])
                 widget.bind("<MouseWheel>", self.mouse_wheel)
                 widget.bind("<Button-4>", self.keyboard_up)
                 widget.bind("<Button-5>", self.keyboard_down)
@@ -101,21 +100,25 @@ class Disassembly(View):
         self.num_lines = self.height + self.buffer*2
         self.num_cols = self.width
 
-        self.view_start = -self.buffer*self.word_size
-        self.view_size = self.num_lines * self.word_size
+        self.view_start = -self.buffer*self.line_size
+        self.view_size = self.num_lines * self.line_size
         self.select(0)
 
-    def update(self):
+    def update_params(self):
         view_start = self.view_start
         view_size = self.view_size
         if view_start < 0:
             view_size += view_start
             view_start = 0
+        return view_start,view_size
+
+    def update(self):
+        view_start, view_size = self.update_params()
         if view_size > 0:
-            self.app.send_message(messages.DisassemblyView(view_start, view_size))
+            self.app.send_message(self.message_class(view_start, view_size, view_start, view_size))
 
     def select(self, addr):
-        selected = (addr - self.view_start)/self.word_size
+        selected = (addr - self.view_start)/self.line_size
         if selected < 0 or selected >= len(self.labels):
             selected = None
         #turn off the old one
@@ -153,7 +156,7 @@ class Disassembly(View):
     def adjust_view(self, amount):
         if amount == 0:
             return
-        new_start = self.view_start + amount*self.word_size
+        new_start = self.view_start + amount*self.line_size
         if new_start < self.view_min:
             new_start = self.view_min
         if new_start > self.view_max:
@@ -163,12 +166,12 @@ class Disassembly(View):
             return
 
         adjust = new_start - self.view_start
-        amount = adjust / self.word_size
+        amount = adjust / self.line_size
         self.view_start = new_start
 
         self.select(self.selected_addr)
 
-        if abs(amount) < self.view_size/self.word_size:
+        if abs(amount) < self.view_size/self.line_size:
             #we can reuse some labels
             if amount < 0:
                 start,step,stride = len(self.labels)-1, -1, -1
@@ -193,9 +196,19 @@ class Disassembly(View):
         if unknown_size <= 0:
             #no point
             return
-        self.app.send_message(messages.DisassemblyView(unknown_start, unknown_size))
+        watch_start,watch_size = self.update_params()
+        self.app.send_message(self.message_class(unknown_start, unknown_size, watch_start, watch_size))
 
         #self.update()
+
+
+class Disassembly(Scrollable):
+    word_size = 4
+    line_size = word_size
+
+    view_min = -Scrollable.buffer*word_size
+    view_max = 1<<26
+    message_class = messages.DisassemblyView
 
     def receive(self, message):
         for (i,dis) in enumerate(message.lines):
@@ -208,6 +221,29 @@ class Disassembly(View):
             bpt   = '*' if addr in self.app.breakpoints else ' '
             line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
             self.labels[label_index].set(line)
+
+class Memory(Scrollable):
+    line_size = 8
+    view_min = -Scrollable.buffer*line_size
+    view_max = 1<<26
+    message_class = messages.MemdumpView
+    printable = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
+
+    def receive(self, message):
+        if message.start&7:
+            return
+
+        for addr in xrange(message.start, message.start + message.size, 8):
+            label_index = (addr - self.view_start)/self.line_size
+            if label_index < 0 or label_index >= len(self.labels):
+                continue
+            data = message.data[addr - message.start:addr + self.line_size - message.start]
+            if len(data) < self.line_size:
+                data += '??'*(self.line_size-len(data))
+            data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.line_size))
+            ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
+            self.labels[label_index].set('%07x : %s   %s' % (addr,data_string,ascii_string))
+
 
 class Registers(View):
     num_entries = 18
@@ -248,8 +284,6 @@ class Registers(View):
             self.labels.append(sv)
         self.num_lines = self.height
         self.num_cols = self.width
-
-
 
     def receive(self, message):
         self.app.pc = message.pc
@@ -314,22 +348,7 @@ class Application(Tkinter.Frame):
         self.dead = False
         self.disassembly = Disassembly(self, width=50, height=14)
         self.registers = Registers(self, width=50, height=8)
-
-        self.memory = Tkinter.Text(self,
-                                   width=50,
-                                   height=13,
-                                   font='TkFixedFont',
-                                   borderwidth=4,
-                                   bg='black',
-                                   fg='lawn green',
-                                   highlightbackground='lawn green',
-                                   highlightcolor='lawn green',
-                                   highlightthickness=1,
-                                   state=Tkinter.DISABLED,
-                                   relief=Tkinter.SOLID)
-        self.memory.pack(padx=5,pady=5)
-        for i in xrange(13):
-            self.memory.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
+        self.memory = Memory(self, width=50, height=13)
 
         self.stop_button = Tkinter.Button(self, width=10)
         self.stop_button["text"] = "stop"
@@ -337,13 +356,7 @@ class Application(Tkinter.Frame):
         self.stop_button["command"] =  self.stop
 
         self.stop_button.pack({"side": "left"})
-        self.views = [self.disassembly, self.registers, self.memory]
-        for view in self.views[2:]:
-            view.num_lines = view.config()['height'][-1]
-            view.width = view.config()['width'][-1]
-
-        self.memory.view_start = 0
-        self.memory.view_size  = self.memory.num_lines * 8
+        self.views = [self.disassembly, self.memory, self.registers]
 
         self.queue.put(messages.Disconnect())
 
@@ -356,17 +369,8 @@ class Application(Tkinter.Frame):
 
     def status_update(self, message):
         """Update the views to show that we're disconnected"""
-        for view in self.views[:2]:
+        for view in self.views:
             view.status_update(message)
-
-        for view in self.views[2:]:
-            view.delete('1.0',Tkinter.END)
-            for i in xrange(view.num_lines):
-                if i == view.num_lines/2:
-                    content = ('*** %s ***' % message).center(view.width)
-                else:
-                    content = ' '*view.width
-                view.insert('%d.0' % (i+1), content + '\n')
 
     def disconnected(self, message):
         try:
@@ -378,7 +382,7 @@ class Application(Tkinter.Frame):
 
     def connected(self, message=None):
         self.status_update('CONNECTED')
-        self.client.send(messages.MemdumpView(self.memory.view_start, self.memory.view_size))
+        self.memory.update()
         self.disassembly.update()
 
 
@@ -389,21 +393,7 @@ class Application(Tkinter.Frame):
         self.disassembly.receive(message)
 
     def receive_memdata(self, message):
-        view = self.memory
-        display_width = 8
-        view.delete('1.0',Tkinter.END)
-        for i in xrange(view.num_lines):
-            addr = view.view_start + i*display_width
-            data = message.data[i*display_width:(i+1)*display_width]
-            if len(data) < display_width:
-                data += '??'*(display_width-len(data))
-            data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(display_width))
-            ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in string.printable else '.') for i in xrange(display_width)))
-            line = '%07x : %s   %s' % (addr,data_string,ascii_string)
-            if 0:# or addr == self.selected:
-                view.insert('%d.0' % (i+1), line + '\n')
-            else:
-                view.insert('%d.0' % (i+1), line + '\n')
+        self.memory.receive(message)
 
 def run():
     #import hanging_threads

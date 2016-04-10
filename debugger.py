@@ -71,8 +71,11 @@ class Debugger(object):
         print 'Got unset breakpoint'
 
     def handle_memory_watch(self, message):
-        print 'Got memory watch'
         self.mem_watches[message.id] = message
+        if message.size:
+            #They want something now too
+            data = self.machine.mem[message.start:message.start + message.size]
+            self.connection.send(messages.MemViewReply(message.id,message.start,data))
 
     def handle_memory_unwatch(self, message):
         print 'Got memory unwatch'
@@ -96,9 +99,9 @@ class Debugger(object):
 
     def send_mem_update(self):
         for message in self.mem_watches.itervalues():
-            data = self.machine.mem[message.start:message.start + message.size]
+            data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
             #print 'sending mem_update',message.start,len(data)
-            self.connection.send(messages.MemViewReply(message.id,message.start,data))
+            self.connection.send(messages.MemViewReply(message.id,message.watch_start,data))
 
     def AddBreakpoint(self,addr):
         if addr&3:

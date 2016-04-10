@@ -80,10 +80,12 @@ class MemView(Message):
         MEMDUMP     = 0
         DISASSEMBLY = 1
 
-    def __init__(self, id, start, size):
+    def __init__(self, id, start, size, watch_start=0, watch_size=0):
         self.id = id
         self.start = start
         self.size = size
+        self.watch_start = watch_start
+        self.watch_size = watch_size
 
     def to_binary(self):
         first = super(MemView,self).to_binary()
@@ -98,8 +100,8 @@ class MemView(Message):
 
 class MemdumpView(MemView):
     id = MemView.Types.MEMDUMP
-    def __init__(self, start, size):
-        super(MemdumpView,self).__init__(self.id, start, size)
+    def __init__(self, start, size, watch_start=0, watch_size=0):
+        super(MemdumpView,self).__init__(self.id, start, size, watch_start, watch_size)
 
 
 class MemViewReply(MemView):
@@ -126,7 +128,8 @@ class DisassemblyView(MemView):
     type = Types.DISASSEMBLY
     id = MemView.Types.DISASSEMBLY
 
-    def __init__(self, start, size):
+    def __init__(self, start, size, watch_start=0, watch_size=0):
+        #ignore the watch params for this for now
         super(DisassemblyView, self).__init__(self.id, start, size)
 
     @staticmethod
