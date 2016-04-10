@@ -238,11 +238,13 @@ class Application(Tkinter.Frame):
         self.stopped = True
         self.stop_button['text'] = 'resume'
         self.stop_button['command'] = self.resume
+        self.send_message(messages.Stop())
 
     def resume(self):
         self.stopped = False
         self.stop_button['text'] = 'stop'
         self.stop_button['command'] = self.stop
+        self.send_message(messages.Resume())
 
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'

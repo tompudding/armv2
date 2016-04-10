@@ -10,19 +10,20 @@ class Error(Exception):
 
 class Types:
     UNKNOWN     = 0
-    RESUME      = 1
-    STEP        = 2
-    RESTART     = 3
-    SETBKPT     = 4
-    UNSETBKPT   = 5
-    MEMDATA     = 6
-    MEMWATCH    = 7
-    UNWATCH     = 8
-    CONNECT     = 9
-    DISCONNECT  = 10
-    STATE       = 11
-    DISASSEMBLY = 12
-    DISASSEMBLYDATA = 13
+    STOP        = 1
+    RESUME      = 2
+    STEP        = 3
+    RESTART     = 4
+    SETBKPT     = 5
+    UNSETBKPT   = 6
+    MEMDATA     = 7
+    MEMWATCH    = 8
+    UNWATCH     = 9
+    CONNECT     = 10
+    DISCONNECT  = 11
+    STATE       = 12
+    DISASSEMBLY = 13
+    DISASSEMBLYDATA = 14
 
 class DynamicObject(object):
     pass
@@ -146,7 +147,7 @@ class DisassemblyViewReply(Message):
         mem   = struct.pack('>I',len(self.memory)) + self.memory
         lines = '\n'.join(self.lines)
         return first + start + mem + lines
-        
+
     @staticmethod
     def from_binary(data):
         start,mem_length = struct.unpack('>II',data[:8])
@@ -157,10 +158,24 @@ class DisassemblyViewReply(Message):
         if len(lines) != mem_length/4:
             raise Error('Dissasembly num_lines %d should be %d' % (len(lines),mem_length/4))
         return DisassemblyViewReply(start, mem, lines)
-        
+
 
 class Disconnect(Message):
     type = Types.DISCONNECT
+
+class Stop(Message):
+    type = Types.STOP
+
+    @staticmethod
+    def from_binary(data):
+        return Stop()
+
+class Resume(Message):
+    type = Types.RESUME
+
+    @staticmethod
+    def from_binary(data):
+        return Resume()
 
 messages_by_type = {Types.CONNECT  : Handshake,
                     Types.STATE    : MachineState,
@@ -168,6 +183,8 @@ messages_by_type = {Types.CONNECT  : Handshake,
                     Types.MEMDATA  : MemViewReply,
                     Types.DISASSEMBLY : DisassemblyView,
                     Types.DISASSEMBLYDATA : DisassemblyViewReply,
+                    Types.STOP     : Stop,
+                    Types.RESUME   : Resume,
 }
 
 def MessageFactory(data):

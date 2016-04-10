@@ -19,6 +19,7 @@ class Debugger(object):
         self.machine          = machine
         self.breakpoints      = {}
         self.handlers = {messages.Types.RESUME    : self.handle_resume,
+                         messages.Types.STOP      : self.handle_stop,
                          messages.Types.STEP      : self.handle_step,
                          messages.Types.RESTART   : self.handle_restart,
                          messages.Types.SETBKPT   : self.handle_set_breakpoint,
@@ -52,6 +53,10 @@ class Debugger(object):
 
     def handle_resume(self,message):
         print 'Got resume'
+        self.Continue(explicit=True)
+
+    def handle_stop(self,message):
+        self.Stop()
 
     def handle_step(self,message):
         print 'Got step'
