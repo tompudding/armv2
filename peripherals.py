@@ -376,6 +376,12 @@ class Application(Tkinter.Frame):
         self.send_message(messages.Resume())
         #self.frame.configure(bg=self.disassembly.unselected_bg)
 
+    def toggle_stop(self, event):
+        if self.stopped:
+            self.resume()
+        else:
+            self.stop()
+
     def restart(self):
         #self.send_message(messages.Restart())
         if self.emulator:
@@ -473,6 +479,7 @@ def main():
             emulator = emulate.Emulator()
             app.emulator = emulator
             embed.bind("<Key>", emulator.key_up)
+            root.bind("<Escape>", app.toggle_stop)
             embed.bind("<KeyRelease>", emulator.key_down)
             embed.bind("<Button-1>", lambda x: embed.focus_set())
             emulator.run( callback=app.update )
