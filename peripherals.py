@@ -20,30 +20,34 @@ Tkinter.Text.delete = insert_wrapper(Tkinter.Text.delete)
 
 mode_names = ['USR','FIQ','IRQ','SUP']
 
-def register_name(i):
-    if i < 12:
-        return 'r%d' % i
-    else:
-        return ['fp','sp','lr','r15'][i-12]
-
 class View(object):
-    def __init__(self):
-        self.num_lines = self.widget.config()['height'][-1]
-        self.num_cols  = self.widget.config()['width'][-1]
-
-class Disassembly(View):
     unselected_fg = 'lawn green'
     unselected_bg = 'black'
     #Inverted for selected
     selected_fg = unselected_bg
     selected_bg = unselected_fg
+
+    def __init__(self):
+        self.num_lines = self.widget.config()['height'][-1]
+        self.num_cols  = self.widget.config()['width'][-1]
+
+
+    def status_update(self, message):
+        for i,label in enumerate(self.labels):
+            if i == self.num_lines/2:
+                content = ('*** %s ***' % message).center(self.width)
+            else:
+                content = ' '*self.width
+            label.set(str(content))
+
+
+class Disassembly(View):
     word_size = 4
 
     buffer = 20 #number of lines above and below to cache
     view_min = -buffer*word_size
     view_max = 1<<26
     def __init__(self, app, height, width):
-        alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.height = height
         self.width  = width
         self.app    = app
@@ -93,11 +97,8 @@ class Disassembly(View):
                 self.widgets.append(widget)
             self.labels.append(sv)
 
-        #super(Disassembly, self).__init__()
         self.num_lines = self.height + self.buffer*2
         self.num_cols = self.width
-        #for i in xrange(self.num_lines):
-        #    self.widget.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
 
         self.view_start = -self.buffer*self.word_size
         self.view_size = self.num_lines * self.word_size
@@ -195,14 +196,6 @@ class Disassembly(View):
 
         #self.update()
 
-    def status_update(self, message):
-        for i,label in enumerate(self.labels):
-            if i == self.num_lines/2:
-                content = ('*** %s ***' % message).center(self.width)
-            else:
-                content = ' '*self.width
-            label.set(str(content))
-
     def receive(self, message):
         for (i,dis) in enumerate(message.lines):
             addr = message.start + i*4
@@ -214,6 +207,63 @@ class Disassembly(View):
             bpt   = '*' if addr in self.app.breakpoints else ' '
             line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
             self.labels[label_index].set(line)
+
+class Registers(View):
+    num_entries = 18
+    def __init__(self, app, width, height):
+        self.height = height
+        self.width  = width
+        self.col_width = self.width/3
+        self.app    = app
+        self.widgets = []
+        self.frame = Tkinter.Frame(app,
+                                   width=self.width,
+                                   height=self.height,
+                                   borderwidth=4,
+                                   bg='black',
+                                   highlightbackground='lawn green',
+                                   highlightcolor='lawn green',
+                                   highlightthickness=1,
+                                   relief=Tkinter.SOLID)
+        self.frame.pack(padx=5,pady=5,side=Tkinter.TOP)
+        self.labels = []
+        for i in xrange(self.num_entries):
+            sv = Tkinter.StringVar()
+            sv.set('bobbins')
+            widget = Tkinter.Label(self.frame,
+                                   width = self.col_width,
+                                   height = 1,
+                                   borderwidth = 0,
+                                   pady=0,
+                                   font='TkFixedFont',
+                                   bg=self.unselected_bg,
+                                   fg=self.unselected_fg,
+                                   anchor='w',
+                                   textvariable=sv,
+                                   relief=Tkinter.SOLID)
+            widget.grid(row = i%self.height, column=i/self.height)
+            self.widgets.append(widget)
+            self.labels.append(sv)
+        self.num_lines = self.height
+        self.num_cols = self.width
+
+
+
+    def receive(self, message):
+        self.app.pc = message.pc
+        for i,reg in enumerate(message.registers):
+            self.labels[i].set( ('%3s : %08x' % (self.register_name(i),reg)).ljust(self.col_width) )
+
+        self.labels[16].set(('%5s : %8s' % ('MODE',mode_names[message.mode]) ))
+        self.labels[17].set(('%5s : %08x' % ('PC',message.pc)))
+
+    def register_name(self, i):
+        if i < 12:
+            return 'r%d' % i
+        else:
+            return ['fp','sp','lr','r15','MODE','PC'][i-12]
+
+
 
 class Application(Tkinter.Frame):
     def __init__(self, master):
@@ -261,21 +311,7 @@ class Application(Tkinter.Frame):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
         self.disassembly = Disassembly(self, width=50, height=14)
-        self.registers = Tkinter.Text(self,
-                                      width=50,
-                                      height=8,
-                                      font='TkFixedFont',
-                                      borderwidth=4,
-                                      bg='black',
-                                      fg='lawn green',
-                                      highlightbackground='lawn green',
-                                      highlightcolor='lawn green',
-                                      highlightthickness=1,
-                                      state=Tkinter.DISABLED,
-                                      relief=Tkinter.SOLID)
-        self.registers.pack(padx=5,pady=5)
-        for i in xrange(8):
-            self.registers.insert(Tkinter.INSERT, '%50s' % ''.join(random.choice(alphabet) for j in xrange(50)))
+        self.registers = Registers(self, width=50, height=8)
 
         self.memory = Tkinter.Text(self,
                                    width=50,
@@ -299,8 +335,8 @@ class Application(Tkinter.Frame):
         self.stop_button["command"] =  self.stop
 
         self.stop_button.pack({"side": "left"})
-        self.views = [self.disassembly, self.memory, self.registers]
-        for view in self.views[1:]:
+        self.views = [self.disassembly, self.registers, self.memory]
+        for view in self.views[2:]:
             view.num_lines = view.config()['height'][-1]
             view.width = view.config()['width'][-1]
 
@@ -318,10 +354,10 @@ class Application(Tkinter.Frame):
 
     def status_update(self, message):
         """Update the views to show that we're disconnected"""
-        for view in self.views[:1]:
+        for view in self.views[:2]:
             view.status_update(message)
 
-        for view in self.views[1:]:
+        for view in self.views[2:]:
             view.delete('1.0',Tkinter.END)
             for i in xrange(view.num_lines):
                 if i == view.num_lines/2:
@@ -345,21 +381,7 @@ class Application(Tkinter.Frame):
 
 
     def receive_register_state(self, message):
-        #We'll do 3 columns
-        view = self.registers
-        lines = [list() for i in xrange(view.num_lines)]
-        col_width = view.width/3
-        self.pc = message.pc
-        for i,reg in enumerate(message.registers):
-            lines[i%len(lines)].append( ('%3s : %08x' % (register_name(i),reg)).ljust(col_width) )
-
-        pos = len(message.registers)
-        lines[pos%len(lines)].append( ('%5s : %8s' % ('MODE',mode_names[message.mode]) ))
-        lines[(pos+1)%len(lines)].append( ('%5s : %08x' % ('PC',message.pc) ))
-        self.registers.delete('1.0',Tkinter.END)
-        for i,line in enumerate(lines):
-            line = ''.join(line).ljust(view.width)
-            view.insert('%d.0' % (i+1), line + '\n')
+        self.registers.receive(message)
 
     def receive_disassembly(self, message):
         self.disassembly.receive(message)
