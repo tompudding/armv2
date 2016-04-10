@@ -64,6 +64,9 @@ class Disassembly(View):
         self.frame.bind("<Down>", self.keyboard_down)
         self.frame.bind("<Next>", self.keyboard_page_down)
         self.frame.bind("<Prior>", self.keyboard_page_up)
+        self.frame.bind("<MouseWheel>", self.mouse_wheel)
+        self.frame.bind("<Button-4>", self.keyboard_up)
+        self.frame.bind("<Button-5>", self.keyboard_down)
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.labels = []
@@ -83,6 +86,9 @@ class Disassembly(View):
                                        textvariable=sv,
                                        relief=Tkinter.SOLID)
                 widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.word_size),self.frame.focus_set()])
+                widget.bind("<MouseWheel>", self.mouse_wheel)
+                widget.bind("<Button-4>", self.keyboard_up)
+                widget.bind("<Button-5>", self.keyboard_down)
                 widget.pack(padx=5,pady=0)
                 self.widgets.append(widget)
             self.labels.append(sv)
@@ -124,6 +130,11 @@ class Disassembly(View):
             if widget_selected >= 0 and widget_selected < len(self.widgets):
                 self.widgets[widget_selected].configure(fg=self.selected_fg, bg=self.selected_bg)
 
+    def mouse_wheel(self, event):
+        if event.delta < 0:
+            self.keyboard_up(event)
+        else:
+            self.keyboard_down(event)
 
     def keyboard_up(self, event):
         self.adjust_view(-1)
