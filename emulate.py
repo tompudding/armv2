@@ -73,6 +73,7 @@ class Emulator(object):
     def restart(self):
         self.dbg.machine.Delete()
         self.dbg.machine = new_machine()
+        self.dbg.Update()
 
     def mainloop(self, callback):
         globals.t = pygame.time.get_ticks()

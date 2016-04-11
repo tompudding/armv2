@@ -26,6 +26,7 @@ class View(object):
     #Inverted for selected
     selected_fg = unselected_bg
     selected_bg = unselected_fg
+    content_label = 0
 
     def __init__(self):
         self.num_lines = self.widget.config()['height'][-1]
@@ -39,12 +40,12 @@ class View(object):
         return 'break'
 
     def status_update(self, message):
-        for i,label in enumerate(self.labels):
+        for i,label in enumerate(self.label_rows):
             if i == self.num_lines/2:
                 content = ('*** %s ***' % message).center(self.width)
             else:
                 content = ' '*self.width
-            label.set(str(content))
+            label[self.content_label].set(str(content))
 
 
 class Scrollable(View):
@@ -52,11 +53,14 @@ class Scrollable(View):
     view_min = None
     view_max = None
     message_class = None
+    labels_per_row = 0
+    label_widths = None
     def __init__(self, app, height, width):
         self.height = height
         self.width  = width
+        self.label_widths[self.content_label] = width
         self.app    = app
-        self.widgets = []
+        self.widget_rows = []
         self.selected = None
         self.selected_addr = None
         self.frame = Tkinter.Frame(app.frame,
@@ -79,30 +83,38 @@ class Scrollable(View):
         self.frame.bind("<Tab>", self.switch_from)
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
-        self.labels = []
+        self.label_rows = []
         for i in xrange(self.height + self.buffer*2):
-            sv = Tkinter.StringVar()
-            sv.set('bobbins')
+            widgets = []
+            labels = []
+            for j in xrange(self.labels_per_row):
+                sv = Tkinter.StringVar()
+                sv.set(' ')
+                if 0 <= i-self.buffer < self.height:
+                    widget = Tkinter.Label(self.frame,
+                                           width = self.label_widths[j],
+                                           height = 1,
+                                           borderwidth = 0,
+                                           pady=0,
+                                           padx=2,
+                                           font='TkFixedFont',
+                                           bg=self.unselected_bg,
+                                           fg=self.unselected_fg,
+                                           anchor='w',
+                                           textvariable=sv,
+                                           relief=Tkinter.SOLID)
+                    widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.line_size),self.frame.focus_set()])
+                    widget.bind("<MouseWheel>", self.mouse_wheel)
+                    widget.bind("<Button-4>", self.keyboard_up)
+                    widget.bind("<Button-5>", self.keyboard_down)
+                    widget.grid(row=i-self.buffer, column=j, padx=0, pady=0)
+                    widgets.append(widget)
+                labels.append(sv)
+
             if 0 <= i-self.buffer < self.height:
-                widget = Tkinter.Label(self.frame,
-                                       width = self.width,
-                                       height = 1,
-                                       borderwidth = 0,
-                                       pady=0,
-                                       padx=0,
-                                       font='TkFixedFont',
-                                       bg=self.unselected_bg,
-                                       fg=self.unselected_fg,
-                                       anchor='w',
-                                       textvariable=sv,
-                                       relief=Tkinter.SOLID)
-                widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.line_size),self.frame.focus_set()])
-                widget.bind("<MouseWheel>", self.mouse_wheel)
-                widget.bind("<Button-4>", self.keyboard_up)
-                widget.bind("<Button-5>", self.keyboard_down)
-                widget.pack(padx=5,pady=0)
-                self.widgets.append(widget)
-            self.labels.append(sv)
+                self.widget_rows.append(widgets)
+            self.label_rows.append(labels)
+
 
         self.num_lines = self.height + self.buffer*2
         self.num_cols = self.width
@@ -126,21 +138,23 @@ class Scrollable(View):
 
     def select(self, addr):
         selected = (addr - self.view_start)/self.line_size
-        if selected < 0 or selected >= len(self.labels):
+        if selected < 0 or selected >= len(self.label_rows):
             selected = None
         #turn off the old one
         if self.selected is not None:
             widget_selected = self.selected - self.buffer
-            if widget_selected >= 0 and widget_selected < len(self.widgets):
-                self.widgets[widget_selected].configure(fg=self.unselected_fg, bg=self.unselected_bg)
+            if widget_selected >= 0 and widget_selected < len(self.widget_rows):
+                for widget in self.widget_rows[widget_selected]:
+                    widget.configure(fg=self.unselected_fg, bg=self.unselected_bg)
 
         self.selected = selected
         self.selected_addr = addr
         #turn on the new one
         if self.selected is not None:
             widget_selected = self.selected - self.buffer
-            if widget_selected >= 0 and widget_selected < len(self.widgets):
-                self.widgets[widget_selected].configure(fg=self.selected_fg, bg=self.selected_bg)
+            if widget_selected >= 0 and widget_selected < len(self.widget_rows):
+                for widget in self.widget_rows[widget_selected]:
+                    widget.configure(fg=self.selected_fg, bg=self.selected_bg)
 
     def mouse_wheel(self, event):
         if event.delta < 0:
@@ -181,20 +195,21 @@ class Scrollable(View):
         if abs(amount) < self.view_size/self.line_size:
             #we can reuse some labels
             if amount < 0:
-                start,step,stride = len(self.labels)-1, -1, -1
+                start,step,stride = len(self.label_rows)-1, -1, -1
                 unknown_start = self.view_start
                 unknown_size = -adjust
             else:
-                start,step,stride = 0, len(self.labels), 1
+                start,step,stride = 0, len(self.label_rows), 1
                 unknown_start = self.view_start + self.view_size -adjust
                 unknown_size = adjust
 
             for i in xrange(start, step, stride):
-                if i + amount >= 0 and i + amount < len(self.labels):
-                    new_value = self.labels[i+amount].get()
+                if i + amount >= 0 and i + amount < len(self.label_rows):
+                    new_value = (self.label_rows[i+amount][j].get() for j in xrange(self.labels_per_row))
                 else:
-                    new_value = ' '*self.width
-                self.labels[i].set(new_value)
+                    new_value = (' ' for j in xrange(self.labels_per_row))
+                for j,val in enumerate(new_value):
+                    self.label_rows[i][j].set(val)
 
         #we now need an update for the region we don't have
         if unknown_start < 0:
@@ -216,24 +231,44 @@ class Disassembly(Scrollable):
     view_min = -Scrollable.buffer*word_size
     view_max = 1<<26
     message_class = messages.DisassemblyView
+    labels_per_row = 3
+    content_label = 2
+    label_widths = [1,1,0]
+
+    def __init__(self, *args, **kwargs):
+        self.pc = None
+        super(Disassembly,self).__init__(*args, **kwargs)
+
+    def set_pc_label(self, pc, label):
+        label_index = (pc - self.view_start)/self.word_size
+        if label_index >= 0 and label_index < len(self.label_rows):
+            self.label_rows[label_index][0].set(label)
+
+    def set_pc(self, pc):
+        #first turn off the old label
+        if self.pc is not None:
+            self.set_pc_label(self.pc, ' ')
+
+        self.pc = pc
+        self.set_pc_label(self.pc, '>')
 
     def receive(self, message):
         for (i,dis) in enumerate(message.lines):
             addr = message.start + i*4
             label_index = (addr - self.view_start)/self.word_size
-            if label_index < 0 or label_index >= len(self.labels):
+            if label_index < 0 or label_index >= len(self.label_rows):
                 continue
             word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
-            arrow = '>' if addr == self.app.pc else ''
-            bpt   = '*' if addr in self.app.breakpoints else ' '
-            line = '%1s%s%07x %08x : %s' % (arrow,bpt,addr,word,dis)
-            self.labels[label_index].set(line)
+            line = '%07x %08x : %s' % (addr,word,dis)
+            self.label_rows[label_index][2].set(line)
 
 class Memory(Scrollable):
     line_size = 8
     view_min = -Scrollable.buffer*line_size
     view_max = 1<<26
+    labels_per_row = 1
     message_class = messages.MemdumpView
+    label_widths = [0]
     printable = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
     def receive(self, message):
@@ -242,15 +277,14 @@ class Memory(Scrollable):
 
         for addr in xrange(message.start, message.start + message.size, 8):
             label_index = (addr - self.view_start)/self.line_size
-            if label_index < 0 or label_index >= len(self.labels):
+            if label_index < 0 or label_index >= len(self.label_rows):
                 continue
             data = message.data[addr - message.start:addr + self.line_size - message.start]
             if len(data) < self.line_size:
                 data += '??'*(self.line_size-len(data))
             data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.line_size))
             ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
-            self.labels[label_index].set('%07x : %s   %s' % (addr,data_string,ascii_string))
-
+            self.label_rows[label_index][0].set('%07x : %s   %s' % (addr,data_string,ascii_string))
 
 class Registers(View):
     num_entries = 18
@@ -270,8 +304,8 @@ class Registers(View):
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
         self.frame.bind("<Tab>", self.switch_from)
-        self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
-        self.labels = []
+        self.frame.pack(padx=0,pady=0,side=Tkinter.TOP)
+        self.label_rows = []
         for i in xrange(self.num_entries):
             sv = Tkinter.StringVar()
             sv.set('bobbins')
@@ -280,26 +314,26 @@ class Registers(View):
                                    height = 1,
                                    borderwidth = 0,
                                    pady=0,
-                                   padx=4,
+                                   padx=3,
                                    font='TkFixedFont',
                                    bg=self.unselected_bg,
                                    fg=self.unselected_fg,
                                    anchor='w',
                                    textvariable=sv,
                                    relief=Tkinter.SOLID)
-            widget.grid(row = i%self.height, column=i/self.height)
+            widget.grid(row = i%self.height, column=i/self.height, padx=0)
             self.widgets.append(widget)
-            self.labels.append(sv)
+            self.label_rows.append([sv])
         self.num_lines = self.height
         self.num_cols = self.width
 
     def receive(self, message):
-        self.app.pc = message.pc
+        self.app.set_pc(message.pc)
         for i,reg in enumerate(message.registers):
-            self.labels[i].set( ('%3s : %08x' % (self.register_name(i),reg)).ljust(self.col_width) )
+            self.label_rows[i][0].set( ('%3s : %08x' % (self.register_name(i),reg)).ljust(self.col_width) )
 
-        self.labels[16].set(('%5s : %8s' % ('MODE',mode_names[message.mode]) ))
-        self.labels[17].set(('%5s : %08x' % ('PC',message.pc)))
+        self.label_rows[16][0].set(('%5s : %8s' % ('MODE',mode_names[message.mode]) ))
+        self.label_rows[17][0].set(('%5s : %08x' % ('PC',message.pc)))
 
     def focus_set(self):
         self.frame.focus_set()
@@ -411,12 +445,16 @@ class Application(Tkinter.Frame):
             #we go back to the emulator
             return self.emulator_frame
 
+    def set_pc(self, pc):
+        self.pc = pc
+        self.disassembly.set_pc(pc)
+
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
         self.frame = Tkinter.Frame(self, width = 240, height = 720)
         self.frame.pack(side=Tkinter.TOP)
-        self.disassembly = Disassembly(self, width=50, height=14)
+        self.disassembly = Disassembly(self, width=47, height=14)
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
 
