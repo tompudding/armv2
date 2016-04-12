@@ -71,8 +71,9 @@ class Emulator(object):
         self.dbg.machine.keyboard.KeyUp(key)
 
     def restart(self):
+        breakpoints = self.dbg.breakpoints
         self.dbg.machine.Delete()
-        self.dbg.machine = new_machine()
+        self.dbg.new_machine(new_machine())
         self.dbg.Update()
 
     def mainloop(self, callback):

@@ -114,6 +114,11 @@ class Debugger(object):
         self.breakpoints[addr]   = self.machine.memw[addr_word]
         self.machine.memw[addr_word] = self.BKPT
 
+    def new_machine(self, machine):
+        self.machine = machine
+        for bkpt in self.breakpoints:
+            self.machine.memw[bkpt] = self.BKPT
+
     def RemoveBreakpoint(self,addr):
         self.machine.memw[addr] = self.breakpoints[addr]
         del self.breakpoints[addr]
