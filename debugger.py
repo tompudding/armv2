@@ -66,9 +66,11 @@ class Debugger(object):
 
     def handle_set_breakpoint(self,message):
         print 'Got set breakpoint'
+        self.AddBreakpoint(message.addr)
 
     def handle_unset_breakpoint(self,message):
         print 'Got unset breakpoint'
+        self.RemoveBreakpoint(message.addr)
 
     def handle_memory_watch(self, message):
         self.mem_watches[message.id] = message
@@ -122,6 +124,7 @@ class Debugger(object):
             return None
         self.num_to_step -= num
         #armv2.DebugLog('stepping %s %s %s' % (self.machine.pc,num, self.machine.pc in self.breakpoints))
+        print self.machine.pc in self.breakpoints
         if skip_breakpoint and self.machine.pc in self.breakpoints:
             old_pos = self.machine.pc
             print 'boom doing replacement'

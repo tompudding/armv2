@@ -68,8 +68,8 @@ class Scrollable(View):
                                    height=self.height,
                                    borderwidth=4,
                                    bg='black',
-                                   highlightbackground='lawn green',
-                                   highlightcolor='white',
+                                   highlightbackground='#004000',
+                                   highlightcolor='lawn green',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
         self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
@@ -81,6 +81,7 @@ class Scrollable(View):
         self.frame.bind("<Button-4>", self.keyboard_up)
         self.frame.bind("<Button-5>", self.keyboard_down)
         self.frame.bind("<Tab>", self.switch_from)
+        self.frame.bind("<space>", self.activate_item)
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.label_rows = []
@@ -140,6 +141,8 @@ class Scrollable(View):
         selected = (addr - self.view_start)/self.line_size
         if selected < 0 or selected >= len(self.label_rows):
             selected = None
+        elif selected == self.selected:
+            return self.activate_item()
         #turn off the old one
         if self.selected is not None:
             widget_selected = self.selected - self.buffer
@@ -244,8 +247,22 @@ class Disassembly(Scrollable):
         if label_index >= 0 and label_index < len(self.label_rows):
             self.label_rows[label_index][0].set(label)
 
+    def activate_item(self, event=None):
+        if self.selected is not None:
+            addr = self.view_start + self.selected*self.line_size
+            self.app.toggle_breakpoint(addr)
+            self.update_breakpoint(addr, self.selected)
+
+    def update_breakpoint(self, addr, index):
+        if addr in self.app.breakpoints:
+            self.label_rows[index][1].set('*')
+        else:
+            self.label_rows[index][1].set(' ')
+
     def set_pc(self, pc):
         #first turn off the old label
+        if pc == self.pc:
+            return
         if self.pc is not None:
             self.set_pc_label(self.pc, ' ')
 
@@ -261,6 +278,11 @@ class Disassembly(Scrollable):
             word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
             line = '%07x %08x : %s' % (addr,word,dis)
             self.label_rows[label_index][2].set(line)
+            if addr in self.app.breakpoints:
+                self.label_rows[label_index][1].set('*')
+            if addr == self.pc:
+                self.label_rows[label_index][0].set('>')
+
 
 class Memory(Scrollable):
     line_size = 8
@@ -286,6 +308,9 @@ class Memory(Scrollable):
             ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
             self.label_rows[label_index][0].set('%07x : %s   %s' % (addr,data_string,ascii_string))
 
+    def activate_item(self, event=None):
+        print 'memory activate',self.selected
+
 class Registers(View):
     num_entries = 18
     def __init__(self, app, width, height):
@@ -299,8 +324,8 @@ class Registers(View):
                                    height=self.height,
                                    borderwidth=4,
                                    bg='black',
-                                   highlightbackground='lawn green',
-                                   highlightcolor='white',
+                                   highlightbackground='#004000',
+                                   highlightcolor='lawn green',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
         self.frame.bind("<Tab>", self.switch_from)
@@ -391,7 +416,7 @@ class Application(Tkinter.Frame):
         Tkinter.Frame.__init__(self, master)
         self.stopped = False
         self.pc = None
-        self.breakpoints = {}
+        self.breakpoints = set()
         self.pack()
         self.createWidgets()
         self.process_messages()
@@ -422,6 +447,14 @@ class Application(Tkinter.Frame):
         self.stop_button['command'] = self.stop
         self.send_message(messages.Resume())
         #self.frame.configure(bg=self.disassembly.unselected_bg)
+
+    def toggle_breakpoint(self,addr):
+        if addr in self.breakpoints:
+            self.breakpoints.remove(addr)
+            self.send_message(messages.UnsetBreakpoint(addr))
+        else:
+            self.breakpoints.add(addr)
+            self.send_message(messages.SetBreakpoint(addr))
 
     def toggle_stop(self, event):
         if self.stopped:

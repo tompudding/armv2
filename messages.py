@@ -162,6 +162,25 @@ class DisassemblyViewReply(Message):
             raise Error('Dissasembly num_lines %d should be %d' % (len(lines),mem_length/4))
         return DisassemblyViewReply(start, mem, lines)
 
+class SetBreakpoint(Message):
+    type = Types.SETBKPT
+
+    def __init__(self, addr):
+        self.addr = addr
+
+    def to_binary(self):
+        first = super(SetBreakpoint,self).to_binary()
+        last = struct.pack('>I',self.addr)
+        return first + last
+
+    @staticmethod
+    def from_binary(data):
+        addr = struct.unpack('>I',data[:4])[0]
+        return SetBreakpoint(addr)
+
+class UnsetBreakpoint(SetBreakpoint):
+    type = Types.UNSETBKPT
+
 
 class Disconnect(Message):
     type = Types.DISCONNECT
@@ -191,6 +210,8 @@ messages_by_type = {Types.CONNECT  : Handshake,
                     Types.STATE    : MachineState,
                     Types.MEMWATCH : MemView,
                     Types.MEMDATA  : MemViewReply,
+                    Types.SETBKPT  : SetBreakpoint,
+                    Types.UNSETBKPT : UnsetBreakpoint,
                     Types.DISASSEMBLY : DisassemblyView,
                     Types.DISASSEMBLYDATA : DisassemblyViewReply,
                     Types.STOP     : Stop,
