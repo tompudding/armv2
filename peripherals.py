@@ -82,6 +82,7 @@ class Scrollable(View):
         self.frame.bind("<Button-5>", self.keyboard_down)
         self.frame.bind("<Tab>", self.switch_from)
         self.frame.bind("<space>", self.activate_item)
+        self.frame.bind("<s>", self.app.step)
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.label_rows = []
@@ -422,17 +423,14 @@ class Application(Tkinter.Frame):
         self.process_messages()
 
     def process_messages(self):
-        try:
-            while True:
-                message = self.queue.get_nowait()
-                try:
-                    handler = self.message_handlers[message.type]
-                    handler(message)
-                except KeyError:
-                    print 'Unexpected message %d' % message.type
-        except Queue.Empty:
-            pass
-        self.after(100, self.process_messages)
+        while not self.queue.empty():
+            message = self.queue.get_nowait()
+            try:
+                handler = self.message_handlers[message.type]
+                handler(message)
+            except KeyError:
+                print 'Unexpected message %d' % message.type
+        self.after(10, self.process_messages)
 
     def stop(self):
         self.stopped = True
@@ -482,6 +480,9 @@ class Application(Tkinter.Frame):
         self.pc = pc
         self.disassembly.set_pc(pc)
 
+    def step(self, event=None):
+        self.send_message(messages.Step())
+
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
@@ -493,6 +494,9 @@ class Application(Tkinter.Frame):
 
         self.stop_button = Button(self.frame, 'stop', self.stop)
         self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
+
+        self.step_button = Button(self.frame, 'step', self.step)
+        self.step_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
 
         self.restart_button = Button(self.frame, 'restart', self.restart)
         self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)

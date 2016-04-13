@@ -206,6 +206,13 @@ class Restart(Message):
     def from_binary(data):
         return Restart()
 
+class Step(Message):
+    type = Types.STEP
+
+    @staticmethod
+    def from_binary(data):
+        return Step()
+
 messages_by_type = {Types.CONNECT  : Handshake,
                     Types.STATE    : MachineState,
                     Types.MEMWATCH : MemView,
@@ -217,6 +224,7 @@ messages_by_type = {Types.CONNECT  : Handshake,
                     Types.STOP     : Stop,
                     Types.RESUME   : Resume,
                     Types.RESTART  : Restart,
+                    Types.STEP     : Step,
 }
 
 def MessageFactory(data):
@@ -398,4 +406,7 @@ class Client(Comms):
             self.callback(handshake)
 
 
+
+# class DummyClient(object):
+#     def __init__(self, host, port, callback):
 

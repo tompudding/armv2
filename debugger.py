@@ -52,14 +52,13 @@ class Debugger(object):
             print 'Ooops got unknown message type',message.type
 
     def handle_resume(self,message):
-        print 'Got resume'
         self.Continue(explicit=True)
 
     def handle_stop(self,message):
         self.Stop()
 
     def handle_step(self,message):
-        print 'Got step'
+        self.Step()
 
     def handle_restart(self,message):
         print 'Got restart'
@@ -80,11 +79,9 @@ class Debugger(object):
             self.connection.send(messages.MemViewReply(message.id,message.start,data))
 
     def handle_memory_unwatch(self, message):
-        print 'Got memory unwatch'
         del self.mem_watches[message.id]
 
     def handle_connect(self, message):
-        print 'Got connect in debugger'
         #On connect we send an initial update
         self.send_register_update()
 
@@ -129,7 +126,6 @@ class Debugger(object):
             return None
         self.num_to_step -= num
         #armv2.DebugLog('stepping %s %s %s' % (self.machine.pc,num, self.machine.pc in self.breakpoints))
-        print self.machine.pc in self.breakpoints
         if skip_breakpoint and self.machine.pc in self.breakpoints:
             old_pos = self.machine.pc
             print 'boom doing replacement'
