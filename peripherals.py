@@ -377,15 +377,17 @@ class Button(Tkinter.Button):
     #Inverted for selected
     selected_fg = unselected_bg
     selected_bg = unselected_fg
+    disabled_border = '#004000'
 
-    def __init__(self, parent, text, callback):
+    def __init__(self, parent, text, callback, state=Tkinter.NORMAL):
         self.parent = parent
         self.callback = callback
+        border = self.unselected_fg if state == Tkinter.NORMAL else self.disabled_border
         Tkinter.Button.__init__(self,
                                 self.parent,
                                 width=6,
                                 pady=2,
-                                highlightbackground=self.unselected_fg,
+                                highlightbackground=border,
                                 highlightcolor=self.unselected_fg,
                                 highlightthickness=1,
                                 fg=self.unselected_fg,
@@ -394,8 +396,17 @@ class Button(Tkinter.Button):
                                 activeforeground=self.selected_fg,
                                 command=self.callback,
                                 text=text,
-                                relief=Tkinter.SOLID
+                                relief=Tkinter.SOLID,
+                                state=state,
                                 )
+
+    def disable(self):
+        self.config(state=Tkinter.DISABLED)
+        self.config(highlightbackground=self.disabled_border)
+
+    def enable(self):
+        self.config(state=Tkinter.NORMAL)
+        self.config(highlightbackground=self.unselected_fg)
 
 class Application(Tkinter.Frame):
     unselected_fg = 'lawn green'
@@ -434,15 +445,17 @@ class Application(Tkinter.Frame):
 
     def stop(self):
         self.stopped = True
-        self.stop_button['text'] = 'resume'
-        self.stop_button['command'] = self.resume
+        self.stop_button.config(text='resume')
+        self.stop_button.config(command=self.resume)
+        self.step_button.enable()
         self.send_message(messages.Stop())
         #self.frame.configure(bg=self.disassembly.selected_bg)
 
     def resume(self):
         self.stopped = False
-        self.stop_button['text'] = 'stop'
-        self.stop_button['command'] = self.stop
+        self.stop_button.config(text='stop')
+        self.stop_button.config(command=self.stop)
+        self.step_button.disable()
         self.send_message(messages.Resume())
         #self.frame.configure(bg=self.disassembly.unselected_bg)
 
@@ -481,7 +494,8 @@ class Application(Tkinter.Frame):
         self.disassembly.set_pc(pc)
 
     def step(self, event=None):
-        self.send_message(messages.Step())
+        if self.stopped:
+            self.send_message(messages.Step())
 
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
@@ -495,7 +509,7 @@ class Application(Tkinter.Frame):
         self.stop_button = Button(self.frame, 'stop', self.stop)
         self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
 
-        self.step_button = Button(self.frame, 'step', self.step)
+        self.step_button = Button(self.frame, 'step', self.step, state=Tkinter.DISABLED)
         self.step_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
 
         self.restart_button = Button(self.frame, 'restart', self.restart)
