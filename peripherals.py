@@ -506,11 +506,11 @@ class Application(Tkinter.Frame):
 
     def next_item(self, item):
         try:
-            index = self.views.index(item)
+            index = self.tab_views.index(item)
         except ValueError:
             return None
         try:
-            return self.views[index + 1]
+            return self.tab_views[index + 1]
         except IndexError:
             #we go back to the emulator
             return self.emulator_frame
@@ -531,6 +531,8 @@ class Application(Tkinter.Frame):
         self.disassembly = Disassembly(self, width=47, height=14)
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
+        self.tape = Memory(self, width=50, height=6)
+        self.options = Memory(self, width=50, height=3)
 
         self.stop_button = Button(self.frame, 'stop', self.stop)
         self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
@@ -541,7 +543,8 @@ class Application(Tkinter.Frame):
         self.restart_button = Button(self.frame, 'restart', self.restart)
         self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
 
-        self.views = [self.disassembly, self.registers, self.memory]
+        self.views = [self.disassembly, self.registers, self.memory, self.tape, self.options]
+        self.tab_views = [self.disassembly, self.memory, self.tape, self.options]
 
         self.queue.put(messages.Disconnect())
 
