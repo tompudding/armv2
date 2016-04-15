@@ -449,6 +449,7 @@ class Application(Tkinter.Frame):
                                  messages.Types.STATE      : self.receive_register_state,
                                  messages.Types.MEMDATA    : self.receive_memdata,
                                  messages.Types.DISASSEMBLYDATA : self.receive_disassembly,
+                                 messages.Types.STOP : self.stop,
         }
         Tkinter.Frame.__init__(self, master)
         self.stopped = False
@@ -468,7 +469,7 @@ class Application(Tkinter.Frame):
                 print 'Unexpected message %d' % message.type
         self.after(10, self.process_messages)
 
-    def stop(self):
+    def stop(self, event=None):
         self.stopped = True
         self.stop_button.config(text='resume')
         self.stop_button.config(command=self.resume)

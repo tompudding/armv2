@@ -55,10 +55,10 @@ class Debugger(object):
         self.Continue(explicit=True)
 
     def handle_stop(self,message):
-        self.Stop()
+        self.Stop(send_message=False)
 
     def handle_step(self,message):
-        self.Step()
+        self.Step(explicit=True)
 
     def handle_restart(self,message):
         print 'Got restart'
@@ -174,5 +174,7 @@ class Debugger(object):
     def exit(self):
         self.connection.exit()
 
-    def Stop(self):
+    def Stop(self, send_message=True):
         self.stopped = True
+        if send_message:
+            self.connection.send(messages.Stop())
