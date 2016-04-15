@@ -28,6 +28,7 @@ class Debugger(object):
                          messages.Types.UNWATCH   : self.handle_memory_unwatch,
                          messages.Types.CONNECT   : self.handle_connect,
                          messages.Types.DISASSEMBLY : self.handle_disassembly,
+                         messages.Types.TAPEREQUEST : self.handle_taperequest,
         }
 
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
@@ -70,6 +71,9 @@ class Debugger(object):
     def handle_unset_breakpoint(self,message):
         print 'Got unset breakpoint'
         self.RemoveBreakpoint(message.addr)
+
+    def handle_taperequest(self,message):
+        print 'got tape request'
 
     def handle_memory_watch(self, message):
         self.mem_watches[message.id] = message

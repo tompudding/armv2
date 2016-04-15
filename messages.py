@@ -24,6 +24,7 @@ class Types:
     STATE       = 12
     DISASSEMBLY = 13
     DISASSEMBLYDATA = 14
+    TAPEREQUEST = 15
 
 class DynamicObject(object):
     pass
@@ -79,6 +80,7 @@ class MemView(Message):
     class Types:
         MEMDUMP     = 0
         DISASSEMBLY = 1
+        TAPES       = 2
 
     def __init__(self, id, start, size, watch_start=0, watch_size=0):
         self.id = id
@@ -103,6 +105,11 @@ class MemdumpView(MemView):
     def __init__(self, start, size, watch_start=0, watch_size=0):
         super(MemdumpView,self).__init__(self.id, start, size, watch_start, watch_size)
 
+class TapesView(MemView):
+    type = Types.TAPEREQUEST
+    id = MemView.Types.TAPES
+    def __init__(self, start, size, watch_start=0, watch_size=0):
+        super(TapesView,self).__init__(self.id, start, size, watch_start, watch_size)
 
 class MemViewReply(MemView):
     type = Types.MEMDATA

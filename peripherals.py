@@ -337,6 +337,22 @@ class Memory(Scrollable):
     def activate_item(self, event=None):
         print 'memory activate',self.selected
 
+class Tapes(Scrollable):
+    line_size = 1
+    buffer   = 0
+    view_min = 0
+    view_max = 32
+    labels_per_row = 2
+    content_lable = 1
+    message_class = messages.TapesView
+    label_widths=[4,0]
+
+    def receive(self, message):
+        print 'tape receive'
+
+    def activate_item(self, event=None):
+        print 'tapes activate',self.selected
+
 class Registers(View):
     num_entries = 18
     def __init__(self, app, width, height):
@@ -531,7 +547,7 @@ class Application(Tkinter.Frame):
         self.disassembly = Disassembly(self, width=47, height=14)
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
-        self.tape = Memory(self, width=50, height=6)
+        self.tape = Tapes(self, width=50, height=6)
         self.options = Memory(self, width=50, height=3)
 
         self.stop_button = Button(self.frame, 'stop', self.stop)
