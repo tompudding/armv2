@@ -84,6 +84,7 @@ class Debugger(object):
     def handle_connect(self, message):
         #On connect we send an initial update
         self.send_register_update()
+        #self.send_tapes()
 
     def handle_disassembly(self, message):
         start = message.start

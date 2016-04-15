@@ -83,6 +83,7 @@ class Scrollable(View):
         self.frame.bind("<Tab>", self.switch_from)
         self.frame.bind("<space>", self.activate_item)
         self.frame.bind("<s>", self.app.step)
+        self.full_height = self.height + 2*self.buffer
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.label_rows = []
@@ -107,8 +108,8 @@ class Scrollable(View):
                                            relief=Tkinter.SOLID)
                     widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.line_size),self.frame.focus_set()])
                     widget.bind("<MouseWheel>", self.mouse_wheel)
-                    widget.bind("<Button-4>", self.keyboard_up)
-                    widget.bind("<Button-5>", self.keyboard_down)
+                    widget.bind("<Button-4>", self.mousewheel_up)
+                    widget.bind("<Button-5>", self.mousewheel_down)
                     widget.grid(row=i-self.buffer, column=j, padx=0, pady=0)
                     widgets.append(widget)
                 labels.append(sv)
@@ -138,9 +139,15 @@ class Scrollable(View):
         if view_size > 0:
             self.app.send_message(self.message_class(view_start, view_size, view_start, view_size))
 
-    def select(self, addr):
-        selected = (addr - self.view_start)/self.line_size
-        if selected < 0 or selected >= len(self.label_rows):
+    def select(self, addr, index=None):
+        if index is None:
+            selected = (addr - self.view_start)/self.line_size
+        else:
+            if index < self.buffer or index >= len(self.label_rows):
+                return
+            selected = index
+            addr = self.view_start + selected*self.line_size
+        if selected < self.buffer or selected >= len(self.label_rows):
             selected = None
         elif selected == self.selected:
             return self.activate_item()
@@ -162,15 +169,33 @@ class Scrollable(View):
 
     def mouse_wheel(self, event):
         if event.delta < 0:
-            self.keyboard_up(event)
+            self.mousewheel_up(event)
         else:
-            self.keyboard_down(event)
+            self.mousewheel_down(event)
 
-    def keyboard_up(self, event):
+    def mousewheel_up(self, event):
         self.adjust_view(-1)
 
-    def keyboard_down(self, event):
+    def mousewheel_down(self, event):
         self.adjust_view(1)
+
+    def keyboard_up(self, event):
+        self.select(None, self.selected - 1)
+        #self.adjust_view(-1)
+        self.centre(self.selected_addr)
+
+    def keyboard_down(self, event):
+        #self.adjust_view(1)
+        self.select(None, self.selected + 1 if self.selected is not None else 0)
+        self.centre(self.selected_addr)
+
+    def centre(self, pos):
+        if pos is None:
+            return
+        start = pos - self.full_height*self.line_size/2
+        if start < -self.buffer*self.line_size:
+            start = -self.buffer*self.line_size
+        self.adjust_view((start - self.view_start)/self.line_size)
 
     def keyboard_page_up(self, event):
         self.adjust_view(-self.height)
