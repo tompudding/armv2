@@ -15,6 +15,11 @@ from optparse import OptionParser
 width,height = (960, 720)
 globals.screen = Point(width,height)
 
+translations = {pygame.K_LEFT : 250,
+                pygame.K_RIGHT : 251,
+                pygame.K_UP : 252,
+                pygame.K_DOWN : 253}
+
 def new_machine():
     machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
     try:
@@ -94,6 +99,10 @@ class Emulator(object):
                     #use the old value
                     key = ord(event.unicode)
                 except (TypeError,AttributeError):
+                    pass
+                try:
+                    key = translations[key]
+                except KeyError:
                     pass
                 if key < 256:
                     self.dbg.machine.keyboard.KeyDown(key)

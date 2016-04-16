@@ -107,28 +107,31 @@ int load_tape(uint8_t *tape_area) {
     return tape_control->read == END_OF_TAPE ? 0 : tape_control->read + 1;
 }
 
+void run_tape() {
+    int result = load_tape(tape_load_area);
+    switch(result) {
+    case 0:
+    {
+        //The tape is loaded so let's clear the screen and jump to the tape
+        void (*fn)(void) = (void*)tape_load_area;
+        clear_screen(BLACK,BLACK);
+        fn();
+        break;
+    }
+    case DRIVE_EMPTY+1:
+        process_string("Tape drive empty\r>");
+        break;
+    default:
+        process_string("Tape drive error\r>");
+        break;
+    }
+}
+
 void handle_command() {
     if(command_size) {
         if(0 == strcasecmp(command,"load")) {
             process_string("Loading...\r");
-            int result = load_tape(tape_load_area);
-            switch(result) {
-            case 0:
-            {
-                //The tape is loaded so let's clear the screen and jump to the tape
-                void (*fn)(void) = (void*)tape_load_area;
-                clear_screen(BLACK,BLACK);
-                fn();
-                break;
-            }
-            case DRIVE_EMPTY+1:
-                process_string("Tape drive empty\r>");
-                break;
-            default:
-                process_string("Tape drive error\r>");
-                break;
-            }
-
+            run_tape();
         }
         else {
             process_string("Unknown command\r>");
@@ -172,6 +175,7 @@ int _start(void) {
     clear_screen_with_border(BLUE, LIGHT_BLUE, border_size);
     banner();
     processing = 1;
+    run_tape();
     process_text();
     return 0;
 }
