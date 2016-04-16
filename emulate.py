@@ -145,14 +145,14 @@ def init():
     drawing.InitDrawing()
 
 if __name__ == '__main__':
-    from multiprocessing import Process
-    import peripherals,time
+    #from multiprocessing import Process
+    #import peripherals,time
 
-    p = Process(target=peripherals.run)
-    p.start()
+    #p = Process(target=peripherals.run)
+    #p.start()
     init()
     emulator = Emulator()
     emulator.run()
     pygame.display.quit()
-    p.join()
+    #p.join()
 
