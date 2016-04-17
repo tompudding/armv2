@@ -544,7 +544,7 @@ void update_villager(struct character *villager) {
         }
     }
 
-    if(!villager->scared || (!villager->suspicious && player.size == 1)) {
+    if(!villager->scared || (!villager->suspicious && villager->armed)) {
         if(player.size == 2 && distance(&villager->pos, &player.pos) < OBSERVE_DISTANCE &&
            line_of_sight(&villager->pos, &player.pos)) {
             villager->scared = true;
@@ -562,7 +562,7 @@ void update_villager(struct character *villager) {
         }
     }
 
-    else if(villager->scared && !villager->armed) {
+    else if((villager->scared || villager->suspicious) && !villager->armed) {
         //go to a random weapons cabinet
         villager->destination.x = 7;
         villager->destination.y = 21;
@@ -599,7 +599,7 @@ void tick_simulation() {
             transform(&player);
             transforming = false;
             update_player_form(&player, true);
-            set_banner("You tured back at dawn");
+            set_banner("You turned back at dawn");
         }
         //non supicious villagers put their weapons down
         for(i = 0; i < num_villagers; i++) {
