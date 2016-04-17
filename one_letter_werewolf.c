@@ -25,6 +25,8 @@ int current_blips = 0;
 #define BAR_CHAR '='
 #define VILLAGER_CHAR 'p'
 #define PLAYER_CHAR 'x'
+#define DEAD_CHAR '\x7f'
+#define WEREWOLF_CHAR 'W'
 #define MAX(a,b) ((a) < (b) ? (b) : (a))
 
 int colours[] = {PALETTE(BLUE, LIGHT_BLUE),
@@ -49,7 +51,7 @@ char *map =
     "    }     }                             "
     "    }     }                             "
     "    }     }                             "
-    "    \x8d``-``\x9d                             "
+    "    \x8d`` ``\x9d                             "
     "                                        "
     "                                        "
     "                                        "
@@ -85,6 +87,7 @@ struct character {
     int old_size;
     int transform_done;
     int palette;
+    bool dead;
 };
 #define NUM_VILLAGERS 10
 struct character player = {.pos = {.x = 20, .y = 15}, .symbol=PLAYER_CHAR, .palette = -1, .size=1};
@@ -126,7 +129,6 @@ void update_char_pos(struct position *new_pos, struct character *character) {
 
 void update_player_pos(struct position *new_pos, struct character *character) {
     int i,j;
-    int num_villagers = 0;
 
     for(i = 0; i < character->size; i++) {
         for(j = 0; j < character->size; j++) {
@@ -134,8 +136,8 @@ void update_player_pos(struct position *new_pos, struct character *character) {
             int y = new_pos->y + j;
 
             uint8_t current = get_item(x, y);
-            if(current == VILLAGER_CHAR) {
-                num_villagers++;
+            if(current == VILLAGER_CHAR || current == DEAD_CHAR) {
+                //this is fine
             }
             else if(current != ' ' && current != character->symbol) {
                 //this is a wall of some kind
@@ -247,11 +249,11 @@ void process_input(uint8_t c, struct character *character) {
     if(new_pos.y < MIN_HEIGHT) {
         new_pos.y = MIN_HEIGHT;
     }
-    if(new_pos.x >= WIDTH) {
-        new_pos.x = WIDTH-1;
+    if(new_pos.x + character->size - 1 >= WIDTH) {
+        new_pos.x = WIDTH-1-(character->size - 1);
     }
-    if(new_pos.y >= MAX_HEIGHT) {
-        new_pos.y = MAX_HEIGHT-1;
+    if(new_pos.y + character->size - 1 >= MAX_HEIGHT) {
+        new_pos.y = MAX_HEIGHT-1-(character->size-1);;
     }
 
     if(character->symbol == VILLAGER_CHAR) {
@@ -332,14 +334,14 @@ bool transform(struct character *ch) {
             }
         }
         ch->old_symbol = ch->symbol;
-        ch->symbol = 'W';
+        ch->symbol = WEREWOLF_CHAR;
         ch->size = 2;
         ch->old_size = 1;
         ch->transform_done = (time_of_day + 4)&0x7f;
         ch->palette = PALETTE(BLACK, WHITE);
     }
     else {
-        ch->old_symbol = 'W';
+        ch->old_symbol = WEREWOLF_CHAR;
         ch->symbol = PLAYER_CHAR;
         ch->size = 1;
         ch->old_size = 2;
@@ -349,7 +351,6 @@ bool transform(struct character *ch) {
     transforming = true;
     return true;
 }
-
 
 void tick_simulation() {
     int i;
@@ -371,9 +372,23 @@ void tick_simulation() {
     set_phase(time_of_day, !is_night(time_of_day));
 
     for(i = 0; i < NUM_VILLAGERS; i++) {
-        uint8_t dir = dirs[getrand()&3];
-        process_input(dir, villagers + i);
-        //set_letter(villagers[i].symbol,villagers[i].pos.x,villagers[i].pos.y);
+        int x = villagers[i].pos.x;
+        int y = villagers[i].pos.y;
+        uint8_t current = get_item(x,y);
+        if(villagers[i].dead) {
+            //just redraw if it's empty
+            if(current == ' ') {
+                set_letter(DEAD_CHAR, x, y);
+            }
+        }
+        else if(current == WEREWOLF_CHAR) {
+            villagers[i].dead = true;
+        }
+        else {
+            uint8_t dir = dirs[getrand()&3];
+            process_input(dir, villagers + i);
+            //set_letter(villagers[i].symbol,villagers[i].pos.x,villagers[i].pos.y);
+        }
     }
     if(transforming) {
         if(time_of_day == player.transform_done) {
