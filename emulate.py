@@ -134,7 +134,7 @@ def init():
     pygame.init()
     pygame.display.set_caption('Synapse')
     #pygame.mouse.set_visible(0)
-    pygame.key.set_repeat(500,50)
+    pygame.key.set_repeat(200,100)
     globals.dirs = globals.types.Directories('resource')
     globals.screen_quadbuffer     = drawing.QuadBuffer(16)
     globals.screen.full_quad      = drawing.Quad(globals.screen_quadbuffer)

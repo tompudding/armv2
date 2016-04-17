@@ -21,7 +21,7 @@ bool level_banner = false;
 int current_blips = 0;
 
 #define MAX_HEIGHT (HEIGHT-2)
-#define MIN_HEIGHT 1
+#define MIN_HEIGHT 2
 #define DAY_TICKS 0x40
 #define BAR_CHAR '='
 #define VILLAGER_CHAR 'p'
@@ -29,6 +29,7 @@ int current_blips = 0;
 #define VILLAGER_ARMED_SUSPICIOUS 'M'
 #define VILLAGER_SCARED '!'
 #define VILLAGER_SCARED_SUSPICIOUS 'S'
+#define VILLAGER_SUSPICIOUS 'S'
 #define PLAYER_CHAR 'x'
 #define DEAD_CHAR '\x7f'
 #define WEREWOLF_CHAR 'W'
@@ -41,7 +42,7 @@ bool transforming = false;
 bool game_over = false;
 int level = 1;
 
-char *villager_types = "pmM!Sp\x7f";
+char *villager_types = "pmM!SpP\x7f";
 
 #define BANNER_OFFSET ((HEIGHT-MIN_HEIGHT)*WIDTH)
 #define banner_row (letter_data + BANNER_OFFSET)
@@ -250,6 +251,10 @@ bool update_player_form(struct character *character, bool new_form) {
         for(j = 0; j < size; j++) {
             int x = character->pos.x + i;
             int y = character->pos.y + j;
+            int symbol = character->symbol;
+            if(!new_form) {
+                symbol = PLAYER_CHAR;
+            }
             set_letter(character->symbol, x, y);
             set_palette(character->palette, x, y);
         }
@@ -264,7 +269,7 @@ void update_symbol(struct character *character) {
         character->symbol = character->suspicious ? VILLAGER_SCARED_SUSPICIOUS : VILLAGER_SCARED;
     }
     else {
-        character->symbol = VILLAGER_CHAR;
+        character->symbol = character->suspicious ? VILLAGER_SUSPICIOUS : VILLAGER_CHAR;
     }
 }
     
@@ -515,6 +520,19 @@ bool transform(struct character *ch) {
 }
 
 void update_villager(struct character *villager) {
+    if(villager->suspicious) {
+        int i;
+        for(i = 0; i < num_villagers; i++) {
+            if(villagers + i == villager || villagers[i].suspicious) {
+                continue;
+            }
+            
+            if(distance(&villagers[i].pos,&villager->pos) < 10) {
+                villagers[i].suspicious = true;
+                update_symbol(villagers + i);
+            }
+        }
+    }
 
     if(!villager->scared || (!villager->suspicious && player.size == 1)) {
         if(player.size == 2 && distance(&villager->pos, &player.pos) < OBSERVE_DISTANCE &&
@@ -613,6 +631,15 @@ void tick_simulation() {
             transforming = false;
             update_player_form(&player, true);
         }
+        else if(player.transform_done - time_of_day == 3) {
+            update_player_form(&player, false);
+        }
+        else if(player.transform_done - time_of_day == 2) {
+            update_player_form(&player, true);
+        }
+        else if(player.transform_done - time_of_day == 1) {
+            update_player_form(&player, false);
+        }
     }
     else {
         update_player_pos(&player.pos, &player);
@@ -697,7 +724,7 @@ void reset() {
     
     
     memcpy(letter_data, map, strlen(map));
-    memset(palette_data + BANNER_OFFSET, PALETTE(BLACK,RED), WIDTH);
+    memset(palette_data + BANNER_OFFSET, PALETTE(BLACK,RED), WIDTH*2);
     set_banner("KILL THE VILLAGERS!");
     set_phase(time_of_day, true);
     current_palette = colours[0];
