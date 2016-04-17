@@ -544,7 +544,7 @@ void update_villager(struct character *villager) {
         }
     }
 
-    if(!villager->scared || (!villager->suspicious && villager->armed)) {
+    if(!villager->scared || (!villager->suspicious && villager->armed && player.size == 1)) {
         if(player.size == 2 && distance(&villager->pos, &player.pos) < OBSERVE_DISTANCE &&
            line_of_sight(&villager->pos, &player.pos)) {
             villager->scared = true;
