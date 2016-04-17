@@ -314,33 +314,23 @@ void set_phase(int t, bool daytime) {
     }
 }
 
-void tick_simulation() {
-    int i;
-    static char *dirs = "wsad";
-    time_of_day = (time_of_day + 1)&0x7f;
-    if((time_of_day&0x3f) == 0) {
-        current_palette = colours[time_of_day>>6];
-        memset(palette_data, current_palette, BANNER_OFFSET);
-    }
-    //letter_data[30] = CHAR_TO_HEX(time_of_day&0xf);
-    //letter_data[29] = CHAR_TO_HEX(time_of_day>>4);
-    set_phase(time_of_day, !is_night(time_of_day));
 
-    for(i = 0; i < NUM_VILLAGERS; i++) {
-        uint8_t dir = dirs[getrand()&3];
-        process_input(dir, villagers + i);
-        //set_letter(villagers[i].symbol,villagers[i].pos.x,villagers[i].pos.y);
-    }
-    if(transforming) {
-        if(time_of_day == player.transform_done) {
-            transforming = false;
-            update_player_form(&player, true);
-        }
-    }
-}
-
-void transform(struct character *ch) {
+bool transform(struct character *ch) {
     if(ch->size == 1) {
+        int i,j;
+        for(i = 0; i < 2; i++) {
+            for(j = 0; j < 2; j++) {
+                int x = ch->pos.x + i;
+                int y = ch->pos.y + j;
+                if(i == 0 && j == 0) {
+                    continue;
+                }
+                uint8_t item = get_item(x,y);
+                if(item != ' ' && item != VILLAGER_CHAR) {
+                    return false;
+                }
+            }
+        }
         ch->old_symbol = ch->symbol;
         ch->symbol = 'W';
         ch->size = 2;
@@ -357,6 +347,40 @@ void transform(struct character *ch) {
         ch->palette = -1;
     }
     transforming = true;
+    return true;
+}
+
+
+void tick_simulation() {
+    int i;
+    static char *dirs = "wsad";
+    time_of_day = (time_of_day + 1)&0x7f;
+    if((time_of_day&0x3f) == 0) {
+        current_palette = colours[time_of_day>>6];
+        memset(palette_data, current_palette, BANNER_OFFSET);
+    }
+    if(time_of_day == 0 && player.size == 2) {
+        //No werewolf during the day!
+        transform(&player);
+        transforming = false;
+        update_player_form(&player, true);
+        set_banner("You tured back at dawn");
+    }
+    //letter_data[30] = CHAR_TO_HEX(time_of_day&0xf);
+    //letter_data[29] = CHAR_TO_HEX(time_of_day>>4);
+    set_phase(time_of_day, !is_night(time_of_day));
+
+    for(i = 0; i < NUM_VILLAGERS; i++) {
+        uint8_t dir = dirs[getrand()&3];
+        process_input(dir, villagers + i);
+        //set_letter(villagers[i].symbol,villagers[i].pos.x,villagers[i].pos.y);
+    }
+    if(transforming) {
+        if(time_of_day == player.transform_done) {
+            transforming = false;
+            update_player_form(&player, true);
+        }
+    }
 }
 
 int _start(void) {
@@ -397,7 +421,9 @@ int _start(void) {
                         set_banner("You can only transform at night");
                     }
                     else {
-                        transform(&player);
+                        if(!transform(&player)) {
+                            set_banner("No room to transform here");
+                        }
                     }
                 }
                 else {
