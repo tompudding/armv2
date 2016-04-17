@@ -132,7 +132,7 @@ def init():
         os.chdir(sys._MEIPASS)
 
     pygame.init()
-    pygame.display.set_caption('Synapse')
+    pygame.display.set_caption('One Letter Werewolf')
     #pygame.mouse.set_visible(0)
     pygame.key.set_repeat(200,100)
     globals.dirs = globals.types.Directories('resource')

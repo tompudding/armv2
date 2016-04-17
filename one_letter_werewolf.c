@@ -24,12 +24,12 @@ int current_blips = 0;
 #define MIN_HEIGHT 2
 #define DAY_TICKS 0x40
 #define BAR_CHAR '='
-#define VILLAGER_CHAR 'p'
-#define VILLAGER_ARMED 'm'
-#define VILLAGER_ARMED_SUSPICIOUS 'M'
-#define VILLAGER_SCARED '!'
+#define VILLAGER_CHAR 'n'
+#define VILLAGER_ARMED 'a'
+#define VILLAGER_ARMED_SUSPICIOUS 'A'
+#define VILLAGER_SCARED 's'
 #define VILLAGER_SCARED_SUSPICIOUS 'S'
-#define VILLAGER_SUSPICIOUS 'S'
+#define VILLAGER_SUSPICIOUS 'N'
 #define PLAYER_CHAR 'x'
 #define DEAD_CHAR '\x7f'
 #define WEREWOLF_CHAR 'W'
@@ -42,7 +42,7 @@ bool transforming = false;
 bool game_over = false;
 int level = 1;
 
-char *villager_types = "pmM!SpP\x7f";
+char *villager_types = "naAsSN\x7f";
 
 #define BANNER_OFFSET ((HEIGHT-MIN_HEIGHT)*WIDTH)
 #define banner_row (letter_data + BANNER_OFFSET)
@@ -50,7 +50,7 @@ char *villager_types = "pmM!SpP\x7f";
 #define CHAR_TO_HEX(c) ((c) > 9 ? ('a' + (c) - 10) : ('0' + (c)))
 
 char *map = 
-    "   Health                               "
+    "            Health                      "
     "   Villagers Left                       "
     "                                        "
     "                                        "
@@ -164,9 +164,10 @@ bool update_char_pos(struct position *new_pos, struct character *character) {
         return false;
     }
     if((is_player(current) && character->armed && character->suspicious) || current == WEREWOLF_CHAR) {
-        hurt_player();
         character->dead = true;
         current_villagers--;
+        rng[0] = 2;
+        hurt_player();
         update_num_villagers();
         return true;
     }
@@ -352,7 +353,7 @@ bool proceed_to_point(struct character *villager, struct position *pos) {
     struct position *chosen;
     if(in_room(pos) != in_room(&villager->pos)) {
         //move to the nearest door
-        chosen = nearest_door(&villager->pos);
+        chosen = nearest_door(pos);
         if(chosen->x == villager->pos.x && chosen->y == villager->pos.y) {
             //they made it to the door
             chosen = pos;
@@ -404,8 +405,7 @@ void rand_pos(struct position *pos) {
 void end_game(char *message, bool end_game) {
     uint8_t *row = letter_data + WIDTH*HEIGHT/2;
     set_banner_row(message,letter_data + WIDTH*HEIGHT/2);
-    memset(palette_data + WIDTH*HEIGHT/2, PALETTE(DARK_GREY, WHITE), WIDTH);
-    memset(palette_data + WIDTH + (WIDTH*HEIGHT/2), PALETTE(DARK_GREY, WHITE), WIDTH); 
+    memset(palette_data + WIDTH*HEIGHT/2, PALETTE(DARK_GREY, WHITE), WIDTH*2);
     if(end_game) {
         set_banner_row("RELOAD TAPE TO PLAY AGAIN", row + WIDTH);
     }
@@ -418,6 +418,15 @@ void end_game(char *message, bool end_game) {
     else {
         level_banner = true;
     }
+}
+
+void start_game(char *message, char *m2) {
+    uint8_t *row = letter_data + WIDTH*HEIGHT/2;
+    set_banner_row(message,letter_data + WIDTH*HEIGHT/2);
+    set_banner_row(m2,letter_data + (WIDTH*HEIGHT/2) + WIDTH);
+    memset(palette_data + WIDTH*HEIGHT/2, PALETTE(DARK_GREY, WHITE), WIDTH*3);
+    set_banner_row("PRESS ENTER TO START", row + WIDTH*2);
+    level_banner = true;
 }
 
 void win_game() {
@@ -496,6 +505,7 @@ bool transform(struct character *ch) {
         ch->old_size = 1;
         ch->transform_done = (time_of_day + 4)&0x7f;
         ch->palette = PALETTE(BLACK, WHITE);
+        rng[0] = 0;
     }
     else {
         ch->old_symbol = WEREWOLF_CHAR;
@@ -571,6 +581,10 @@ void update_villager(struct character *villager) {
         
 }
 
+void set_observed(bool observed) {
+    memcpy(letter_data + 3, observed ? "OBSERVED" : "HIDDEN  ", 8 );
+}
+
 void tick_simulation() {
     int i;
     static char *dirs = "wsad";
@@ -602,8 +616,12 @@ void tick_simulation() {
     //letter_data[30] = CHAR_TO_HEX(time_of_day&0xf);
     //letter_data[29] = CHAR_TO_HEX(time_of_day>>4);
     set_phase(time_of_day, !is_night(time_of_day));
+    bool observed = false;
 
     for(i = 0; i < num_villagers; i++) {
+        if(level_banner) {
+            return;
+        }
         int x = villagers[i].pos.x;
         int y = villagers[i].pos.y;
         uint8_t current = get_item(x,y);
@@ -616,16 +634,21 @@ void tick_simulation() {
         else if(current == WEREWOLF_CHAR || (current == PLAYER_CHAR && villagers[i].armed && villagers[i].suspicious)) {
             villagers[i].dead = true;
             current_villagers--;
+            rng[0] = 2;
             update_num_villagers();
             if(villagers[i].armed) {
                 hurt_player();
             }
         }
         else {
+            if(distance(&villagers[i].pos, &player.pos) < OBSERVE_DISTANCE) {
+                observed = true;
+            }
             update_villager(villagers + i);
             //set_letter(villagers[i].symbol,villagers[i].pos.x,villagers[i].pos.y);
         }
     }
+    set_observed(observed);
     if(transforming) {
         if(time_of_day == player.transform_done) {
             transforming = false;
@@ -672,11 +695,12 @@ void update_health() {
 }
 
 hurt_player() {
-    player.health -= player.size == 2 ? 10 : 50;
+    player.health -= player.size == 2 ? 20 : 50;
     update_health();
     if(player.health <= 0) {
         lose_game();
     }
+    rng[0] = 1;
 }
 
 void kill_villagers() {
@@ -693,11 +717,12 @@ void kill_villagers() {
             }
         }
         else if(current == WEREWOLF_CHAR || (current == PLAYER_CHAR && villagers[i].armed && villagers[i].suspicious)) {
+            killed = villagers[i].dead = true;
+            current_villagers--;
+            rng[0] = 2;
             if(villagers[i].armed) {
                 hurt_player();
             }
-            killed = villagers[i].dead = true;
-            current_villagers--;
         }
     }
     if(killed) {
@@ -722,7 +747,6 @@ void reset() {
     
     is_day = true;
     
-    
     memcpy(letter_data, map, strlen(map));
     memset(palette_data + BANNER_OFFSET, PALETTE(BLACK,RED), WIDTH*2);
     set_banner("KILL THE VILLAGERS!");
@@ -743,6 +767,8 @@ int _start(void) {
     crash_handler_word[0] = crash_handler;
     int i;
     reset();
+
+    start_game("CAPS=suspicious a=armed s=scared","n=normal w=weapons x=you!");
  
     while(1) {
         if(game_over) {
@@ -761,7 +787,14 @@ int _start(void) {
         while(last_pos != new_pos) {
             uint8_t c;
             c = keyboard_ringbuffer[last_pos];
-            if(!transforming) {
+            if(level_banner) {
+                if(c == '\r') {
+                    level_banner = false;
+                    reset();
+                    break;
+                }
+            }
+            else if(!transforming) {
                 //ignore key entry while this is happening
                 if (c == ' ') {
                     //Tried to activate
@@ -772,13 +805,6 @@ int _start(void) {
                         if(!transform(&player)) {
                             set_banner("No room to transform here");
                         }
-                    }
-                }
-                else if(c == '\r') {
-                    if(level_banner) {
-                        level_banner = false;
-                        reset();
-                        break;
                     }
                 }
                 else if(!level_banner){
