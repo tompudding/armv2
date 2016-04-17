@@ -24,7 +24,10 @@ int current_blips = 0;
 #define DAY_TICKS 0x40
 #define BAR_CHAR '='
 #define VILLAGER_CHAR 'p'
-#define VILLAGER_ARMED 'M'
+#define VILLAGER_ARMED 'm'
+#define VILLAGER_ARMED_SUSPICIOUS 'M'
+#define VILLAGER_SCARED '!'
+#define VILLAGER_SCARED_SUSPICIOUS 'S'
 #define PLAYER_CHAR 'x'
 #define DEAD_CHAR '\x7f'
 #define WEREWOLF_CHAR 'W'
@@ -36,6 +39,7 @@ int current_palette = -1;
 bool transforming = false;
 bool game_over = false;
 
+char *villager_types = "pmM!Sp\x7f";
 
 #define BANNER_OFFSET ((HEIGHT-MIN_HEIGHT)*WIDTH)
 #define banner_row (letter_data + BANNER_OFFSET)
@@ -139,7 +143,7 @@ uint8_t get_item(int x, int y) {
 }
 
 bool is_villager(uint8_t item) {
-    return item == VILLAGER_CHAR || item == VILLAGER_ARMED || item == DEAD_CHAR;
+    return strchr(villager_types, item);
 }
 
 bool is_player(uint8_t item) {
@@ -155,7 +159,7 @@ bool update_char_pos(struct position *new_pos, struct character *character) {
         //if(current != ' ') {
         return false;
     }
-    if(is_player(current) && character->armed && character->suspicious) {
+    if((is_player(current) && character->armed && character->suspicious) || current == WEREWOLF_CHAR) {
         hurt_player();
         character->dead = true;
         current_villagers--;
@@ -245,6 +249,18 @@ bool update_player_form(struct character *character, bool new_form) {
             set_letter(character->symbol, x, y);
             set_palette(character->palette, x, y);
         }
+    }
+}
+
+void update_symbol(struct character *character) {
+    if(character->armed) {
+        character->symbol = character->suspicious ? VILLAGER_ARMED_SUSPICIOUS : VILLAGER_ARMED;
+    }
+    else if(character->scared) {
+        character->symbol = character->suspicious ? VILLAGER_SCARED_SUSPICIOUS : VILLAGER_SCARED;
+    }
+    else {
+        character->symbol = VILLAGER_CHAR;
     }
 }
     
@@ -448,6 +464,7 @@ bool transform(struct character *ch) {
         if(distance(&villagers[i].pos, &player.pos) < OBSERVE_DISTANCE && 
            line_of_sight(&villagers[i].pos, &player.pos)) {
             villagers[i].suspicious = true;
+            update_symbol(villagers + i);
         }
     }
     return true;
@@ -457,12 +474,13 @@ void update_villager(struct character *villager) {
     if(!villager->scared || (!villager->suspicious && player.size == 1)) {
         if(player.size == 2 && distance(&villager->pos, &player.pos) < OBSERVE_DISTANCE && line_of_sight(&villager->pos, &player.pos)) {
             villager->scared = true;
+            update_symbol(villager);
         }
         else {
             //pick a point on the screen and walk towards it
             if(!villager->walking_to_point) {
                 villager->destination.x = getrand()%WIDTH;
-                villager->destination.y = getrand()%HEIGHT;
+                villager->destination.y = MIN_HEIGHT + getrand()%(MAX_HEIGHT-MIN_HEIGHT);
                 villager->walking_to_point = true;
             }
             villager->walking_to_point = proceed_to_point(villager, &villager->destination);
@@ -478,7 +496,7 @@ void update_villager(struct character *villager) {
         if(proceed_to_point(villager, &villager->destination)) {
             if(distance(&villager->pos,&cabinet_pos) <= 2) {
                 villager->armed = true;
-                villager->symbol = VILLAGER_ARMED;
+                update_symbol(villager);
             }
         }
     }
@@ -510,8 +528,9 @@ void tick_simulation() {
             if(villagers[i].dead) {
                 continue;
             }
-            if(villagers[i].armed && !villagers[i].suspicious) {
+            if(!villagers[i].suspicious) {
                 villagers[i].armed = false;
+                villagers[i].scared = false;
                 villagers[i].symbol = VILLAGER_CHAR;
             }
         }
@@ -526,7 +545,7 @@ void tick_simulation() {
         uint8_t current = get_item(x,y);
         if(villagers[i].dead) {
             //just redraw if it's empty
-            if(current == ' ') {
+            if(!is_player(current)) {
                 set_letter(DEAD_CHAR, x, y);
             }
         }
@@ -548,6 +567,9 @@ void tick_simulation() {
             update_player_form(&player, true);
         }
     }
+    else {
+        update_player_pos(&player.pos, &player);
+    }
 }
 
 
@@ -566,7 +588,7 @@ void update_health() {
 }
 
 hurt_player() {
-    player.health -= 10;
+    player.health -= player.size == 2 ? 10 : 50;
     update_health();
     if(player.health <= 0) {
         lose_game();
@@ -582,7 +604,7 @@ void kill_villagers() {
         uint8_t current = get_item(x,y);
         if(villagers[i].dead) {
             //just redraw if it's empty
-            if(current == ' ') {
+            if(!is_player(current)) {
                 set_letter(DEAD_CHAR, x, y);
             }
         }
