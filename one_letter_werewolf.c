@@ -17,6 +17,7 @@ size_t processing = 0;
 uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 bool is_day = true;
+bool level_banner = false;
 int current_blips = 0;
 
 #define MAX_HEIGHT (HEIGHT-2)
@@ -38,6 +39,7 @@ int colours[] = {PALETTE(BLUE, LIGHT_BLUE),
 int current_palette = -1;
 bool transforming = false;
 bool game_over = false;
+int level = 1;
 
 char *villager_types = "pmM!Sp\x7f";
 
@@ -52,10 +54,10 @@ char *map =
     "                                        "
     "                                        "
     "                                        "
-    "    \x90`````\x8e                             "
+    "    \x90`` ``\x8e                             "
     "    }     }                             "
     "    }     }                             "
-    "    }   w                               "
+    "       w                                "
     "    }     }                             "
     "    }     }                             "
     "    \x8d`` ``\x9d                             "
@@ -103,14 +105,15 @@ struct character {
 };
 
 struct position cabinet_pos = {.x = 7, .y = 21};
-struct position doors[2] = {{7,18},{10,21}};
+struct position doors[4] = {{7,18},{7,24},{4,21},{10,21}};
 
-#define NUM_VILLAGERS 10
+#define MAX_NUM_VILLAGERS 100
 #define OBSERVE_DISTANCE 60
 struct character player = {.pos = {.x = 20, .y = 15}, .symbol=PLAYER_CHAR, .palette = -1, .size=1, .health=100};
-struct character villagers[NUM_VILLAGERS];
-int time_of_day = 0x38; //0 - 10
-int current_villagers = NUM_VILLAGERS;
+struct character villagers[MAX_NUM_VILLAGERS];
+int time_of_day = 0x30; //0 - 10
+int num_villagers = 1;
+int current_villagers = 1;
 
 volatile uint32_t getrand() {
     //The display has a secret RNG
@@ -163,6 +166,7 @@ bool update_char_pos(struct position *new_pos, struct character *character) {
         hurt_player();
         character->dead = true;
         current_villagers--;
+        update_num_villagers();
         return true;
     }
     set_letter(' ', character->pos.x, character->pos.y);
@@ -329,7 +333,7 @@ struct position *nearest_door(struct position *pos) {
     struct position *out = doors;
     int min = 0x7fffffff;
     int i;
-    for(i = 0; i < 2; i++) {
+    for(i = 0; i < 4; i++) {
         int d = distance(pos, doors + i);
         if(d < min) {
             min = d;
@@ -392,27 +396,37 @@ void rand_pos(struct position *pos) {
 }
 
 
-void end_game(char *message) {
+void end_game(char *message, bool end_game) {
     uint8_t *row = letter_data + WIDTH*HEIGHT/2;
     set_banner_row(message,letter_data + WIDTH*HEIGHT/2);
     memset(palette_data + WIDTH*HEIGHT/2, PALETTE(DARK_GREY, WHITE), WIDTH);
     memset(palette_data + WIDTH + (WIDTH*HEIGHT/2), PALETTE(DARK_GREY, WHITE), WIDTH); 
-    set_banner_row("RELOAD TAPE TO PLAY AGAIN", row + WIDTH);
-    game_over = true;
+    if(end_game) {
+        set_banner_row("RELOAD TAPE TO PLAY AGAIN", row + WIDTH);
+    }
+    else {
+        set_banner_row("PRESS ENTER TO CONTINUE", row + WIDTH);
+    }
+    if(end_game) {
+        game_over = true;
+    }
+    else {
+        level_banner = true;
+    }
 }
 
 void win_game() {
-    end_game("YOU WIN");
+    end_game("YOU WIN", true);
 }
 
 void lose_game() {
-    end_game("YOU LOSE");
+    end_game("YOU LOSE", true);
 }
 
 
 void create_villagers(int num) {
     int i;
-    for(i = 0; i < NUM_VILLAGERS; i++) {
+    for(i = 0; i < num_villagers; i++) {
         rand_pos(&villagers[i].pos);
         villagers[i].symbol = VILLAGER_CHAR;
         villagers[i].palette = -1;
@@ -487,7 +501,7 @@ bool transform(struct character *ch) {
         ch->palette = -1;
     }
     transforming = true;
-    for(i = 0; i < NUM_VILLAGERS; i++) {
+    for(i = 0; i < num_villagers; i++) {
         if(villagers[i].dead) {
             continue;
         }
@@ -556,7 +570,7 @@ void tick_simulation() {
             set_banner("You tured back at dawn");
         }
         //non supicious villagers put their weapons down
-        for(i = 0; i < NUM_VILLAGERS; i++) {
+        for(i = 0; i < num_villagers; i++) {
             if(villagers[i].dead) {
                 continue;
             }
@@ -571,7 +585,7 @@ void tick_simulation() {
     //letter_data[29] = CHAR_TO_HEX(time_of_day>>4);
     set_phase(time_of_day, !is_night(time_of_day));
 
-    for(i = 0; i < NUM_VILLAGERS; i++) {
+    for(i = 0; i < num_villagers; i++) {
         int x = villagers[i].pos.x;
         int y = villagers[i].pos.y;
         uint8_t current = get_item(x,y);
@@ -584,6 +598,7 @@ void tick_simulation() {
         else if(current == WEREWOLF_CHAR || (current == PLAYER_CHAR && villagers[i].armed && villagers[i].suspicious)) {
             villagers[i].dead = true;
             current_villagers--;
+            update_num_villagers();
             if(villagers[i].armed) {
                 hurt_player();
             }
@@ -604,12 +619,22 @@ void tick_simulation() {
     }
 }
 
+void next_level() {
+    char level_text[] = "LEVEL 00";
+    level++;
+    num_villagers += 5;
+    current_villagers = num_villagers;
+    memset(villagers, 0, sizeof(villagers));
+    level_text[6] += level/10;
+    level_text[7] += level%10;
+    end_game(level_text,false);
+}
 
 void update_num_villagers() {
     letter_data[WIDTH+19] = '0' + current_villagers/10;
     letter_data[WIDTH+20] = '0' + current_villagers%10;
     if(current_villagers == 0) {
-        win_game();
+        next_level();
     }
 }
 
@@ -630,7 +655,7 @@ hurt_player() {
 void kill_villagers() {
     int i;
     bool killed = false;
-    for(i = 0; i < NUM_VILLAGERS; i++) {
+    for(i = 0; i < num_villagers; i++) {
         int x = villagers[i].pos.x;
         int y = villagers[i].pos.y;
         uint8_t current = get_item(x,y);
@@ -653,25 +678,44 @@ void kill_villagers() {
     }
 }
 
-int _start(void) {
-    crash_handler_word[0] = crash_handler;
+void reset() {
     int i;
+    current_palette = -1;
+    current_blips = 0;
+    time_of_day = 0x30;
     cursor_pos = INITIAL_CURSOR_POS;
     clear_screen_with_border(BACKGROUND, FOREGROUND, 0);
+    memset(&player, 0, sizeof(player));
+    player.pos.x = 20;
+    player.pos.y = 15;
+    player.symbol = PLAYER_CHAR;
+    player.palette = -1;
+    player.size = 1;
+    player.health = 100;
+    
+    is_day = true;
+    
     
     memcpy(letter_data, map, strlen(map));
     memset(palette_data + BANNER_OFFSET, PALETTE(BLACK,RED), WIDTH);
     set_banner("KILL THE VILLAGERS!");
     set_phase(time_of_day, true);
     current_palette = colours[0];
+    memset(palette_data, current_palette, BANNER_OFFSET);
 
     set_letter(player.symbol,player.pos.x,player.pos.y);
-    create_villagers(NUM_VILLAGERS);
+    create_villagers(num_villagers);
     update_num_villagers(current_villagers);
     update_health(player.health);
-    for(i = 0; i < NUM_VILLAGERS; i++) {
+    for(i = 0; i < num_villagers; i++) {
         set_letter(villagers[i].symbol,villagers[i].pos.x,villagers[i].pos.y);
     }
+}
+
+int _start(void) {
+    crash_handler_word[0] = crash_handler;
+    int i;
+    reset();
  
     while(1) {
         if(game_over) {
@@ -682,7 +726,9 @@ int _start(void) {
         while(last_pos == (new_pos = *ringbuffer_pos)) {
             uint64_t int_info = wait_for_interrupt();
             if(INT_ID(int_info) == CLOCK_ID) {
-                tick_simulation();
+                if(!level_banner) {
+                    tick_simulation();
+                }
             }
         }
         while(last_pos != new_pos) {
@@ -701,7 +747,14 @@ int _start(void) {
                         }
                     }
                 }
-                else {
+                else if(c == '\r') {
+                    if(level_banner) {
+                        level_banner = false;
+                        reset();
+                        break;
+                    }
+                }
+                else if(!level_banner){
                     process_input(c, &player);
                     kill_villagers();
                 }
