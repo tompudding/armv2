@@ -24,6 +24,7 @@ int current_blips = 0;
 #define DAY_TICKS 0x40
 #define BAR_CHAR '='
 #define VILLAGER_CHAR 'p'
+#define VILLAGER_ARMED 'M'
 #define PLAYER_CHAR 'x'
 #define DEAD_CHAR '\x7f'
 #define WEREWOLF_CHAR 'W'
@@ -47,13 +48,13 @@ char *map =
     "                                        "
     "                                        "
     "                                        "
-    "    \x90`````\x8e                             "
+    "    \x90`` ``\x8e                             "
     "    }     }                             "
     "    }     }                             "
+    "       w                                "
     "    }     }                             "
     "    }     }                             "
     "    \x8d`` ``\x9d                             "
-    "                                        "
     "                                        "
     "                                        "
     "                                        "
@@ -90,8 +91,18 @@ struct character {
     int palette;
     bool dead;
     int health;
+    bool armed;
+    bool suspicious;
+    bool scared;
+    bool walking_to_point;
+    struct position destination;
 };
+
+struct position cabinet_pos = {.x = 7, .y = 21};
+struct position doors[4] = {{7,18},{7,24},{4,21},{10,21}};
+
 #define NUM_VILLAGERS 10
+#define OBSERVE_DISTANCE 60
 struct character player = {.pos = {.x = 20, .y = 15}, .symbol=PLAYER_CHAR, .palette = -1, .size=1, .health=100};
 struct character villagers[NUM_VILLAGERS];
 int time_of_day = 0x38; //0 - 10
@@ -106,6 +117,16 @@ int set_letter(char c, int x, int y) {
     letter_data[WIDTH*(HEIGHT-1-y) + x] = c;
 }
 
+int distance(struct position *a, struct position *b) {
+    int x = a->x - b->x;
+    int y = a->y - b->y;
+    return x*x + y*y;
+}
+
+bool line_of_sight(struct position *a, struct position *b) {
+    return true;
+}
+
 int set_palette(int c, int x, int y) {
     if(c == -1) {
         c = current_palette;
@@ -117,17 +138,33 @@ uint8_t get_item(int x, int y) {
     return letter_data[WIDTH*(HEIGHT-1-y) + x];
 }
 
+bool is_villager(uint8_t item) {
+    return item == VILLAGER_CHAR || item == VILLAGER_ARMED || item == DEAD_CHAR;
+}
+
+bool is_player(uint8_t item) {
+    return item == PLAYER_CHAR || item == WEREWOLF_CHAR;
+}
+
 void update_werewolf_pos(struct position *new_pos, struct character *character) {
 }
 
-void update_char_pos(struct position *new_pos, struct character *character) {
+bool update_char_pos(struct position *new_pos, struct character *character) {
     uint8_t current = get_item(new_pos->x, new_pos->y);
-    if(current != ' ') {
-        return;
+    if(current != ' ' && !is_villager(current) && !is_player(current)) {
+        //if(current != ' ') {
+        return false;
+    }
+    if(is_player(current) && character->armed && character->suspicious) {
+        hurt_player();
+        character->dead = true;
+        current_villagers--;
+        return true;
     }
     set_letter(' ', character->pos.x, character->pos.y);
     character->pos = *new_pos;
     set_letter(character->symbol, character->pos.x, character->pos.y);
+    return true;
 }
 
 void update_player_pos(struct position *new_pos, struct character *character) {
@@ -139,7 +176,7 @@ void update_player_pos(struct position *new_pos, struct character *character) {
             int y = new_pos->y + j;
 
             uint8_t current = get_item(x, y);
-            if(current == VILLAGER_CHAR || current == DEAD_CHAR) {
+            if(is_villager(current)) {
                 //this is fine
             }
             else if(current != ' ' && current != character->symbol) {
@@ -172,7 +209,6 @@ void update_player_pos(struct position *new_pos, struct character *character) {
 bool update_player_form(struct character *character, bool new_form) {
     //firstly lets get the things where we're going into
     int i,j;
-    int num_villagers = 0;
     int num_others = 0;
     int size = new_form ? character->size : character->old_size;
     int old_size = new_form ? character->old_size : character->size;
@@ -186,8 +222,7 @@ bool update_player_form(struct character *character, bool new_form) {
             }
             if(size > old_size) {
                 uint8_t item = get_item(x, y);
-                if(item == VILLAGER_CHAR) {
-                    num_villagers++;
+                if(is_villager(item)) {
                 }
                 else if(item != ' ') {
                     num_others++;
@@ -230,6 +265,21 @@ void set_banner(char *banner) {
     return set_banner_row(banner, banner_row);
 }
 
+void cap_pos(struct position *new_pos, int size) {
+    if(new_pos->x < 0) {
+        new_pos->x = 0;
+    }
+    if(new_pos->y < MIN_HEIGHT) {
+        new_pos->y = MIN_HEIGHT;
+    }
+    if(new_pos->x + size - 1 >= WIDTH) {
+        new_pos->x = WIDTH-1-(size - 1);
+    }
+    if(new_pos->y + size - 1 >= MAX_HEIGHT) {
+        new_pos->y = MAX_HEIGHT-1-(size-1);;
+    }
+}
+
 void process_input(uint8_t c, struct character *character) {
     struct position new_pos = character->pos;
     switch(tolower(c)) {
@@ -250,25 +300,41 @@ void process_input(uint8_t c, struct character *character) {
         new_pos.y -= 1;
         break;
     }
-    if(new_pos.x < 0) {
-        new_pos.x = 0;
+    cap_pos(&new_pos, character->size);
+
+    update_player_pos(&new_pos, character);
+}
+
+bool proceed_to_point(struct character *villager, struct position *pos) {
+    int x = pos->x - villager->pos.x;
+    int y = pos->y - villager->pos.y;
+    if(x == 0 && y == 0) {
+        return false;
     }
-    if(new_pos.y < MIN_HEIGHT) {
-        new_pos.y = MIN_HEIGHT;
+    struct position new_pos = villager->pos;
+
+    if(abs(x)) {
+        int diff = x > 0 ? 1 : -1;
+        new_pos.x = villager->pos.x + diff;
+        cap_pos(&new_pos, villager->size);
+        if(update_char_pos(&new_pos, villager)) {
+            return true;
+        }
     }
-    if(new_pos.x + character->size - 1 >= WIDTH) {
-        new_pos.x = WIDTH-1-(character->size - 1);
-    }
-    if(new_pos.y + character->size - 1 >= MAX_HEIGHT) {
-        new_pos.y = MAX_HEIGHT-1-(character->size-1);;
+    new_pos.x = villager->pos.x;
+    if(0 == abs(y)) {
+        return false;
     }
 
-    if(character->symbol == VILLAGER_CHAR) {
-        update_char_pos(&new_pos, character);
+    //try the other one if that didn't work
+    int diff = y > 0 ? 1 : -1;
+    new_pos.y = villager->pos.y + diff;
+    cap_pos(&new_pos, villager->size);
+    if(!update_char_pos(&new_pos, villager)) {
+        return false;
     }
-    else {
-        update_player_pos(&new_pos, character);
-    }
+    
+    return true;
 }
 
 void rand_pos(struct position *pos) {
@@ -278,6 +344,25 @@ void rand_pos(struct position *pos) {
     }
     while (get_item(pos->x, pos->y) != ' ');
 }
+
+
+void end_game(char *message) {
+    uint8_t *row = letter_data + WIDTH*HEIGHT/2;
+    set_banner_row(message,letter_data + WIDTH*HEIGHT/2);
+    memset(palette_data + WIDTH*HEIGHT/2, PALETTE(DARK_GREY, WHITE), WIDTH);
+    memset(palette_data + WIDTH + (WIDTH*HEIGHT/2), PALETTE(DARK_GREY, WHITE), WIDTH); 
+    set_banner_row("RELOAD TAPE TO PLAY AGAIN", row + WIDTH);
+    game_over = true;
+}
+
+void win_game() {
+    end_game("YOU WIN");
+}
+
+void lose_game() {
+    end_game("YOU LOSE");
+}
+
 
 void create_villagers(int num) {
     int i;
@@ -325,8 +410,8 @@ void set_phase(int t, bool daytime) {
 
 
 bool transform(struct character *ch) {
+    int i,j;
     if(ch->size == 1) {
-        int i,j;
         for(i = 0; i < 2; i++) {
             for(j = 0; j < 2; j++) {
                 int x = ch->pos.x + i;
@@ -335,7 +420,7 @@ bool transform(struct character *ch) {
                     continue;
                 }
                 uint8_t item = get_item(x,y);
-                if(item != ' ' && item != VILLAGER_CHAR) {
+                if(item != ' ' && !is_villager(item)) {
                     return false;
                 }
             }
@@ -356,7 +441,52 @@ bool transform(struct character *ch) {
         ch->palette = -1;
     }
     transforming = true;
+    for(i = 0; i < NUM_VILLAGERS; i++) {
+        if(villagers[i].dead) {
+            continue;
+        }
+        if(distance(&villagers[i].pos, &player.pos) < OBSERVE_DISTANCE && 
+           line_of_sight(&villagers[i].pos, &player.pos)) {
+            villagers[i].suspicious = true;
+        }
+    }
     return true;
+}
+
+void update_villager(struct character *villager) {
+    if(!villager->scared || (!villager->suspicious && player.size == 1)) {
+        if(player.size == 2 && distance(&villager->pos, &player.pos) < OBSERVE_DISTANCE && line_of_sight(&villager->pos, &player.pos)) {
+            villager->scared = true;
+        }
+        else {
+            //pick a point on the screen and walk towards it
+            if(!villager->walking_to_point) {
+                villager->destination.x = getrand()%WIDTH;
+                villager->destination.y = getrand()%HEIGHT;
+                villager->walking_to_point = true;
+            }
+            villager->walking_to_point = proceed_to_point(villager, &villager->destination);
+            return;
+        }
+    }
+
+    else if(villager->scared && !villager->armed) {
+        //go to a random weapons cabinet
+        villager->destination.x = 7;
+        villager->destination.y = 21;
+        villager->walking_to_point = true;
+        if(proceed_to_point(villager, &villager->destination)) {
+            if(distance(&villager->pos,&cabinet_pos) <= 2) {
+                villager->armed = true;
+                villager->symbol = VILLAGER_ARMED;
+            }
+        }
+    }
+    else if(villager->armed) {
+        //go to the werewolf
+        proceed_to_point(villager, &player.pos);
+    }
+        
 }
 
 void tick_simulation() {
@@ -367,12 +497,24 @@ void tick_simulation() {
         current_palette = colours[time_of_day>>6];
         memset(palette_data, current_palette, BANNER_OFFSET);
     }
-    if(time_of_day == 0 && player.size == 2) {
-        //No werewolf during the day!
-        transform(&player);
-        transforming = false;
-        update_player_form(&player, true);
-        set_banner("You tured back at dawn");
+    if(time_of_day == 0) {
+        if(player.size == 2) {
+            //No werewolf during the day!
+            transform(&player);
+            transforming = false;
+            update_player_form(&player, true);
+            set_banner("You tured back at dawn");
+        }
+        //non supicious villagers put their weapons down
+        for(i = 0; i < NUM_VILLAGERS; i++) {
+            if(villagers[i].dead) {
+                continue;
+            }
+            if(villagers[i].armed && !villagers[i].suspicious) {
+                villagers[i].armed = false;
+                villagers[i].symbol = VILLAGER_CHAR;
+            }
+        }
     }
     //letter_data[30] = CHAR_TO_HEX(time_of_day&0xf);
     //letter_data[29] = CHAR_TO_HEX(time_of_day>>4);
@@ -388,12 +530,15 @@ void tick_simulation() {
                 set_letter(DEAD_CHAR, x, y);
             }
         }
-        else if(current == WEREWOLF_CHAR) {
+        else if(current == WEREWOLF_CHAR || (current == PLAYER_CHAR && villagers[i].armed && villagers[i].suspicious)) {
             villagers[i].dead = true;
+            current_villagers--;
+            if(villagers[i].armed) {
+                hurt_player();
+            }
         }
         else {
-            uint8_t dir = dirs[getrand()&3];
-            process_input(dir, villagers + i);
+            update_villager(villagers + i);
             //set_letter(villagers[i].symbol,villagers[i].pos.x,villagers[i].pos.y);
         }
     }
@@ -402,6 +547,29 @@ void tick_simulation() {
             transforming = false;
             update_player_form(&player, true);
         }
+    }
+}
+
+
+void update_num_villagers() {
+    letter_data[WIDTH+19] = '0' + current_villagers/10;
+    letter_data[WIDTH+20] = '0' + current_villagers%10;
+    if(current_villagers == 0) {
+        win_game();
+    }
+}
+
+void update_health() {
+    letter_data[19] = '0' + player.health/100;
+    letter_data[20] = '0' + (player.health/10)%10;
+    letter_data[21] = '0' + player.health%10;
+}
+
+hurt_player() {
+    player.health -= 10;
+    update_health();
+    if(player.health <= 0) {
+        lose_game();
     }
 }
 
@@ -418,7 +586,10 @@ void kill_villagers() {
                 set_letter(DEAD_CHAR, x, y);
             }
         }
-        else if(current == WEREWOLF_CHAR) {
+        else if(current == WEREWOLF_CHAR || (current == PLAYER_CHAR && villagers[i].armed && villagers[i].suspicious)) {
+            if(villagers[i].armed) {
+                hurt_player();
+            }
             killed = villagers[i].dead = true;
             current_villagers--;
         }
@@ -426,27 +597,6 @@ void kill_villagers() {
     if(killed) {
         update_num_villagers();
     }
-}
-
-void win_game() {
-    uint8_t *row = letter_data + WIDTH*HEIGHT/2;
-    set_banner_row("YOU WIN",letter_data + WIDTH*HEIGHT/2);
-    set_banner_row("RELOAD TAPE TO PLAY AGAIN", row + WIDTH);
-    game_over = true;
-}
-
-void update_num_villagers() {
-    letter_data[WIDTH+19] = '0' + current_villagers/10;
-    letter_data[WIDTH+20] = '0' + current_villagers%10;
-    if(current_villagers == 0) {
-        win_game();
-    }
-}
-
-void update_health() {
-    letter_data[19] = '0' + player.health/100;
-    letter_data[20] = '0' + (player.health/10)%10;
-    letter_data[21] = '0' + player.health%10;
 }
 
 int _start(void) {
