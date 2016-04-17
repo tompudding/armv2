@@ -42,7 +42,7 @@ bool transforming = false;
 
 char *map = 
     "   Health                               "
-    "   ==========                           "
+    "   Villagers Left                       "
     "                                        "
     "                                        "
     "                                        "
@@ -88,11 +88,13 @@ struct character {
     int transform_done;
     int palette;
     bool dead;
+    int health;
 };
 #define NUM_VILLAGERS 10
-struct character player = {.pos = {.x = 20, .y = 15}, .symbol=PLAYER_CHAR, .palette = -1, .size=1};
+struct character player = {.pos = {.x = 20, .y = 15}, .symbol=PLAYER_CHAR, .palette = -1, .size=1, .health=100};
 struct character villagers[NUM_VILLAGERS];
 int time_of_day = 0x38; //0 - 10
+int current_villagers = NUM_VILLAGERS;
 
 volatile uint32_t getrand() {
     //The display has a secret RNG
@@ -398,6 +400,40 @@ void tick_simulation() {
     }
 }
 
+void kill_villagers() {
+    int i;
+    bool killed = false;
+    for(i = 0; i < NUM_VILLAGERS; i++) {
+        int x = villagers[i].pos.x;
+        int y = villagers[i].pos.y;
+        uint8_t current = get_item(x,y);
+        if(villagers[i].dead) {
+            //just redraw if it's empty
+            if(current == ' ') {
+                set_letter(DEAD_CHAR, x, y);
+            }
+        }
+        else if(current == WEREWOLF_CHAR) {
+            killed = villagers[i].dead = true;
+            current_villagers--;
+        }
+    }
+    if(killed) {
+        update_num_villagers();
+    }
+}
+
+void update_num_villagers() {
+    letter_data[WIDTH+19] = '0' + current_villagers/10;
+    letter_data[WIDTH+20] = '0' + current_villagers%10;
+}
+
+void update_health() {
+    letter_data[19] = '0' + player.health/100;
+    letter_data[20] = '0' + (player.health/10)%10;
+    letter_data[21] = '0' + player.health%10;
+}
+
 int _start(void) {
     crash_handler_word[0] = crash_handler;
     int i;
@@ -412,6 +448,8 @@ int _start(void) {
 
     set_letter(player.symbol,player.pos.x,player.pos.y);
     create_villagers(NUM_VILLAGERS);
+    update_num_villagers(current_villagers);
+    update_health(player.health);
     for(i = 0; i < NUM_VILLAGERS; i++) {
         set_letter(villagers[i].symbol,villagers[i].pos.x,villagers[i].pos.y);
     }
@@ -443,6 +481,7 @@ int _start(void) {
                 }
                 else {
                     process_input(c, &player);
+                    kill_villagers();
                 }
             }
             last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
