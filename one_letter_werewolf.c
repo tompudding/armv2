@@ -52,10 +52,10 @@ char *map =
     "                                        "
     "                                        "
     "                                        "
-    "    \x90`` ``\x8e                             "
+    "    \x90`````\x8e                             "
     "    }     }                             "
     "    }     }                             "
-    "       w                                "
+    "    }   w                               "
     "    }     }                             "
     "    }     }                             "
     "    \x8d`` ``\x9d                             "
@@ -103,7 +103,7 @@ struct character {
 };
 
 struct position cabinet_pos = {.x = 7, .y = 21};
-struct position doors[4] = {{7,18},{7,24},{4,21},{10,21}};
+struct position doors[2] = {{7,18},{10,21}};
 
 #define NUM_VILLAGERS 10
 #define OBSERVE_DISTANCE 60
@@ -329,7 +329,7 @@ struct position *nearest_door(struct position *pos) {
     struct position *out = doors;
     int min = 0x7fffffff;
     int i;
-    for(i = 0; i < 4; i++) {
+    for(i = 0; i < 2; i++) {
         int d = distance(pos, doors + i);
         if(d < min) {
             min = d;
