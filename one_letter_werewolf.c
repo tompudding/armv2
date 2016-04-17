@@ -33,6 +33,7 @@ int colours[] = {PALETTE(BLUE, LIGHT_BLUE),
                  PALETTE(BLACK, RED)};
 int current_palette = -1;
 bool transforming = false;
+bool game_over = false;
 
 
 #define BANNER_OFFSET ((HEIGHT-MIN_HEIGHT)*WIDTH)
@@ -212,7 +213,7 @@ bool update_player_form(struct character *character, bool new_form) {
     }
 }
     
-void set_banner(char *banner) {
+void set_banner_row(char *banner, uint8_t *row) {
     int n = strlen(banner);
     int padding;
     if(n > WIDTH) {
@@ -220,9 +221,13 @@ void set_banner(char *banner) {
     }
 
     padding = (WIDTH-n)/2;
-    memset(banner_row, ' ', padding);
-    memcpy(banner_row + padding, banner, n);
-    memset(banner_row + padding + n, ' ', padding);
+    memset(row, ' ', padding);
+    memcpy(row + padding, banner, n);
+    memset(row + padding + n, ' ', padding);
+}
+
+void set_banner(char *banner) {
+    return set_banner_row(banner, banner_row);
 }
 
 void process_input(uint8_t c, struct character *character) {
@@ -423,9 +428,19 @@ void kill_villagers() {
     }
 }
 
+void win_game() {
+    uint8_t *row = letter_data + WIDTH*HEIGHT/2;
+    set_banner_row("YOU WIN",letter_data + WIDTH*HEIGHT/2);
+    set_banner_row("RELOAD TAPE TO PLAY AGAIN", row + WIDTH);
+    game_over = true;
+}
+
 void update_num_villagers() {
     letter_data[WIDTH+19] = '0' + current_villagers/10;
     letter_data[WIDTH+20] = '0' + current_villagers%10;
+    if(current_villagers == 0) {
+        win_game();
+    }
 }
 
 void update_health() {
@@ -455,6 +470,9 @@ int _start(void) {
     }
  
     while(1) {
+        if(game_over) {
+            break;
+        }
         uint8_t last_pos = *ringbuffer_pos;
         uint8_t new_pos;
         while(last_pos == (new_pos = *ringbuffer_pos)) {
@@ -486,6 +504,9 @@ int _start(void) {
             }
             last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
         }
+    }
+    while(1) {
+        wait_for_interrupt();
     }
 
 }
