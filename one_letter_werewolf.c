@@ -149,7 +149,7 @@ void update_player_pos(struct position *new_pos, struct character *character) {
             int x = character->pos.x + i;
             int y = character->pos.y + j;
             set_letter(' ', x, y);
-            set_palette(character->palette, x, y);
+            set_palette(current_palette, x, y);
         }
     }
     character->pos = *new_pos;
@@ -158,6 +158,7 @@ void update_player_pos(struct position *new_pos, struct character *character) {
             int x = character->pos.x + i;
             int y = character->pos.y + j;
             set_letter(character->symbol, x, y);
+            set_palette(character->palette, x, y);
         }
     }
 }
