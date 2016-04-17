@@ -321,9 +321,39 @@ void process_input(uint8_t c, struct character *character) {
     update_player_pos(&new_pos, character);
 }
 
+bool in_room(struct position *pos) {
+    return ((pos->x > 4) && (pos->x < 10) && (pos->y > 18) && (pos->y < 24));
+}
+
+struct position *nearest_door(struct position *pos) {
+    struct position *out = doors;
+    int min = 0x7fffffff;
+    int i;
+    for(i = 0; i < 4; i++) {
+        int d = distance(pos, doors + i);
+        if(d < min) {
+            min = d;
+            out = doors + i;
+        }
+    }
+    return out;
+}
+
 bool proceed_to_point(struct character *villager, struct position *pos) {
-    int x = pos->x - villager->pos.x;
-    int y = pos->y - villager->pos.y;
+    struct position *chosen;
+    if(in_room(pos) != in_room(&villager->pos)) {
+        //move to the nearest door
+        chosen = nearest_door(&villager->pos);
+        if(chosen->x == villager->pos.x && chosen->y == villager->pos.y) {
+            //they made it to the door
+            chosen = pos;
+        }
+    }
+    else {
+        chosen = pos;
+    }
+    int x = chosen->x - villager->pos.x;
+    int y = chosen->y - villager->pos.y;
     if(x == 0 && y == 0) {
         return false;
     }
@@ -471,8 +501,10 @@ bool transform(struct character *ch) {
 }
 
 void update_villager(struct character *villager) {
+
     if(!villager->scared || (!villager->suspicious && player.size == 1)) {
-        if(player.size == 2 && distance(&villager->pos, &player.pos) < OBSERVE_DISTANCE && line_of_sight(&villager->pos, &player.pos)) {
+        if(player.size == 2 && distance(&villager->pos, &player.pos) < OBSERVE_DISTANCE &&
+           line_of_sight(&villager->pos, &player.pos)) {
             villager->scared = true;
             update_symbol(villager);
         }
