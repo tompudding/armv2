@@ -49,7 +49,7 @@ char *villager_types = "naAsSN\x7f";
 
 #define CHAR_TO_HEX(c) ((c) > 9 ? ('a' + (c) - 10) : ('0' + (c)))
 
-char *map = 
+char *map =
     "            Health                      "
     "   Villagers Left                       "
     "                                        "
@@ -273,7 +273,7 @@ void update_symbol(struct character *character) {
         character->symbol = character->suspicious ? VILLAGER_SUSPICIOUS : VILLAGER_CHAR;
     }
 }
-    
+
 void set_banner_row(char *banner, uint8_t *row) {
     int n = strlen(banner);
     int padding;
@@ -317,7 +317,7 @@ void process_input(uint8_t c, struct character *character) {
     case RIGHT:
         new_pos.x += 1;
         break;
-    case 'w': 
+    case 'w':
     case UP:
         new_pos.y += 1;
         break;
@@ -389,7 +389,7 @@ bool proceed_to_point(struct character *villager, struct position *pos) {
     if(!update_char_pos(&new_pos, villager)) {
         return false;
     }
-    
+
     return true;
 }
 
@@ -520,7 +520,7 @@ bool transform(struct character *ch) {
         if(villagers[i].dead) {
             continue;
         }
-        if(distance(&villagers[i].pos, &player.pos) < OBSERVE_DISTANCE && 
+        if(distance(&villagers[i].pos, &player.pos) < OBSERVE_DISTANCE &&
            line_of_sight(&villagers[i].pos, &player.pos)) {
             villagers[i].suspicious = true;
             update_symbol(villagers + i);
@@ -536,7 +536,7 @@ void update_villager(struct character *villager) {
             if(villagers + i == villager || villagers[i].suspicious) {
                 continue;
             }
-            
+
             if(distance(&villagers[i].pos,&villager->pos) < 10) {
                 villagers[i].suspicious = true;
                 update_symbol(villagers + i);
@@ -578,7 +578,7 @@ void update_villager(struct character *villager) {
         //go to the werewolf
         proceed_to_point(villager, &player.pos);
     }
-        
+
 }
 
 void set_observed(bool observed) {
@@ -744,9 +744,10 @@ void reset() {
     player.palette = -1;
     player.size = 1;
     player.health = 100;
-    
+
     is_day = true;
-    
+    transforming = false;
+
     memcpy(letter_data, map, strlen(map));
     memset(palette_data + BANNER_OFFSET, PALETTE(BLACK,RED), WIDTH*2);
     set_banner("KILL THE VILLAGERS!");
@@ -769,7 +770,7 @@ int _start(void) {
     reset();
 
     start_game("CAPS=suspicious a=armed s=scared","n=normal w=weapons x=you!");
- 
+
     while(1) {
         if(game_over) {
             break;
