@@ -34,7 +34,7 @@ class Debugger(object):
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
         self.mem_watches = {}
-        self.machine.tape_drive.loadTape('tapes/1lw.bin')
+        self.machine.tape_drive.loadTape('tapes/3_adventure.bin')
 
         try:
             self.num_to_step    = 0

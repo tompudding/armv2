@@ -30,13 +30,6 @@ tape_loader.bin: tape_loader.S
 os: os.c common.c synapse.h
 	arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ os.c common.c
 
-tapes/1lw.bin: one_letter_werewolf tape_loader.bin
-	#arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ $< common.c
-	python create_tape.py $@ $^
-
-one_letter_werewolf: one_letter_werewolf.c common.c synapse.h
-	arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ one_letter_werewolf.c common.c
-
 tapes/1_guessing.bin: guessing tape_loader.bin
 	python create_tape.py $@ $^
 
