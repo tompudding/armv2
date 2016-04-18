@@ -15,6 +15,8 @@ hurt = pygame.mixer.Sound('hurt.ogg')
 eat = pygame.mixer.Sound('eat.ogg')
 
 sounds = [change,hurt,eat]
+for sound in sounds:
+    sound.set_volume(0.6)
 
 class Keyboard(armv2.Device):
     """
