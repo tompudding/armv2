@@ -167,7 +167,9 @@ bool update_char_pos(struct position *new_pos, struct character *character) {
         character->dead = true;
         current_villagers--;
         rng[0] = 2;
-        hurt_player();
+        if(character->armed) {
+            hurt_player();
+        }
         update_num_villagers();
         return true;
     }
