@@ -48,6 +48,13 @@ tapes/3_adventure.bin: adventure tape_loader.bin
 adventure: adventure.c common.c synapse.h
 	arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ adventure.c common.c
 
+tapes/1lw.bin: one_letter_werewolf tape_loader.bin
+	#arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ $< common.c
+	python create_tape.py $@ $^
+
+one_letter_werewolf: one_letter_werewolf.c common.c synapse.h
+	arm-none-eabi-gcc -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -o $@ one_letter_werewolf.c common.c
+
 clean:
 	rm -f armv2 os tapes/3_adventure.bin adventure tapes/2_trivia.bin trivia tapes/1_guessing.bin guessing boot.rom armtest step.o instructions.o init.o armv2.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
 	python setup.py clean
