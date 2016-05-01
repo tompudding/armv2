@@ -5,7 +5,6 @@ import os
 import sys
 import hardware
 import pygame
-import threading
 import drawing
 import globals
 from globals.types import Point
