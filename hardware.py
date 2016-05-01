@@ -9,13 +9,6 @@ import drawing
 import os
 from globals.types import Point
 
-pygame.mixer.init()
-change = pygame.mixer.Sound('change.ogg')
-hurt = pygame.mixer.Sound('hurt.ogg')
-eat = pygame.mixer.Sound('eat.ogg')
-
-sounds = [change,hurt,eat]
-
 class Keyboard(armv2.Device):
     """
     A Keyboard device. The memory map looks like
@@ -291,11 +284,6 @@ class Display(armv2.Device):
 
     def writeCallback(self,addr,value):
         armv2.DebugLog('display write word %x %x\n' % (addr,value))
-        if addr == self.letter_end:
-            if value < 3:
-                for sound in sounds:
-                    sound.stop()
-                    sounds[value].play()
         for i in xrange(4):
             byte = value&0xff
             self.writeByteCallback(addr,byte)

@@ -122,9 +122,9 @@ def init():
         os.chdir(sys._MEIPASS)
 
     pygame.init()
-    pygame.display.set_caption('One Letter Werewolf')
+    pygame.display.set_caption('Synapse')
     #pygame.mouse.set_visible(0)
-    pygame.key.set_repeat(200,100)
+    pygame.key.set_repeat(500,50)
     globals.dirs = globals.types.Directories('resource')
     globals.screen_quadbuffer     = drawing.QuadBuffer(16)
     globals.screen.full_quad      = drawing.Quad(globals.screen_quadbuffer)
@@ -135,14 +135,14 @@ def init():
     drawing.InitDrawing()
 
 if __name__ == '__main__':
-    #from multiprocessing import Process
-    #import peripherals,time
+    from multiprocessing import Process
+    import peripherals,time
 
-    #p = Process(target=peripherals.run)
-    #p.start()
+    p = Process(target=peripherals.run)
+    p.start()
     init()
     emulator = Emulator()
     emulator.run()
     pygame.display.quit()
-    #p.join()
+    p.join()
 
