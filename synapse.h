@@ -32,6 +32,14 @@ enum colours    {
     LIGHT_GREY  = 15,
 };
 
+enum letter_codes {
+    LEFT  = 250,
+    RIGHT = 251,
+    UP    = 252,
+    DOWN  = 253
+};
+
+
 #define WIDTH  40
 #define HEIGHT 30
 #define RINGBUFFER_SIZE 128
