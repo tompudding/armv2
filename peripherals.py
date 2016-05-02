@@ -352,11 +352,14 @@ class Tapes(Scrollable):
 
     def __init__(self, *args, **kwargs):
         self.loaded = None
+        self.tape_max = None
         super(Tapes,self).__init__(*args, **kwargs)
-        print 't',self.view_start
 
     def receive(self, message):
         self.view_max = max(message.size - self.height,0)
+        self.tape_max = message.start + message.size
+        #TODO: If we just reduced tape_max we'd better turn off LOADED labels for the 
+        #ones we can't press anymore
         for (i,name) in enumerate(message.tape_list):
             pos = message.start + i
             label_index = pos - self.view_start
@@ -369,11 +372,14 @@ class Tapes(Scrollable):
                 self.label_rows[label_index][0].set(self.not_loaded_message)
 
     def activate_item(self, event=None):
-        print 'tapes activate',self.selected
         if self.loaded == self.selected:
             loaded = None
         else:
             loaded = self.selected
+
+        if loaded >= self.tape_max:
+            return
+
         if self.loaded is not None:
             self.label_rows[self.loaded][0].set(self.not_loaded_message)
         self.loaded = loaded
