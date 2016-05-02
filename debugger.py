@@ -33,6 +33,7 @@ class Debugger(object):
                          messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
         }
         self.tapes = glob.glob(os.path.join('tapes','*'))
+        self.loaded_tape = None
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
         try:
@@ -81,9 +82,11 @@ class Debugger(object):
     def handle_load_tape(self, message):
         if message.num < len(self.tapes):
             self.machine.tape_drive.loadTape(self.tapes[message.num])
+            self.loaded_tape = message.num
             
     def handle_unload_tape(self, message):
         self.machine.tape_drive.unloadTape()
+        self.loaded_tape = None
 
     def handle_memory_watch(self, message):
         self.mem_watches[message.id] = message
@@ -131,6 +134,8 @@ class Debugger(object):
         for bkpt in self.breakpoints:
             self.breakpoints[bkpt] = self.machine.memw[bkpt]
             self.machine.memw[bkpt] = self.BKPT
+        if self.loaded_tape is not None:
+            self.machine.tape_drive.loadTape(self.tapes[self.loaded_tape])
 
     def RemoveBreakpoint(self,addr):
         self.machine.memw[addr] = self.breakpoints[addr]
