@@ -28,6 +28,8 @@ class Types:
     DISASSEMBLYDATA = 14
     TAPEREQUEST     = 15
     TAPE_LIST       = 16
+    TAPE_LOAD       = 17
+    TAPE_UNLOAD     = 18
 
 
 class DynamicObject(object):
@@ -259,6 +261,32 @@ class Step(Message):
     def from_binary(data):
         return Step()
 
+
+class TapeLoad(SetBreakpoint):
+    type = Types.TAPE_LOAD
+
+    def __init__(self, num):
+        self.num = num
+
+    def to_binary(self):
+        first = super(SetBreakpoint,self).to_binary()
+        last = struct.pack('>I',self.num)
+        return first + last
+
+    @staticmethod
+    def from_binary(data):
+        num = struct.unpack('>I',data[:4])[0]
+        return TapeLoad(num)
+
+
+class TapeUnload(Message):
+    type = Types.TAPE_UNLOAD
+
+    @staticmethod
+    def from_binary(data):
+        return TapeUnload()
+
+
 messages_by_type = {Types.CONNECT         : Handshake,
                     Types.STATE           : MachineState,
                     Types.MEMWATCH        : MemView,
@@ -273,6 +301,8 @@ messages_by_type = {Types.CONNECT         : Handshake,
                     Types.STEP            : Step,
                     Types.TAPEREQUEST     : TapesView,
                     Types.TAPE_LIST       : TapeReply,
+                    Types.TAPE_LOAD       : TapeLoad,
+                    Types.TAPE_UNLOAD     : TapeUnload,
 }
 
 def MessageFactory(data):

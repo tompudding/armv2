@@ -29,8 +29,9 @@ class Debugger(object):
                          messages.Types.CONNECT   : self.handle_connect,
                          messages.Types.DISASSEMBLY : self.handle_disassembly,
                          messages.Types.TAPEREQUEST : self.handle_taperequest,
+                         messages.Types.TAPE_LOAD : self.handle_load_tape,
+                         messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
         }
-        #self.machine.tape_drive.loadTape('tapes/1lw.bin')
         self.tapes = glob.glob(os.path.join('tapes','*'))
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
@@ -72,11 +73,17 @@ class Debugger(object):
         self.RemoveBreakpoint(message.addr)
 
     def handle_taperequest(self,message):
-        print 'got tape request',message.start,message.size
         if message.size:
             tape_list = self.tapes[message.start : message.start + message.size]
             if tape_list:
                 self.connection.send(messages.TapeReply(message.id, message.start, tape_list))
+
+    def handle_load_tape(self, message):
+        if message.num < len(self.tapes):
+            self.machine.tape_drive.loadTape(self.tapes[message.num])
+            
+    def handle_unload_tape(self, message):
+        self.machine.tape_drive.unloadTape()
 
     def handle_memory_watch(self, message):
         self.mem_watches[message.id] = message
