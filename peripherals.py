@@ -383,7 +383,10 @@ class Tapes(Scrollable):
         if self.loaded is not None:
             self.label_rows[self.loaded][0].set(self.not_loaded_message)
         self.loaded = loaded
-        self.app.send_message(messages.TapeLoad(self.loaded))
+        if loaded is None:
+            self.app.send_message(messages.TapeUnload())
+        else:
+            self.app.send_message(messages.TapeLoad(self.loaded))
         if self.loaded is not None:
             self.label_rows[self.loaded][0].set(self.loaded_message)
 
