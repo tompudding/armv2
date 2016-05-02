@@ -340,18 +340,45 @@ class Memory(Scrollable):
 class Tapes(Scrollable):
     line_size = 1
     buffer   = 0
+    #view_min = -Scrollable.buffer*line_size
     view_min = 0
-    view_max = 32
+    view_max = 64
     labels_per_row = 2
-    content_lable = 1
+    content_label = 1
     message_class = messages.TapesView
-    label_widths=[4,0]
+    label_widths=[6,0]
+    loaded_message = 'LOADED'
+    not_loaded_message = ' '*len(loaded_message)
+
+    def __init__(self, *args, **kwargs):
+        self.loaded = None
+        super(Tapes,self).__init__(*args, **kwargs)
+        print 't',self.view_start
 
     def receive(self, message):
-        print 'tape receive'
+        self.view_max = max(message.size - self.height,0)
+        for (i,name) in enumerate(message.tape_list):
+            pos = message.start + i
+            label_index = pos - self.view_start
+            if label_index < 0 or label_index >= len(self.label_rows):
+                continue
+            self.label_rows[label_index][self.content_label].set(name)
+            if pos == self.loaded:
+                self.label_rows[label_index][0].set(self.loaded_message)
+            else:
+                self.label_rows[label_index][0].set(self.not_loaded_message)
 
     def activate_item(self, event=None):
         print 'tapes activate',self.selected
+        if self.loaded == self.selected:
+            loaded = None
+        else:
+            loaded = self.selected
+        if self.loaded is not None:
+            self.label_rows[self.loaded][0].set(self.not_loaded_message)
+        self.loaded = loaded
+        if self.loaded is not None:
+            self.label_rows[self.loaded][0].set(self.loaded_message)
 
 class Registers(View):
     num_entries = 18
@@ -466,6 +493,7 @@ class Application(Tkinter.Frame):
                                  messages.Types.MEMDATA    : self.receive_memdata,
                                  messages.Types.DISASSEMBLYDATA : self.receive_disassembly,
                                  messages.Types.STOP : self.stop,
+                                 messages.Types.TAPE_LIST  : self.receive_tapes,
         }
         Tkinter.Frame.__init__(self, master)
         self.stopped = False
@@ -547,7 +575,7 @@ class Application(Tkinter.Frame):
         self.disassembly = Disassembly(self, width=47, height=14)
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
-        self.tape = Tapes(self, width=50, height=6)
+        self.tapes = Tapes(self, width=44, height=6)
         self.options = Memory(self, width=50, height=3)
 
         self.stop_button = Button(self.frame, 'stop', self.stop)
@@ -559,8 +587,8 @@ class Application(Tkinter.Frame):
         self.restart_button = Button(self.frame, 'restart', self.restart)
         self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
 
-        self.views = [self.disassembly, self.registers, self.memory, self.tape, self.options]
-        self.tab_views = [self.disassembly, self.memory, self.tape, self.options]
+        self.views = [self.disassembly, self.registers, self.memory, self.tapes, self.options]
+        self.tab_views = [self.disassembly, self.memory, self.tapes, self.options]
 
         self.queue.put(messages.Disconnect())
 
@@ -588,6 +616,7 @@ class Application(Tkinter.Frame):
         self.status_update('CONNECTED')
         self.memory.update()
         self.disassembly.update()
+        self.tapes.update()
 
 
     def receive_register_state(self, message):
@@ -598,6 +627,9 @@ class Application(Tkinter.Frame):
 
     def receive_memdata(self, message):
         self.memory.receive(message)
+
+    def receive_tapes(self, message):
+        self.tapes.receive(message)
 
 def run():
     #import hanging_threads

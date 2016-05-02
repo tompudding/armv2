@@ -30,12 +30,12 @@ class Debugger(object):
                          messages.Types.DISASSEMBLY : self.handle_disassembly,
                          messages.Types.TAPEREQUEST : self.handle_taperequest,
         }
-
+        #self.machine.tape_drive.loadTape('tapes/1lw.bin')
+        self.tapes = glob.glob(os.path.join('tapes','*'))
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
         try:
             self.mem_watches = {}
-            self.machine.tape_drive.loadTape('tapes/1lw.bin')
             self.num_to_step    = 0
             #stopped means that the debugger has halted execution and is waiting for input
             self.stopped        = False
@@ -72,7 +72,11 @@ class Debugger(object):
         self.RemoveBreakpoint(message.addr)
 
     def handle_taperequest(self,message):
-        print 'got tape request'
+        print 'got tape request',message.start,message.size
+        if message.size:
+            tape_list = self.tapes[message.start : message.start + message.size]
+            if tape_list:
+                self.connection.send(messages.TapeReply(message.id, message.start, tape_list))
 
     def handle_memory_watch(self, message):
         self.mem_watches[message.id] = message

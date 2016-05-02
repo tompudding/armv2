@@ -5,35 +5,41 @@ import time
 import select
 import struct
 
+
 class Error(Exception):
     pass
 
+
 class Types:
-    UNKNOWN     = 0
-    STOP        = 1
-    RESUME      = 2
-    STEP        = 3
-    RESTART     = 4
-    SETBKPT     = 5
-    UNSETBKPT   = 6
-    MEMDATA     = 7
-    MEMWATCH    = 8
-    UNWATCH     = 9
-    CONNECT     = 10
-    DISCONNECT  = 11
-    STATE       = 12
-    DISASSEMBLY = 13
+    UNKNOWN         = 0
+    STOP            = 1
+    RESUME          = 2
+    STEP            = 3
+    RESTART         = 4
+    SETBKPT         = 5
+    UNSETBKPT       = 6
+    MEMDATA         = 7
+    MEMWATCH        = 8
+    UNWATCH         = 9
+    CONNECT         = 10
+    DISCONNECT      = 11
+    STATE           = 12
+    DISASSEMBLY     = 13
     DISASSEMBLYDATA = 14
-    TAPEREQUEST = 15
+    TAPEREQUEST     = 15
+    TAPE_LIST       = 16
+
 
 class DynamicObject(object):
     pass
+
 
 class Message(object):
     type = Types.UNKNOWN
 
     def to_binary(self):
         return struct.pack('>I',self.type)
+
 
 class Handshake(Message):
     type = Types.CONNECT
@@ -52,6 +58,7 @@ class Handshake(Message):
         port = struct.unpack('>H',data[:2])[0]
         host = data[2:]
         return Handshake(host, port)
+
 
 class MachineState(Message):
     type = Types.STATE
@@ -105,11 +112,37 @@ class MemdumpView(MemView):
     def __init__(self, start, size, watch_start=0, watch_size=0):
         super(MemdumpView,self).__init__(self.id, start, size, watch_start, watch_size)
 
+
 class TapesView(MemView):
     type = Types.TAPEREQUEST
     id = MemView.Types.TAPES
     def __init__(self, start, size, watch_start=0, watch_size=0):
         super(TapesView,self).__init__(self.id, start, size, watch_start, watch_size)
+
+    @staticmethod
+    def from_binary(data):
+        id,start,size = struct.unpack('>III',data)
+        return TapesView(start, size)    
+
+class TapeReply(TapesView):
+    type = Types.TAPE_LIST
+    def __init__(self, id, start, tape_list):
+        super(TapeReply, self).__init__(start, len(tape_list))
+        self.tape_list = tape_list
+
+    def to_binary(self):
+        first = super(TapeReply,self).to_binary()
+        return first + '\x00'.join(self.tape_list)
+
+    @staticmethod
+    def from_binary(data):
+        id,start,size = struct.unpack('>III',data[:12])
+        data = data[12:]
+        tape_list = data.split('\x00')
+        if len(tape_list) != size:
+            print 'Error tape_list mismatch lengths %d %d' % (len(tape_list), size)
+            return None
+        return TapeReply(id, start, tape_list)
 
 class MemViewReply(MemView):
     type = Types.MEMDATA
@@ -144,6 +177,7 @@ class DisassemblyView(MemView):
         id,start,size = struct.unpack('>III',data)
         return DisassemblyView(start,size)
 
+
 class DisassemblyViewReply(Message):
     type = Types.DISASSEMBLYDATA
     def __init__(self, start, memory, lines):
@@ -169,6 +203,7 @@ class DisassemblyViewReply(Message):
             raise Error('Dissasembly num_lines %d should be %d' % (len(lines),mem_length/4))
         return DisassemblyViewReply(start, mem, lines)
 
+
 class SetBreakpoint(Message):
     type = Types.SETBKPT
 
@@ -192,12 +227,14 @@ class UnsetBreakpoint(SetBreakpoint):
 class Disconnect(Message):
     type = Types.DISCONNECT
 
+
 class Stop(Message):
     type = Types.STOP
 
     @staticmethod
     def from_binary(data):
         return Stop()
+
 
 class Resume(Message):
     type = Types.RESUME
@@ -206,12 +243,14 @@ class Resume(Message):
     def from_binary(data):
         return Resume()
 
+
 class Restart(Message):
     type = Types.RESTART
 
     @staticmethod
     def from_binary(data):
         return Restart()
+
 
 class Step(Message):
     type = Types.STEP
@@ -220,18 +259,20 @@ class Step(Message):
     def from_binary(data):
         return Step()
 
-messages_by_type = {Types.CONNECT  : Handshake,
-                    Types.STATE    : MachineState,
-                    Types.MEMWATCH : MemView,
-                    Types.MEMDATA  : MemViewReply,
-                    Types.SETBKPT  : SetBreakpoint,
-                    Types.UNSETBKPT : UnsetBreakpoint,
-                    Types.DISASSEMBLY : DisassemblyView,
+messages_by_type = {Types.CONNECT         : Handshake,
+                    Types.STATE           : MachineState,
+                    Types.MEMWATCH        : MemView,
+                    Types.MEMDATA         : MemViewReply,
+                    Types.SETBKPT         : SetBreakpoint,
+                    Types.UNSETBKPT       : UnsetBreakpoint,
+                    Types.DISASSEMBLY     : DisassemblyView,
                     Types.DISASSEMBLYDATA : DisassemblyViewReply,
-                    Types.STOP     : Stop,
-                    Types.RESUME   : Resume,
-                    Types.RESTART  : Restart,
-                    Types.STEP     : Step,
+                    Types.STOP            : Stop,
+                    Types.RESUME          : Resume,
+                    Types.RESTART         : Restart,
+                    Types.STEP            : Step,
+                    Types.TAPEREQUEST     : TapesView,
+                    Types.TAPE_LIST       : TapeReply,
 }
 
 def MessageFactory(data):
