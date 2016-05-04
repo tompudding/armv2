@@ -7,6 +7,7 @@ import struct
 import itertools
 import sys
 import Queue
+import time
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -55,6 +56,7 @@ class Scrollable(View):
     message_class = None
     labels_per_row = 0
     label_widths = None
+    double_click_time = 0.5
     def __init__(self, app, height, width):
         self.height = height
         self.width  = width
@@ -63,6 +65,8 @@ class Scrollable(View):
         self.widget_rows = []
         self.selected = None
         self.selected_addr = None
+        self.last_click_time = 0
+        self.last_click_index = None
         self.frame = Tkinter.Frame(app.frame,
                                    width=self.width,
                                    height=self.height,
@@ -106,7 +110,7 @@ class Scrollable(View):
                                            anchor='w',
                                            textvariable=sv,
                                            relief=Tkinter.SOLID)
-                    widget.bind("<Button-1>", lambda x,i=i: [self.select(self.view_start + i*self.line_size),self.frame.focus_set()])
+                    widget.bind("<Button-1>", lambda x,i=i: [self.click(i),self.frame.focus_set()])
                     widget.bind("<MouseWheel>", self.mouse_wheel)
                     widget.bind("<Button-4>", self.mousewheel_up)
                     widget.bind("<Button-5>", self.mousewheel_down)
@@ -139,6 +143,17 @@ class Scrollable(View):
         if view_size > 0:
             self.app.send_message(self.message_class(view_start, view_size, view_start, view_size))
 
+    def click(self, index):
+        now = time.time()
+        if index == self.last_click_index:
+            elapsed = now - self.last_click_time
+            if elapsed < self.double_click_time:
+                self.last_click_index = None
+                return self.activate_item(index)
+        self.last_click_time = now
+        self.last_click_index = index
+        self.select(self.view_start + index*self.line_size)
+
     def select(self, addr, index=None):
         if index is None:
             selected = (addr - self.view_start)/self.line_size
@@ -150,7 +165,7 @@ class Scrollable(View):
         if selected < self.buffer or selected >= len(self.label_rows):
             selected = None
         elif selected == self.selected:
-            return self.activate_item()
+            return 
         #turn off the old one
         if self.selected is not None:
             widget_selected = self.selected - self.buffer
