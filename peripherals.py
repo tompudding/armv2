@@ -254,6 +254,9 @@ class Scrollable(View):
                     new_value = (' ' for j in xrange(self.labels_per_row))
                 for j,val in enumerate(new_value):
                     self.label_rows[i][j].set(val)
+        else:
+            unknown_start = self.view_start
+            unknown_size = self.view_size
 
         #we now need an update for the region we don't have
         if unknown_start < 0:
@@ -309,6 +312,8 @@ class Disassembly(Scrollable):
 
         self.pc = pc
         self.set_pc_label(self.pc, '>')
+        if self.app.follow_pc:
+            self.centre(self.pc)
 
     def receive(self, message):
         for (i,dis) in enumerate(message.lines):
@@ -404,6 +409,47 @@ class Tapes(Scrollable):
             self.app.send_message(messages.TapeLoad(self.loaded))
         if self.loaded is not None:
             self.label_rows[self.loaded][0].set(self.loaded_message)
+
+class Options(View):
+    def __init__(self, app, width, height):
+        self.width  = width
+        self.height = height
+        self.app    = app
+        self.label_rows = []
+        self.frame = Tkinter.Frame(app.frame,
+                                   width=self.width,
+                                   height=self.height,
+                                   borderwidth=4,
+                                   padx=0,
+                                   bg='black',
+                                   highlightbackground='#004000',
+                                   highlightcolor='lawn green',
+                                   highlightthickness=1,
+                                   relief=Tkinter.SOLID)
+        self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
+        self.var = Tkinter.IntVar()
+        self.var.set(1 if self.app.follow_pc else 0)
+        self.c = Tkinter.Checkbutton(self.frame,
+                                     font='TkFixedFont',
+                                     highlightbackground='#000000',
+                                     highlightcolor='lawn green',
+                                     highlightthickness=1,
+                                     padx=5,
+                                     relief=Tkinter.SOLID,
+                                     bg=self.unselected_bg,
+                                     fg=self.unselected_fg,
+                                     activeforeground=self.unselected_bg,
+                                     activebackground=self.unselected_fg,
+                                     selectcolor='black',
+                                     anchor='w',
+                                     text="Follow PC",
+                                     variable=self.var,
+                                     command=self.cb)
+        self.c.pack(side=Tkinter.LEFT)
+
+    def cb(self):
+        #The var presently stores 1 or 0, just map that to True or False
+        self.app.follow_pc = True if self.var.get() else False
 
 class Registers(View):
     num_entries = 18
@@ -510,6 +556,7 @@ class Application(Tkinter.Frame):
 
     def __init__(self, master, emulator_frame):
         self.emulator = None
+        self.follow_pc = True
         self.emulator_frame = emulator_frame
         self.queue = Queue.Queue()
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
@@ -601,7 +648,7 @@ class Application(Tkinter.Frame):
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
         self.tapes = Tapes(self, width=44, height=6)
-        self.options = Memory(self, width=50, height=3)
+        self.options = Options(self, width=50, height=3)
 
         self.stop_button = Button(self.frame, 'stop', self.stop)
         self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
