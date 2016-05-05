@@ -1,29 +1,29 @@
 .syntax divided
 .code 32
 
-num_devices_opcode   = 0
-map_memory_opcode    = 1
-device_id_opcode     = 2
-interrupt_data_opcode = 3
+num_devices_opcode        = 0
+map_memory_opcode         = 1
+device_id_opcode          = 2
+interrupt_data_opcode     = 3
 wait_for_interrupt_opcode = 4
-gettime_opcode       = 5
-device_operation_opcode = 6
-mov_register_opcode  = 0
-hw_manager           = 1
-keyboard_device_id   = 0x41414141
-display_device_id    = 0x9d99389e
-tape_device_id       = 0x2730eb6c
-clock_device_id      = 0x92d177b0
-keyboard_map_start   = 0x01000000
-keyboard_map_end     = 0x01001000
-display_map_start    = 0x01001000
-display_map_end      = 0x01002000
-tape_map_start       = 0x01002000
-tape_map_end         = 0x01003000
-interrupt_ringbuffer = 0x000bff00
-interrupt_ringbuffer_pos = 0x000bfefc
-wfi_ringbuffer_pos       = 0x000bfef8
-FLAG_I                   = 0x08000000
+gettime_opcode            = 5
+device_operation_opcode   = 6
+mov_register_opcode       = 0
+hw_manager                = 1
+keyboard_device_id        = 0x41414141
+display_device_id         = 0x9d99389e
+tape_device_id            = 0x2730eb6c
+clock_device_id           = 0x92d177b0
+keyboard_map_start        = 0x01000000
+keyboard_map_end          = 0x01001000
+display_map_start         = 0x01001000
+display_map_end           = 0x01002000
+tape_map_start            = 0x01002000
+tape_map_end              = 0x01003000
+interrupt_ringbuffer      = 0x000bff00
+interrupt_ringbuffer_pos  = 0x000bfefc
+wfi_ringbuffer_pos        = 0x000bfef8
+FLAG_I                    = 0x08000000
 
 /* Syscalls */
 sys_wait_for_interrupt  = 0
@@ -154,7 +154,7 @@ interrupt_handler:
         CDP 1,#interrupt_data_opcode,CR0,CR0,CR0
         @Put CR0 into R8
         MRC 1,#mov_register_opcode,R8,CR0,CR0
-        @Put CR1 into R1
+        @Put CR1 into R9
         MRC 1,#mov_register_opcode,R9,CR1,CR0
         LDR R10,=interrupt_ringbuffer_pos
         LDR R11,[R10]

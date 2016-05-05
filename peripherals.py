@@ -303,6 +303,11 @@ class Disassembly(Scrollable):
         else:
             self.label_rows[index][1].set(' ')
 
+    def centre(self, pos=None):
+        if pos is None:
+            pos = self.pc
+        return super(Disassembly, self).centre(pos)
+
     def set_pc(self, pc):
         #first turn off the old label
         if pc == self.pc:
@@ -313,7 +318,7 @@ class Disassembly(Scrollable):
         self.pc = pc
         self.set_pc_label(self.pc, '>')
         if self.app.follow_pc:
-            self.centre(self.pc)
+            self.centre()
 
     def receive(self, message):
         for (i,dis) in enumerate(message.lines):
@@ -326,6 +331,8 @@ class Disassembly(Scrollable):
             self.label_rows[label_index][2].set(line)
             if addr in self.app.breakpoints:
                 self.label_rows[label_index][1].set('*')
+            else:
+                self.label_rows[label_index][1].set(' ')
             if addr == self.pc:
                 self.label_rows[label_index][0].set('>')
 
@@ -450,6 +457,8 @@ class Options(View):
     def cb(self):
         #The var presently stores 1 or 0, just map that to True or False
         self.app.follow_pc = True if self.var.get() else False
+        if self.app.follow_pc:
+            self.app.disassembly.centre()
 
 class Registers(View):
     num_entries = 18

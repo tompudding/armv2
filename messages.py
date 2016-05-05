@@ -225,6 +225,10 @@ class SetBreakpoint(Message):
 class UnsetBreakpoint(SetBreakpoint):
     type = Types.UNSETBKPT
 
+    @staticmethod
+    def from_binary(data):
+        addr = struct.unpack('>I',data[:4])[0]
+        return UnsetBreakpoint(addr)
 
 class Disconnect(Message):
     type = Types.DISCONNECT

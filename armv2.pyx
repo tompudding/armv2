@@ -321,7 +321,7 @@ cdef class Armv2:
         cdef carmv2.armv2_t *cpu = self.cpu
         cdef uint32_t instructions = -1 if number == None else number
         with nogil:
-            result = carmv2.run_armv2(cpu,instructions)
+            result = carmv2.run_armv2(cpu, instructions)
         #right now can only return OK or BREAKPOINT, but we don't care either way...
         return result
 
@@ -335,9 +335,7 @@ cdef class Armv2:
         self.hardware.append(device)
 
     def Interrupt(self, hw_id, code):
-        DebugLog('ab')
         result = carmv2.interrupt(self.cpu, <uint32_t>hw_id, <uint32_t>code)
-        DebugLog('ac')
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 
