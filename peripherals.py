@@ -461,7 +461,7 @@ class Options(View):
             self.app.disassembly.centre()
 
 class Registers(View):
-    num_entries = 18
+    num_entries = 19
     def __init__(self, app, width, height):
         self.height = height
         self.width  = width
@@ -508,6 +508,7 @@ class Registers(View):
 
         self.label_rows[16][0].set(('%5s : %8s' % ('MODE',mode_names[message.mode]) ))
         self.label_rows[17][0].set(('%5s : %08x' % ('PC',message.pc)))
+        self.label_rows[18][0].set(('%5s : %s' % ('State','Waiting' if message.is_waiting else '')))
 
     def focus_set(self):
         self.frame.focus_set()

@@ -112,7 +112,11 @@ class Debugger(object):
         self.connection.send(messages.DisassemblyViewReply(start, mem, lines))
 
     def send_register_update(self):
-        self.connection.send(messages.MachineState(self.machine.regs,self.machine.mode,self.machine.pc))
+        self.connection.send(messages.MachineState(self.machine.regs,
+                                                   self.machine.mode,
+                                                   self.machine.pc,
+                                                   self.machine.is_waiting(),
+                                               ))
 
     def send_mem_update(self):
         for message in self.mem_watches.itervalues():

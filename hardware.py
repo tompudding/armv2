@@ -463,6 +463,9 @@ class Machine:
             armv2.DebugLog('Interrupting2')
             self.cv.notify()
 
+    def is_waiting(self):
+        return self.status == armv2.Status.WaitForInterrupt
+
     def Update(self):
 
         return

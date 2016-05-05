@@ -65,23 +65,26 @@ class Handshake(Message):
 class MachineState(Message):
     type = Types.STATE
 
-    def __init__(self, regs, mode, pc):
+    def __init__(self, regs, mode, pc, is_waiting):
         self.registers = [regs[i] for i in xrange(16)]
         self.mode = mode
         self.pc = pc
+        self.is_waiting = is_waiting
 
     def to_binary(self):
         first = super(MachineState,self).to_binary()
         regs = ''.join(struct.pack('>I',reg) for reg in self.registers)
         mode = struct.pack('>I',self.mode)
         pc = struct.pack('>I',self.pc)
-        return first + regs + mode + pc
+        is_waiting = '1' if self.is_waiting else '\x00'
+        return first + regs + mode + pc + is_waiting
 
     @staticmethod
     def from_binary(data):
         regs = [struct.unpack('>I',data[i*4:(i+1)*4])[0] for i in xrange(16)]
-        mode,pc = struct.unpack('>II',data[16*4:])
-        return MachineState(regs,mode,pc)
+        mode,pc = struct.unpack('>II',data[16*4:16*4+8])
+        is_waiting = True if data[16*4+8] == '1' else False
+        return MachineState(regs, mode, pc, is_waiting)
 
 
 class MemView(Message):
