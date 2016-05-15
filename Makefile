@@ -39,27 +39,27 @@ tape_loader.bin: tape_loader.S
 os: os.c common.c synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ os.c common.c
 
-tapes/1_guessing.bin: guessing tape_loader.bin
-	python create_tape.py $@ $^
+tapes/1_guessing.bin: tape_loader.bin guessing 
+	python create.py -o $@ $^
 
 guessing: guessing.c common.c synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ guessing.c common.c
 
-tapes/2_trivia.bin: trivia tape_loader.bin
-	python create_tape.py $@ $^
+tapes/2_trivia.bin: tape_loader.bin trivia 
+	python create.py -o $@ $^
 
 trivia: trivia.c common.c synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ trivia.c common.c
 
-tapes/3_adventure.bin: adventure tape_loader.bin
-	python create_tape.py $@ $^
+tapes/3_adventure.bin: tape_loader.bin adventure 
+	python create.py -o $@ $^
 
 adventure: adventure.c common.c synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ adventure.c common.c
 
-tapes/1lw.bin: one_letter_werewolf tape_loader.bin
+tapes/1lw.bin: tape_loader.bin one_letter_werewolf 
 	#arm-none-eabi-gcc ${ARMCFLAGS} -o $@ $< common.c
-	python create_tape.py $@ $^
+	python create.py -o $@ $^
 
 one_letter_werewolf: one_letter_werewolf.c common.c synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ one_letter_werewolf.c common.c
