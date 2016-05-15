@@ -8,6 +8,7 @@ import itertools
 import sys
 import Queue
 import time
+import ttk
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -57,6 +58,7 @@ class Scrollable(View):
     labels_per_row = 0
     label_widths = None
     double_click_time = 0.5
+
     def __init__(self, app, height, width):
         self.height = height
         self.width  = width
@@ -67,16 +69,20 @@ class Scrollable(View):
         self.selected_addr = None
         self.last_click_time = 0
         self.last_click_index = None
-        self.frame = Tkinter.Frame(app.frame,
-                                   width=self.width,
-                                   height=self.height,
-                                   borderwidth=4,
-                                   bg='black',
-                                   highlightbackground='#004000',
-                                   highlightcolor='lawn green',
-                                   highlightthickness=1,
-                                   relief=Tkinter.SOLID)
-        self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
+        
+        self.tabs = ttk.Notebook(app.frame
+                              )
+        self.frame = ttk.Frame(self.tabs,
+                               width=self.width,
+                               height=self.height)
+        
+        self.tabs.add(self.frame, text='jim', state='normal')
+#        self.tabs.add(self.frame,text='jim')
+        
+        
+        self.tabs.pack(padx=5,pady=0,side=Tkinter.TOP)
+        #self.frame.pack(padx=5,pady=10,side=Tkinter.TOP)
+        
         self.frame.bind("<Up>", self.keyboard_up)
         self.frame.bind("<Down>", self.keyboard_down)
         self.frame.bind("<Next>", self.keyboard_page_down)
@@ -742,6 +748,20 @@ def main():
     embed.pack(side=Tkinter.LEFT)
     app = Application(master=debugger, emulator_frame=embed)
     debugger.pack(side=Tkinter.TOP)
+
+    style = ttk.Style()
+
+    style.theme_create( "yummy", 
+                        parent="alt",
+                        settings={
+                            "TNotebook": {"configure": {"tabmargins": [2, 5, 2, 0] } },
+                            "TNotebook.Tab": {
+                                "configure": {"padding": [5, 1], "background": "white" },
+                                "map":       {"background": [("selected", "black")],
+                                              "expand": [("selected", [1, 1, 1, 0])] } } 
+                        } 
+    )
+
 
     try:
         with messages.Client('localhost', 0x4141, callback=app.message_handler) as client:
