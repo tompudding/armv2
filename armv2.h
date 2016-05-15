@@ -227,6 +227,6 @@ enum armv2_status InterruptControllerTransfer  (armv2_t *cpu, uint32_t crm, uint
 
 void flog(char* fmt, ...);
 
-#define LOG(format, ...) printf(format, ##__VA_ARGS__)
+#define LOG(...) printf(__VA_ARGS__)
 //#define LOG(...) flog(__VA_ARGS__)
 //#define LOG(...)

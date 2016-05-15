@@ -5,7 +5,7 @@
 
 uint32_t time_data[2] = {0x203b2836,0xb8b0a7b6};
 
-enum armv2_status device_operation(armv2_t *cpu, uint32_t device_num, uint32_t arg0, uint32_t arg1, uint32_t *result) {
+static enum armv2_status device_operation(armv2_t *cpu, uint32_t device_num, uint32_t arg0, uint32_t arg1, uint32_t *result) {
     hardware_device_t *device = cpu->hardware_devices[device_num];
     if(NULL == cpu || NULL == result) {
         return ARMV2STATUS_INVALID_ARGS;

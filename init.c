@@ -257,7 +257,7 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
 }
 
 enum armv2_status add_mapping(hardware_mapping_t **head,hardware_mapping_t *item) {
-    LOG("Apping mad! %p %p\n",*head,item);
+    LOG("Apping mad! %p %p\n",(void*)*head,(void*)item);
     if(NULL == head) {
         LOG("Mapping jim NULL\n");
         return ARMV2STATUS_INVALID_ARGS;
