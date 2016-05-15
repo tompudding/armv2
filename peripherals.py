@@ -87,6 +87,7 @@ class Scrollable(View):
         self.frame.bind("<Tab>", self.switch_from)
         self.frame.bind("<space>", self.activate_item)
         self.frame.bind("<s>", self.app.step)
+        self.frame.bind("<g>", self.seek)
         self.full_height = self.height + 2*self.buffer
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
@@ -129,6 +130,9 @@ class Scrollable(View):
         self.view_start = -self.buffer*self.line_size
         self.view_size = self.num_lines * self.line_size
         self.select(0)
+
+    def seek(self, event):
+        pass
 
     def update_params(self):
         view_start = self.view_start
@@ -266,12 +270,35 @@ class Scrollable(View):
             #no point
             return
         watch_start,watch_size = self.update_params()
+        self.request_data(unknown_start, unknown_size, watch_start, watch_size)
+
+    def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
         self.app.send_message(self.message_class(unknown_start, unknown_size, watch_start, watch_size))
 
         #self.update()
 
+class Seekable(Scrollable):
+    def __init__(self, *args, **kwargs):
+        self.seeking = False
+        super(Seekable, self).__init__(*args, **kwargs)
 
-class Disassembly(Scrollable):
+    def seek(self, event):
+        #While we're seekable 
+        if self.seeking:
+            self.seeking = False
+        else:
+            self.seeking = True
+        print self.seeking
+
+    def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
+        if not self.seeking:
+            super(Seekable, self).request_data(unknown_start, unknown_size, watch_start, watch_size)
+        else:
+            #For the symbol options we already have them so we don't need to request anything
+            pass
+            
+
+class Disassembly(Seekable):
     word_size = 4
     line_size = word_size
 
@@ -337,7 +364,7 @@ class Disassembly(Scrollable):
                 self.label_rows[label_index][0].set('>')
 
 
-class Memory(Scrollable):
+class Memory(Seekable):
     line_size = 8
     view_min = -Scrollable.buffer*line_size
     view_max = 1<<26
