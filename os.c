@@ -33,6 +33,8 @@ void set_command() {
     //should be null terminated due to size
 }
 
+void process_char(uint8_t c);
+
 void newline(int reset_square) {
     if(processing) {
         //handle the command

@@ -37,7 +37,7 @@ tape_loader.bin: tape_loader.S
 	${COPY} -O binary tape_loader.o $@
 
 os: os.c common.c synapse.h
-	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ os.c common.c
+	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ os.c common.c
 
 tapes/1_guessing.bin: tape_loader.bin guessing 
 	python create.py -o $@ $^

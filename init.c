@@ -1,4 +1,3 @@
-#include "armv2.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +5,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <arpa/inet.h>
+
+#include "armv2.h"
+#include "memory_map.h"
 
 enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
     uint32_t num_pages = 0;
@@ -74,8 +77,8 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
         cpu->regs.effective[i] = &cpu->regs.actual[i];
     }
     //We start in supervisor mode bank those registers
-    for(uint32_t i=13;i<15;i++) {
-        cpu->regs.effective[i] = &cpu->regs.actual[R13_S+(i-13)];
+    for(uint32_t i=13; i < 15; i++) {
+        cpu->regs.effective[i] = &cpu->regs.actual[R13_S + (i - 13)];
     }
 
     //Set up the exception conditions
@@ -85,6 +88,7 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
         cpu->exception_handlers[i].flags    = FLAG_I;
         cpu->exception_handlers[i].save_reg = LR_S;
     }
+
     cpu->exception_handlers[EXCEPT_IRQ].mode     = MODE_IRQ;
     cpu->exception_handlers[EXCEPT_IRQ].save_reg = LR_I;
     cpu->exception_handlers[EXCEPT_FIQ].mode     = MODE_FIQ;
@@ -118,12 +122,63 @@ enum armv2_status cleanup_armv2(struct armv2 *cpu) {
     return ARMV2STATUS_OK;
 }
 
+static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32_t end, FILE *f, ssize_t *size_out ) {
+    uint32_t section_length = 0;
+    ssize_t  read_bytes     = 0;
+    ssize_t size = *size_out;
+
+    if(0 != INPAGE(start)) {
+        //We only want to start loading sections in at page boundaries
+        LOG("Error starting section off page boundary\n");
+        return ARMV2STATUS_INVALID_PAGE;
+    }
+
+    uint32_t page_num = PAGEOF(start);
+
+    read_bytes = fread(&section_length, sizeof(section_length), 1, f);
+    if(read_bytes != 1) {
+        LOG("Error reading opening length\n");
+        return ARMV2STATUS_IO_ERROR;
+    }
+
+    section_length = htonl( section_length );
+
+    size -= sizeof(section_length);
+
+    if( section_length > (end - start) ) {
+        LOG("Error, section length of %08x would take us past end %08x\n", section_length, end );
+        return ARMV2STATUS_IO_ERROR;
+    }
+
+    if( section_length > size ) {
+        LOG("Error, not enough data for section length 0x%x (0x%zx bytes remaining)\n", section_length, size);
+        return ARMV2STATUS_IO_ERROR;
+    }
+
+    size -= section_length;
+
+    while(section_length > 0) {
+        size_t to_read = section_length > PAGE_SIZE ? PAGE_SIZE : section_length;
+        read_bytes = fread(cpu->page_tables[page_num++]->memory, 1, to_read,f);
+        if(read_bytes != to_read) {
+
+            if(read_bytes != section_length) {
+                LOG("Error %d %zd %zd %zd\n",page_num, read_bytes, size, section_length);
+                return ARMV2STATUS_IO_ERROR;
+            }
+        }
+        section_length -= to_read;
+    }
+    
+    *size_out = size;
+
+    return ARMV2STATUS_OK;
+}
+
 enum armv2_status load_rom(struct armv2 *cpu, const char *filename) {
     FILE              *f          = NULL;
-    ssize_t            read_bytes = 0;
     enum armv2_status  retval     = ARMV2STATUS_OK;
     struct stat        st         = {0};
-    uint32_t           page_num   = 0;
 
     if(NULL == cpu) {
         return ARMV2STATUS_OK;
@@ -155,27 +210,16 @@ enum armv2_status load_rom(struct armv2 *cpu, const char *filename) {
         return ARMV2STATUS_IO_ERROR;
     }
 
-    uint32_t section_length = 0;
-    read_bytes = fread(&section_length, sizeof(section_length), 1, f);
-    if(read_bytes != 1) {
-        LOG("Error reading opening length\n");
-        retval = ARMV2STATUS_IO_ERROR;
+    retval = load_section( cpu, BOOT_ROM_ADDR, TAPE_ADDR, f, &size );
+    if( ARMV2STATUS_OK != retval ) {
+        LOG("Error loading boot rom section\n");
         goto close_file;
     }
-    size -= sizeof(section_length);
 
-    while(size > 0) {
-        read_bytes = fread(cpu->page_tables[page_num++]->memory, 1, PAGE_SIZE,f);
-        if(read_bytes < PAGE_SIZE) {
-            //It's ok if it's all that's left
-
-            if(read_bytes != size) {
-                LOG("Error %d %zd %zd\n",page_num,read_bytes,size);
-                retval = ARMV2STATUS_IO_ERROR;
-                goto close_file;
-            }
-        }
-        size -= PAGE_SIZE;
+    retval = load_section( cpu, SYMBOLS_ADDR, SYMBOLS_ADDR + MAX_SYMBOLS_SIZE, f, &size );
+    if( ARMV2STATUS_OK != retval ) {
+        LOG("Error loading boot rom symbols\n");
+        goto close_file;
     }
 
 close_file:

@@ -75,8 +75,8 @@ def create_binary(header, elf, boot=False):
     symbols = ''.join(struct.pack('<I',value) + name + '\00' for (value,name) in symbols)
 
     if boot:
-        assert len(header) < 0x8000
-        header = header + '\x00'*(0x8000 - len(header))
+        assert len(header) < 0x1000
+        header = header + '\x00'*(0x1000 - len(header))
     else:
         header = header.replace(struct.pack('<I',0x41414141),struct.pack('<I',len(data)))
     return to_synapse_format(header+data, symbols)

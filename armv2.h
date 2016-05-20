@@ -36,6 +36,7 @@
 #define WORDS_PER_PAGE       (1<<(PAGE_SIZE_BITS-2))
 #define MAX_MEMORY           (1<<26)
 #define HW_DEVICES_MAX       (64)
+#define MAX_SYMBOLS_SIZE     (0x10000)
 
 #define PAGEOF(addr)         ((addr)>>PAGE_SIZE_BITS)
 #define INPAGE(addr)         ((addr)&PAGE_MASK)
@@ -171,21 +172,21 @@ struct hardware_mapping {
 };
 
 struct armv2 {
-    struct regs          regs;  //storage for all the registers
-    uint32_t            *physical_ram;
-    uint32_t             physical_ram_size;
-    uint32_t             num_hardware_devices;
-    struct page_info    *page_tables[NUM_PAGE_TABLES];
-    struct exception_handler exception_handlers[EXCEPT_MAX];
+    struct regs               regs; //storage for all the registers
+    uint32_t                 *physical_ram;
+    uint32_t                  physical_ram_size;
+    uint32_t                  num_hardware_devices;
+    struct page_info         *page_tables[NUM_PAGE_TABLES];
+    struct exception_handler  exception_handlers[EXCEPT_MAX];
     struct hardware_device   *hardware_devices[HW_DEVICES_MAX];
-    hw_manager_t         hardware_manager;
+    hw_manager_t              hardware_manager;
     struct hardware_mapping  *hw_mappings;
     //the pc is broken out for efficiency, when needed accessed r15 is updated from them
-    uint32_t pc;
+    uint32_t                  pc;
     //the flags are about the processor(like initialised), not part of it
-    uint32_t flags;
+    uint32_t                  flags;
     //simulating hardware pins:
-    uint32_t pins;
+    uint32_t                  pins;
 };
 
 typedef enum armv2_exception (*instruction_handler_t)(struct armv2 *cpu,uint32_t instruction);
