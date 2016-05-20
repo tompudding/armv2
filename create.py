@@ -33,6 +33,25 @@ def get_symbols(elf):
         #         version = self._symbol_version(nsym)
         #         if (version['name'] != symbol.name and
 
+def pad(data, alignment):
+    target = ((len(data) + (alignment - 1)) / alignment) * alignment
+    if target > len(data):
+        data += '\00'*(target-len(data))
+    return data
+
+def to_synapse_format(data, symbols):
+    """
+We have a very simple format for the synapse binaries:
+         Offset   |   Contents
+         ---------|-----------
+            0     |   Length of data section
+            4     |   data section
+          4 + len |   Length of symbols
+      4 + len + 4 |   symbols
+"""
+    data = pad(data, 4)
+    return struct.pack('>I', len(data)) + data + struct.pack('>I', len(symbols)) + symbols
+
 def create_binary(header, elf, boot=False):
     header = load(header)
     elf_data = load(elf)
@@ -60,7 +79,7 @@ def create_binary(header, elf, boot=False):
         header = header + '\x00'*(0x8000 - len(header))
     else:
         header = header.replace(struct.pack('<I',0x41414141),struct.pack('<I',len(data)))
-    return header + data + symbols + struct.pack('<I',len(symbols))
+    return to_synapse_format(header+data, symbols)
 
 if __name__ == '__main__':
     import argparse
