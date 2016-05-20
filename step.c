@@ -5,7 +5,7 @@
 #include <string.h>
 #include "armv2.h"
 
-enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
+enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions) {
     uint32_t running = 1;
     uint32_t old_mode = 0;
     //for(running=1;running;cpu->pc = (cpu->pc+4)&0x3ffffff) {

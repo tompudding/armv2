@@ -5,8 +5,8 @@
 
 uint32_t time_data[2] = {0x203b2836,0xb8b0a7b6};
 
-static enum armv2_status device_operation(armv2_t *cpu, uint32_t device_num, uint32_t arg0, uint32_t arg1, uint32_t *result) {
-    hardware_device_t *device = cpu->hardware_devices[device_num];
+static enum armv2_status device_operation(struct armv2 *cpu, uint32_t device_num, uint32_t arg0, uint32_t arg1, uint32_t *result) {
+    struct hardware_device *device = cpu->hardware_devices[device_num];
     if(NULL == cpu || NULL == result) {
         return ARMV2STATUS_INVALID_ARGS;
     }
@@ -25,7 +25,7 @@ static enum armv2_status device_operation(armv2_t *cpu, uint32_t device_num, uin
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode) {
+enum armv2_status HwManagerDataOperation(struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode) {
     if(NULL == cpu               ||
        crd >= HW_MANAGER_NUMREGS ||
        crm >= HW_MANAGER_NUMREGS ||
@@ -56,7 +56,7 @@ enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t au
             if(device_num >= cpu->num_hardware_devices) {
                 return ARMV2STATUS_NO_SUCH_DEVICE;
             }
-            hardware_device_t *device = cpu->hardware_devices[device_num];
+            struct hardware_device *device = cpu->hardware_devices[device_num];
             if(NULL == device) {
                 return ARMV2STATUS_NO_SUCH_DEVICE;
             }
@@ -102,7 +102,7 @@ enum armv2_status HwManagerDataOperation(armv2_t *cpu, uint32_t crm, uint32_t au
     return ARMV2STATUS_UNIVERSE_BROKEN;
 }
 
-enum armv2_status HwManagerRegisterTransfer(armv2_t *cpu, uint32_t crm, uint32_t aux, uint32_t rd, uint32_t crn, uint32_t opcode) {
+enum armv2_status HwManagerRegisterTransfer(struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t rd, uint32_t crn, uint32_t opcode) {
     int load = opcode&1;
     opcode >>= 1;
     if(NULL == cpu) {

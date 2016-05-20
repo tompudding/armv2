@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-enum armv2_status init(armv2_t *cpu, uint32_t memsize) {
+enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
     uint32_t num_pages = 0;
     enum armv2_status retval = ARMV2STATUS_OK;
 
@@ -34,7 +34,7 @@ enum armv2_status init(armv2_t *cpu, uint32_t memsize) {
         return ARMV2STATUS_VALUE_ERROR;
     }
 
-    memset(cpu,0,sizeof(armv2_t));
+    memset(cpu,0,sizeof(struct armv2));
     cpu->physical_ram = malloc(memsize);
     if(NULL == cpu->physical_ram) {
         cpu->physical_ram = NULL;
@@ -100,7 +100,7 @@ cleanup:
     return retval;
 }
 
-enum armv2_status cleanup_armv2(armv2_t *cpu) {
+enum armv2_status cleanup_armv2(struct armv2 *cpu) {
     LOG("ARMV2 cleanup\n");
     if(NULL == cpu) {
         return ARMV2STATUS_OK;
@@ -118,7 +118,7 @@ enum armv2_status cleanup_armv2(armv2_t *cpu) {
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status load_rom(armv2_t *cpu, const char *filename) {
+enum armv2_status load_rom(struct armv2 *cpu, const char *filename) {
     FILE              *f          = NULL;
     ssize_t            read_bytes = 0;
     enum armv2_status  retval     = ARMV2STATUS_OK;
@@ -155,12 +155,15 @@ enum armv2_status load_rom(armv2_t *cpu, const char *filename) {
         return ARMV2STATUS_IO_ERROR;
     }
 
-    /* read_bytes = fread(&section_length, sizeof(section_length), 1, f); */
-    /* if(read_bytes != section_length) { */
-    /*     LOG("Error reading opening length\n"); */
-    /*     retval = ARMV2STATUS_IO_ERROR; */
-    /*     goto close_file; */
-    /* } */
+    uint32_t section_length = 0;
+    read_bytes = fread(&section_length, sizeof(section_length), 1, f);
+    if(read_bytes != 1) {
+        LOG("Error reading opening length\n");
+        retval = ARMV2STATUS_IO_ERROR;
+        goto close_file;
+    }
+    size -= sizeof(section_length);
+
     while(size > 0) {
         read_bytes = fread(cpu->page_tables[page_num++]->memory, 1, PAGE_SIZE,f);
         if(read_bytes < PAGE_SIZE) {
@@ -180,7 +183,7 @@ close_file:
     return retval;
 }
 
-enum armv2_status add_hardware(armv2_t *cpu, hardware_device_t *device) {
+enum armv2_status add_hardware(struct armv2 *cpu, struct hardware_device *device) {
     if(NULL == cpu || NULL == device || !CPU_INITIALISED(cpu)) {
         return ARMV2STATUS_INVALID_ARGS;
     }
@@ -194,11 +197,11 @@ enum armv2_status add_hardware(armv2_t *cpu, hardware_device_t *device) {
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, uint32_t end) {
+enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t start, uint32_t end) {
     uint32_t page_pos    = 0;
     uint32_t page_start  = PAGEOF(start);
     uint32_t page_end    = PAGEOF(end);
-    hardware_mapping_t hw_mapping = {0};
+    struct hardware_mapping hw_mapping = {0};
     if(NULL == cpu || end <= start) {
         return ARMV2STATUS_INVALID_ARGS;
     }
@@ -275,7 +278,7 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status add_mapping(hardware_mapping_t **head,hardware_mapping_t *item) {
+enum armv2_status add_mapping(struct hardware_mapping **head, struct hardware_mapping *item) {
     LOG("Apping mad! %p %p\n",(void*)*head,(void*)item);
     if(NULL == head) {
         LOG("Mapping jim NULL\n");
@@ -286,7 +289,7 @@ enum armv2_status add_mapping(hardware_mapping_t **head,hardware_mapping_t *item
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status interrupt(armv2_t *cpu, uint32_t hw_id, uint32_t code) {
+enum armv2_status interrupt(struct armv2 *cpu, uint32_t hw_id, uint32_t code) {
     if(NULL == cpu || !CPU_INITIALISED(cpu)) {
         return ARMV2STATUS_INVALID_ARGS;
     }

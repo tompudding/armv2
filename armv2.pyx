@@ -160,17 +160,17 @@ cdef class Device:
     id            = None
     readCallback  = None
     writeCallback = None
-    cdef carmv2.hardware_device_t *cdevice
+    cdef carmv2.hardware_device *cdevice
 
     def __cinit__(self, *args, **kwargs):
-        self.cdevice = <carmv2.hardware_device_t*>malloc(sizeof(carmv2.hardware_device_t))
+        self.cdevice = <carmv2.hardware_device*>malloc(sizeof(carmv2.hardware_device))
         self.cdevice.device_id = self.id
         self.cdevice.read_callback = <carmv2.access_callback_t>self.read;
         self.cdevice.write_callback = <carmv2.access_callback_t>self.write;
         self.cdevice.read_byte_callback = <carmv2.access_callback_t>self.read_byte;
         self.cdevice.write_byte_callback = <carmv2.access_callback_t>self.write_byte;
         self.cdevice.operation_callback = <carmv2.operation_callback_t>self.operation;
-        self.cdevice.cpu = <carmv2.armv2_t*>args[0].cpu
+        self.cdevice.cpu = <carmv2.armv2*>args[0].cpu
         if self.cdevice == NULL:
             raise MemoryError()
 
@@ -215,11 +215,11 @@ cdef class Device:
     #def __del__(self):
     #    secpu.RemoveDevice(self)
 
-    cdef carmv2.hardware_device_t *GetDevice(self):
+    cdef carmv2.hardware_device *GetDevice(self):
         return self.cdevice
 
 cdef class Armv2:
-    cdef carmv2.armv2_t *cpu
+    cdef carmv2.armv2 *cpu
     cdef public regs
     cdef public mem
     cdef public memw
@@ -227,7 +227,7 @@ cdef class Armv2:
     cdef public hardware
 
     def __cinit__(self, *args, **kwargs):
-        self.cpu = <carmv2.armv2_t*>malloc(sizeof(carmv2.armv2_t))
+        self.cpu = <carmv2.armv2*>malloc(sizeof(carmv2.armv2))
         if self.cpu == NULL:
             raise MemoryError()
 
@@ -318,7 +318,7 @@ cdef class Armv2:
 
     def Step(self,number = None):
         cdef uint32_t result
-        cdef carmv2.armv2_t *cpu = self.cpu
+        cdef carmv2.armv2 *cpu = self.cpu
         cdef uint32_t instructions = -1 if number == None else number
         with nogil:
             result = carmv2.run_armv2(cpu, instructions)

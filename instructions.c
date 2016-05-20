@@ -27,7 +27,7 @@
 #define ALU_SHIFT_ASR  0x2
 #define ALU_SHIFT_ROR  0x3
 
-static uint32_t OperandShift(armv2_t *cpu, uint32_t bits, uint32_t type_flag, uint32_t *carry);
+static uint32_t OperandShift(struct armv2 *cpu, uint32_t bits, uint32_t type_flag, uint32_t *carry);
 
 void flog(char* fmt, ...)
 {
@@ -45,7 +45,7 @@ void flog(char* fmt, ...)
     fflush(f);
 }
 
-uint32_t OperandShift(armv2_t *cpu, uint32_t bits, uint32_t type_flag, uint32_t *carry) {
+uint32_t OperandShift(struct armv2 *cpu, uint32_t bits, uint32_t type_flag, uint32_t *carry) {
     uint32_t rm = bits&0xf;
     uint32_t shift_type = (bits>>5)&0x3;
     uint32_t shift_amount;
@@ -196,7 +196,7 @@ static enum armv2_status PerformStore(struct page_info *page, uint32_t addr, uin
     return ARMV2STATUS_OK;
 }
 
-enum armv2_exception ALUInstruction                         (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception ALUInstruction                         (struct armv2 *cpu,uint32_t instruction)
 {
     uint32_t opcode   = (instruction>>21)&0xf;
     uint32_t rn       = (instruction>>16)&0xf;
@@ -338,7 +338,7 @@ enum armv2_exception ALUInstruction                         (armv2_t *cpu,uint32
     return EXCEPT_NONE;
 }
 
-enum armv2_exception MultiplyInstruction                    (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception MultiplyInstruction                    (struct armv2 *cpu,uint32_t instruction)
 {
     //mul rd,rm,rs means rd = (rm*rs)&0xffffffff
     //mla rd,rm,rs,rn means rd = (rm*rs + rn)&0xffffffff
@@ -393,7 +393,7 @@ enum armv2_exception MultiplyInstruction                    (armv2_t *cpu,uint32
 #define SDT_WRITE_BACK 0x00200000
 #define SDT_LDR        0x00100000
 
-enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception SingleDataTransferInstruction          (struct armv2 *cpu,uint32_t instruction)
 {
     //LDR/STR{B}{T} rd,address
     //address is one of:
@@ -531,7 +531,7 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
 
     return EXCEPT_NONE;
 }
-enum armv2_exception BranchInstruction                      (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception BranchInstruction                      (struct armv2 *cpu,uint32_t instruction)
 {
     if((instruction>>24&1)) {
         GETREG(cpu,LR) = cpu->pc+4;
@@ -548,7 +548,7 @@ enum armv2_exception BranchInstruction                      (armv2_t *cpu,uint32
 #define MDT_OFFSET_ADD SDT_OFFSET_ADD
 #define MDT_PREINDEX   SDT_PREINDEX
 
-enum armv2_exception MultiDataTransferInstruction           (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception MultiDataTransferInstruction           (struct armv2 *cpu,uint32_t instruction)
 {
     uint32_t rn         = (instruction>>16)&0xf;
     uint32_t ldm        = instruction&MDT_LDM;
@@ -690,7 +690,7 @@ enum armv2_exception MultiDataTransferInstruction           (armv2_t *cpu,uint32
 }
 
 
-enum armv2_exception SwapInstruction                        (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception SwapInstruction                        (struct armv2 *cpu,uint32_t instruction)
 {
     //LOG("%s\n",__func__);
     uint32_t rm   = instruction&0xf;
@@ -762,18 +762,18 @@ enum armv2_exception SwapInstruction                        (armv2_t *cpu,uint32
     return EXCEPT_NONE;
 }
 
-enum armv2_exception SoftwareInterruptInstruction           (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception SoftwareInterruptInstruction           (struct armv2 *cpu,uint32_t instruction)
 {
     uint32_t type = instruction&0x00ffffff;
     //LOG("%s %x %x %x\n",__func__,type,SWI_BREAKPOINT,type == SWI_BREAKPOINT ? EXCEPT_BREAKPOINT : EXCEPT_SOFTWARE_INTERRUPT);
     return type == SWI_BREAKPOINT ? EXCEPT_BREAKPOINT : EXCEPT_SOFTWARE_INTERRUPT;
 }
 //Not bothering transfers yet
-enum armv2_exception CoprocessorDataTransferInstruction     (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception CoprocessorDataTransferInstruction     (struct armv2 *cpu,uint32_t instruction)
 {
     return EXCEPT_NONE;
 }
-enum armv2_exception CoprocessorRegisterTransferInstruction (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception CoprocessorRegisterTransferInstruction (struct armv2 *cpu,uint32_t instruction)
 {
     uint32_t crm      = (instruction>> 0)&0xf;
     uint32_t aux      = (instruction>> 5)&0x7;
@@ -801,7 +801,7 @@ enum armv2_exception CoprocessorRegisterTransferInstruction (armv2_t *cpu,uint32
     }
     return EXCEPT_NONE;
 }
-enum armv2_exception CoprocessorDataOperationInstruction    (armv2_t *cpu,uint32_t instruction)
+enum armv2_exception CoprocessorDataOperationInstruction    (struct armv2 *cpu,uint32_t instruction)
 {
     uint32_t crm      = (instruction>> 0)&0xf;
     uint32_t aux      = (instruction>> 5)&0x7;

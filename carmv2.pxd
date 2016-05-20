@@ -86,7 +86,7 @@ cdef extern from "armv2.h":
         access_callback_t write_byte_callback
         uint32_t flags
 
-    ctypedef struct armv2_t:
+    struct armv2:
         regs regs
         uint32_t *physical_ram
         uint32_t physical_ram_size
@@ -96,7 +96,7 @@ cdef extern from "armv2.h":
         uint32_t flags
         uint32_t pins
 
-    ctypedef struct hardware_device_t:
+    struct hardware_device:
         uint32_t device_id
         uint32_t interrupt_flag_addr
         access_callback_t read_callback
@@ -104,12 +104,12 @@ cdef extern from "armv2.h":
         access_callback_t read_byte_callback
         access_callback_t write_byte_callback
         operation_callback_t operation_callback
-        armv2_t *cpu
+        armv2 *cpu
         void *extra
 
-    armv2_status init(armv2_t *cpu, uint32_t memsize) nogil
-    armv2_status load_rom(armv2_t *cpu, const char *filename) nogil
-    armv2_status cleanup_armv2(armv2_t *cpu) nogil
-    armv2_status run_armv2(armv2_t *cpu, int32_t instructions) nogil
-    armv2_status add_hardware(armv2_t *cpu, hardware_device_t *device) nogil
-    armv2_status interrupt(armv2_t *cpu, uint32_t hw_id, uint32_t code) nogil
+    armv2_status init(armv2 *cpu, uint32_t memsize) nogil
+    armv2_status load_rom(armv2 *cpu, const char *filename) nogil
+    armv2_status cleanup_armv2(armv2 *cpu) nogil
+    armv2_status run_armv2(armv2 *cpu, int32_t instructions) nogil
+    armv2_status add_hardware(armv2 *cpu, hardware_device *device) nogil
+    armv2_status interrupt(armv2 *cpu, uint32_t hw_id, uint32_t code) nogil

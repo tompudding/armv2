@@ -6,7 +6,7 @@
 #include "armv2.h"
 
 int main(int argc, char *argv[]) {
-    armv2_t armv2;
+    struct armv2 armv2;
     enum armv2_status result = ARMV2STATUS_OK;
 
     if(ARMV2STATUS_OK != (result = init(&armv2,(1<<20)))) {
