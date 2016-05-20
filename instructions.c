@@ -150,7 +150,7 @@ uint32_t OperandShift(armv2_t *cpu, uint32_t bits, uint32_t type_flag, uint32_t 
     return op2;
 }
 
-static enum armv2_status PerformLoad(page_info_t *page, uint32_t addr, uint32_t *out, int byte) {
+static enum armv2_status PerformLoad(struct page_info *page, uint32_t addr, uint32_t *out, int byte) {
     uint32_t value;
     if(NULL == page || NULL == out) {
         return ARMV2STATUS_INVALID_ARGS;
@@ -178,7 +178,7 @@ static enum armv2_status PerformLoad(page_info_t *page, uint32_t addr, uint32_t 
     return ARMV2STATUS_OK;
 }
 
-static enum armv2_status PerformStore(page_info_t *page, uint32_t addr, uint32_t value, int callback) {
+static enum armv2_status PerformStore(struct page_info *page, uint32_t addr, uint32_t value, int callback) {
     if(NULL == page) {
         return ARMV2STATUS_INVALID_ARGS;
     }
@@ -409,7 +409,7 @@ enum armv2_exception SingleDataTransferInstruction          (armv2_t *cpu,uint32
     uint32_t rd = (instruction>>12)&0xf;
     uint32_t rn = (instruction>>16)&0xf;
     uint32_t rn_val;
-    page_info_t *page;
+    struct page_info *page;
 
     if(!(instruction&SDT_REGISTER)) {
         op2 = instruction&0xfff;
@@ -613,7 +613,7 @@ enum armv2_exception MultiDataTransferInstruction           (armv2_t *cpu,uint32
     address -= 4;
     for(rs=0;rs<16;rs++,first_loop=0) {
         uint32_t value;
-        page_info_t *page;
+        struct page_info *page;
         if(((instruction>>rs)&1) == 0) {
             continue;
         }
@@ -698,7 +698,7 @@ enum armv2_exception SwapInstruction                        (armv2_t *cpu,uint32
     uint32_t rn   = (instruction>>16)&0xf;
     uint32_t byte = instruction&SDT_LOAD_BYTE;
     uint32_t value;
-    page_info_t *page;
+    struct page_info *page;
 
     uint32_t address = rn == PC ? (cpu->pc | GETMODEPSR(cpu)) : GETREG(cpu,rn);
 

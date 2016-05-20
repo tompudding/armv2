@@ -214,7 +214,7 @@ enum armv2_status run_armv2(armv2_t *cpu, int32_t instructions) {
                     return ARMV2STATUS_BREAKPOINT;
                 }
             }
-            exception_handler_t ex_handler = cpu->exception_handlers[exception];
+            struct exception_handler ex_handler = cpu->exception_handlers[exception];
             cpu->regs.actual[ex_handler.save_reg] = cpu->regs.actual[PC];
             cpu->regs.actual[PC] = ((cpu->regs.actual[PC])&0xfffffffc) | ex_handler.mode;
             cpu->pc = ex_handler.pc-4;

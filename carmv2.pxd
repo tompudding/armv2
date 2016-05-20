@@ -56,7 +56,7 @@ cdef extern from "armv2.h":
         EXCEPT_BREAKPOINT
         EXCEPT_MAX
 
-    ctypedef struct exception_handler_t:
+    struct exception_handler:
         uint32_t mode
         uint32_t pc
         uint32_t flags
@@ -71,14 +71,14 @@ cdef extern from "armv2.h":
         ARMV2STATUS_BREAKPOINT,
         ARMV2STATUS_WAIT_FOR_INTERRUPT
 
-    ctypedef struct regs_t:
+    struct regs:
         uint32_t actual[NUMREGS]
         uint32_t *effective[NUM_EFFECTIVE_REGS]
 
     ctypedef void (*access_callback_t)(uint32_t)
     ctypedef void (*operation_callback_t)(uint32_t)
 
-    ctypedef struct page_info_t:
+    struct page_info:
         uint32_t *memory
         access_callback_t read_callback
         access_callback_t write_callback
@@ -87,11 +87,11 @@ cdef extern from "armv2.h":
         uint32_t flags
 
     ctypedef struct armv2_t:
-        regs_t regs
+        regs regs
         uint32_t *physical_ram
         uint32_t physical_ram_size
-        page_info_t *page_tables[NUM_PAGE_TABLES]
-        exception_handler_t exception_handlers[EXCEPT_MAX]
+        page_info *page_tables[NUM_PAGE_TABLES]
+        exception_handler exception_handlers[EXCEPT_MAX]
         uint32_t pc
         uint32_t flags
         uint32_t pins

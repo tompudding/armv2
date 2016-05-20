@@ -123,22 +123,22 @@ enum armv2_exception {
     EXCEPT_MAX,
 };
 
-typedef struct {
+struct exception_handler {
     uint32_t mode;
     uint32_t pc;
     uint32_t flags;
     uint32_t save_reg;
-} exception_handler_t;
+};
 
-typedef struct {
+struct regs {
     uint32_t  actual[NUMREGS];
     uint32_t *effective[NUM_EFFECTIVE_REGS];
-} regs_t;
+};
 
 typedef uint32_t (*access_callback_t)(void *extra, uint32_t addr, uint32_t value);
 typedef uint32_t (*operation_callback_t)(void *extra, uint32_t arg0, uint32_t arg1);
 
-typedef struct {
+struct page_info {
     uint32_t          *memory;
     void              *mapped_device;
     access_callback_t  read_callback;
@@ -146,7 +146,7 @@ typedef struct {
     access_callback_t  read_byte_callback;
     access_callback_t  write_byte_callback;
     uint32_t           flags;
-} page_info_t;
+};
 
 struct _armv2_t;
 
@@ -171,12 +171,12 @@ typedef struct _hardware_mapping_t {
 } hardware_mapping_t;
 
 typedef struct _armv2_t {
-    regs_t               regs;  //storage for all the registers
+    struct regs          regs;  //storage for all the registers
     uint32_t            *physical_ram;
     uint32_t             physical_ram_size;
     uint32_t             num_hardware_devices;
-    page_info_t         *page_tables[NUM_PAGE_TABLES];
-    exception_handler_t  exception_handlers[EXCEPT_MAX];
+    struct page_info    *page_tables[NUM_PAGE_TABLES];
+    struct exception_handler exception_handlers[EXCEPT_MAX];
     hardware_device_t   *hardware_devices[HW_DEVICES_MAX];
     hw_manager_t         hardware_manager;
     hardware_mapping_t  *hw_mappings;

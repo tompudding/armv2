@@ -266,7 +266,7 @@ cdef class Armv2:
             #raise IndexError()
             return 0
 
-        cdef carmv2.page_info_t *page = self.cpu.page_tables[PAGEOF(addr)]
+        cdef carmv2.page_info *page = self.cpu.page_tables[PAGEOF(addr)]
         if NULL == page:
             #raise AccessError()
             return 0
@@ -277,7 +277,7 @@ cdef class Armv2:
         if addr >= MAX_26BIT:
             return 0#raise IndexError()
 
-        cdef carmv2.page_info_t *page = self.cpu.page_tables[PAGEOF(addr)]
+        cdef carmv2.page_info *page = self.cpu.page_tables[PAGEOF(addr)]
         if NULL == page:
             raise AccessError()
 

@@ -15,21 +15,25 @@ enum armv2_status init(armv2_t *cpu, uint32_t memsize) {
         LOG("%s error, NULL cpu\n",__func__);
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
+
     //round memsize up to a full page
     memsize = (memsize + PAGE_MASK)&(~PAGE_MASK);
     if(memsize&PAGE_MASK) {
         LOG("Page mask error\n");
         return ARMV2STATUS_VALUE_ERROR;
     }
-    num_pages = memsize>>PAGE_SIZE_BITS;
+
+    num_pages = memsize >> PAGE_SIZE_BITS;
     if(num_pages > NUM_PAGE_TABLES) {
         LOG("Serious page table error, too many requested\n");
         return ARMV2STATUS_VALUE_ERROR;
     }
+
     if(memsize > MAX_MEMORY) {
         LOG("%s error, request memory size(%u) too big\n",__func__,memsize);
         return ARMV2STATUS_VALUE_ERROR;
     }
+
     memset(cpu,0,sizeof(armv2_t));
     cpu->physical_ram = malloc(memsize);
     if(NULL == cpu->physical_ram) {
@@ -44,8 +48,8 @@ enum armv2_status init(armv2_t *cpu, uint32_t memsize) {
     //we could malloc all the page tables for it at once, but all the extra bookkeeping would
     //be annoying
 
-    for(uint32_t i=0;i<num_pages;i++) {
-        page_info_t *page_info = calloc(1,sizeof(page_info_t));
+    for(uint32_t i = 0; i < num_pages; i++) {
+        struct page_info *page_info = calloc(1, sizeof(struct page_info));
         if(NULL == page_info) {
             retval = ARMV2STATUS_MEMORY_ERROR;
             goto cleanup;
@@ -115,36 +119,50 @@ enum armv2_status cleanup_armv2(armv2_t *cpu) {
 }
 
 enum armv2_status load_rom(armv2_t *cpu, const char *filename) {
-    FILE *f = NULL;
-    ssize_t read_bytes = 0;
-    enum armv2_status retval = ARMV2STATUS_OK;
-    struct stat st = {0};
-    uint32_t page_num = 0;
+    FILE              *f          = NULL;
+    ssize_t            read_bytes = 0;
+    enum armv2_status  retval     = ARMV2STATUS_OK;
+    struct stat        st         = {0};
+    uint32_t           page_num   = 0;
+
     if(NULL == cpu) {
         return ARMV2STATUS_OK;
     }
+
     if(!(cpu->flags&FLAG_INIT)) {
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
+
     if(NULL == cpu->page_tables[0] || NULL == cpu->page_tables[0]->memory) {
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
+
     if(0 != stat(filename,&st)) {
         return ARMV2STATUS_IO_ERROR;
     }
+
     ssize_t size = st.st_size;
-    if(size < 24) {
-        //24 is the bare minimum for a rom, as the vectors go up to 0x20, and then you need at least one instruction
+    if(size < 28) {
+        //28 is the bare minimum for a rom, as the vectors go up to
+        //0x20, and then you need at least one instruction, and the
+        //first word is the length
         return ARMV2STATUS_IO_ERROR;
     }
+
     f = fopen(filename,"rb");
     if(NULL == f) {
         LOG("Error opening %s\n",filename);
         return ARMV2STATUS_IO_ERROR;
     }
-    while(size > 0) {
-        read_bytes = fread(cpu->page_tables[page_num++]->memory,1,PAGE_SIZE,f);
 
+    /* read_bytes = fread(&section_length, sizeof(section_length), 1, f); */
+    /* if(read_bytes != section_length) { */
+    /*     LOG("Error reading opening length\n"); */
+    /*     retval = ARMV2STATUS_IO_ERROR; */
+    /*     goto close_file; */
+    /* } */
+    while(size > 0) {
+        read_bytes = fread(cpu->page_tables[page_num++]->memory, 1, PAGE_SIZE,f);
         if(read_bytes < PAGE_SIZE) {
             //It's ok if it's all that's left
 
@@ -204,7 +222,7 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
     //First we need to know if all of the requested memory is available for mapping. That means
     //it must not have been mapped already, and it may not be the zero page
     for(page_pos = page_start; page_pos < page_end; page_pos++) {
-        page_info_t *page;
+        struct page_info *page;
         if(page_pos >= NUM_PAGE_TABLES) { // || page_pos == INTERRUPT_PAGE_NUM) {
             return ARMV2STATUS_MEMORY_ERROR;
         }
@@ -220,10 +238,11 @@ enum armv2_status map_memory(armv2_t *cpu, uint32_t device_num, uint32_t start, 
     hw_mapping.device = cpu->hardware_devices[device_num];
     //If we get here then the entire range is free, so we can go ahead and fill it in
     for(page_pos = page_start; page_pos < page_end; page_pos++) {
-        page_info_t *page    = cpu->page_tables[page_pos];
+        struct page_info *page = cpu->page_tables[page_pos];
+
         if(NULL == page) {
             //we need a new page
-            page = calloc(1,sizeof(page_info_t));
+            page = calloc(1, sizeof(struct page_info));
             if(NULL == page) {
                 //I don't think I'm leaving anything untidied up by returning here
                 return ARMV2STATUS_MEMORY_ERROR;
