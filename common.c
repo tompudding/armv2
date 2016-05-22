@@ -5,12 +5,12 @@
 
 uint8_t *palette_data = (void*)0x01001000;
 uint8_t *letter_data  = (void*)0x01001000 + WIDTH*HEIGHT;
-uint32_t *keyboard_bitmask = (void*)0x01000000;
-uint8_t *keyboard_ringbuffer = (void*)0x01000020;
-uint8_t *ringbuffer_pos      = (void*)0x010000a0;
-struct tape_control *tape_control = (void*)0x01002000;
+volatile uint32_t *keyboard_bitmask = (void*)0x01000000;
+volatile uint8_t *keyboard_ringbuffer = (void*)0x01000020;
+volatile uint8_t *ringbuffer_pos      = (void*)0x010000a0;
+volatile struct tape_control *tape_control = (void*)0x01002000;
 uint8_t *tape_load_area = (void*)0xf0000;
-uint32_t *rng = (void*)0x01001000 + WIDTH*HEIGHT*2;
+volatile uint32_t *rng = (void*)0x01001000 + WIDTH*HEIGHT*2;
 void **crash_handler_word = (void*)0x20000;
 
 uint64_t wait_for_interrupt() {

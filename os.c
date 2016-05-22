@@ -87,26 +87,67 @@ void process_string(char *s) {
     }
 }
 
-int load_tape(uint8_t *tape_area) {
-    //We need to read all the bytes from the tape until we get an end of tape, without getting any errors
-    int result = READY;
-    while(result == READY) {
-        tape_control->write = NEXT_BYTE;
-        while(tape_control->read == NOT_READY) {
-            wait_for_interrupt();
+int tape_next_byte(uint8_t *out) {
+    int tape_status = tape_control->read;
+    
+    tape_control->write = NEXT_BYTE;
+
+    while(tape_status == NOT_READY) {
+        wait_for_interrupt();
+        tape_status = tape_control->read;
+    }
+    
+    if(tape_status == READY) {
+        *out = tape_control->data;
+    }
+
+    return tape_status;
+}
+
+int tape_next_word(uint32_t *out) {
+    uint32_t working = 0;
+    int result = NOT_READY;
+    
+    for(size_t i = 0; i < sizeof(working); i++) {
+        uint8_t working_byte = 0;
+        result = tape_next_byte( &working_byte );
+        if(READY != result) {
+            break;
         }
-        if(tape_control->read == READY) {
-            *tape_area++ = tape_control->data;
+        working <<= 8;
+        working |= working_byte;
+    }
+
+    if( READY == result ) {
+        *out = working;
+    }
+
+    return result;
+}
+
+int load_tape_data( uint8_t *tape_area ) {
+    uint32_t section_length = 0;
+    int result = tape_next_word( &section_length );
+    while(result == READY && section_length != 0) {
+        uint8_t byte;
+        result = tape_next_byte( &byte );
+        if(READY == result) {
+            section_length--;
+            *tape_area++ = byte;
             if((((uint32_t)tape_area)&7) == 0) {
                 processing = 0;
                 process_char('.');
                 processing = 1;
             }
-
         }
-        result = tape_control->read;
     }
-    return tape_control->read == END_OF_TAPE ? 0 : tape_control->read + 1;
+    return result == READY ? 0 : tape_control->read + 1;
+}
+    
+int load_tape(uint8_t *tape_area) {
+    //Tapes are comprised of 2 sections, the data and (optionally) the symbols. Just load the first for now
+
+    return load_tape_data( tape_area );
 }
 
 void handle_command() {

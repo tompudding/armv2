@@ -4,9 +4,9 @@ CFLAGS=-std=gnu99 -Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes
 AS=arm-none-eabi-as
 COPY=arm-none-eabi-objcopy
 TAPES= guessing adventure trivia one_letter_werewolf
-ARMCFLAGS=-march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic
+ARMCFLAGS=-std=gnu99 -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic
 
-all: armtest armv2.so boot.rom tapes/1_guessing.bin tapes/2_trivia.bin tapes/3_adventure.bin
+all: armtest armv2.so boot.rom tapes/1_guessing.bin tapes/2_trivia.bin tapes/3_adventure.bin tapes/1lw.bin
 
 run: armv2.so boot.rom emulate.py debugger.py
 	python emulate.py
