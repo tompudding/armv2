@@ -93,7 +93,7 @@ int load_tape(uint8_t *tape_area) {
     while(result == READY) {
         tape_control->write = NEXT_BYTE;
         while(tape_control->read == NOT_READY) {
-            //wait_for_interrupt();
+            wait_for_interrupt();
         }
         if(tape_control->read == READY) {
             *tape_area++ = tape_control->data;

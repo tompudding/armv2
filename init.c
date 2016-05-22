@@ -163,7 +163,7 @@ static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32
         if(read_bytes != to_read) {
 
             if(read_bytes != section_length) {
-                LOG("Error %d %zd %zd %zd\n",page_num, read_bytes, size, section_length);
+                LOG("Error %d %zd %zd %d\n",page_num, read_bytes, size, section_length);
                 return ARMV2STATUS_IO_ERROR;
             }
         }

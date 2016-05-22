@@ -9,7 +9,6 @@ start:
         LDR R1,target_position
         ADR R2,code_start
         ADD R3,R2,R0
-        ADD R2,R2,#4 /* Skip the opening length for now */
 loop:
         LDR R4,[R2],#4
         STR R4,[R1],#4
