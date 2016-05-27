@@ -24,6 +24,8 @@ def get_symbols(elf):
         for nsym, symbol in enumerate(section.iter_symbols()):
             if symbol['st_shndx'] == 'SHN_ABS' or symbol['st_value'] == 0:
                 continue
+            if not symbol.name.strip() or symbol.name.startswith('$'):
+                continue
             yield symbol['st_value'],symbol.name
 
         #     version_info = ''
@@ -73,6 +75,8 @@ def create_binary(header, elf, boot=False):
             elf = ELFFile(f)
             boot_symbols = [c for c in get_symbols(elf)]
             symbols = boot_symbols + symbols
+
+    symbols.sort( lambda x,y: cmp(x[0], y[0]) )
             
     #get rid of any "bx lr"s
     data = data.replace(struct.pack('<I',0xe12fff1e),struct.pack('<I',0xe1a0f00e))

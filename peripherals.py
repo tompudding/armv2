@@ -166,9 +166,15 @@ class Scrollable(View):
                 return
             selected = index
             addr = self.view_start + selected*self.line_size
-        if selected < self.buffer or selected >= len(self.label_rows):
-            selected = None
-        elif selected == self.selected:
+        if selected < self.buffer:
+            selected = self.buffer
+            addr = self.view_start + selected*self.line_size
+        if selected >= self.buffer + self.height:
+            selected = self.buffer + self.height - 1
+            addr = self.view_start + selected*self.line_size
+
+        if selected == self.selected:
+            self.selected_addr = addr
             return 
         #turn off the old one
         if self.selected is not None:
@@ -179,6 +185,7 @@ class Scrollable(View):
 
         self.selected = selected
         self.selected_addr = addr
+
         #turn on the new one
         if self.selected is not None:
             widget_selected = self.selected - self.buffer
@@ -199,7 +206,7 @@ class Scrollable(View):
         self.adjust_view(1)
 
     def keyboard_up(self, event):
-        self.select(None, self.selected - 1)
+        self.select(None, self.selected - 1 if self.selected is not None else 0)
         #self.adjust_view(-1)
         self.centre(self.selected_addr)
 
@@ -628,7 +635,7 @@ class Application(Tkinter.Frame):
         self.stop_button.config(command=self.resume)
         self.step_button.enable()
         self.send_message(messages.Stop())
-        self.memory.centre(0xffff0)
+        self.memory.centre(0x30000)
         #self.frame.configure(bg=self.disassembly.selected_bg)
 
     def resume(self):
