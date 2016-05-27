@@ -145,6 +145,11 @@ int load_tape_data( uint8_t *tape_area ) {
     return result;
 }
 
+//We can't do a 32 bit read from an unaligned address, so just read it bytewise
+uint32_t load_network_uint32( uint8_t *in ) {
+    return (in[0] << 24) | (in[1] << 16) | (in[2] << 8) | (in[3]);
+}
+
 enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
     //First find our entry position in the symbols area
     uint32_t  symbol_value     = 0;
@@ -152,7 +157,7 @@ enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
     uint8_t *symbols_end      = symbols_area + MAX_SYMBOLS_SIZE;
 
     while( (uint8_t*)symbol_value < tape_area && symbol_entry_pos < symbols_end ) {
-        symbol_value = ntohl( ((uint32_t*)symbol_entry_pos)[0] );
+        symbol_value = load_network_uint32( symbol_entry_pos );
         if( 0 == symbol_value ) {
             //This is the end
             break;

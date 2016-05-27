@@ -137,7 +137,7 @@ void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
     cursor_pos = dump_text("psr : 0x", WIDTH*21 + 10);
     dump_hex((pc)&0xfc000003,cursor_pos);
 
-    char *mode = NULL;
+    char *mode = "IMPOSSIBLE MODE";
     switch(pc&3) {
     case 0:
         mode = "USR";
@@ -153,7 +153,7 @@ void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
         break;
     }
 
-    cursor_pos = dump_text("mode:    ", WIDTH*22 + 10);
+    cursor_pos = dump_text("mode: ", WIDTH*22 + 10);
     (void) dump_text(mode, cursor_pos);
 
     while(1) {
