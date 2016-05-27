@@ -245,7 +245,12 @@ class Scrollable(View):
         amount = adjust / self.line_size
         self.view_start = new_start
 
-        self.select(self.selected_addr)
+        if abs(amount) >= self.height:
+            #We've switched a whole page. We should select the middle
+            self.select(self.view_start + self.full_height*self.line_size/2)
+        else:
+            #It's a small amount so try to stay where we are
+            self.select(self.selected_addr)
 
         if abs(amount) < self.view_size/self.line_size:
             #we can reuse some labels
