@@ -77,8 +77,18 @@ void dump_hex(uint32_t value, size_t cursor_pos) {
     }
 }
 
+size_t dump_text(char *text, size_t cursor_pos) {
+    while(*text) {
+        letter_data[cursor_pos++] = *text++;
+    }
+
+    return cursor_pos;
+}
+
 void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
     char *p;
+    uint32_t *registers = (void*)(crash_handler_word + 1);
+    int i;
     clear_screen_with_border(BLACK, RED, 1);
     switch(type) {
     case 0:
@@ -98,30 +108,53 @@ void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
         break;
     }
     size_t cursor_pos = WIDTH*2 + 15;
-    while(*p) {
-        letter_data[cursor_pos++] = *p++;
+    cursor_pos = dump_text(p, cursor_pos);
+
+    for(i = 0; i < 13; i++) {
+        cursor_pos = WIDTH*(4+i) + 10;
+        if(i < 10) {
+            p = "r.  : 0x";
+        }
+        else {
+            p = "r1. : 0x";
+        }
+        while(*p) {
+            letter_data[cursor_pos++] = *p == '.' ? '0' + (i%10) : *p;
+            p++;
+        }
+        dump_hex(registers[i], cursor_pos);
     }
 
-    p = "sp : 0x";
-    cursor_pos = WIDTH*4 + 10;
-    while(*p) {
-        letter_data[cursor_pos++] = *p++;
-    }
+    cursor_pos = dump_text("sp  : 0x", WIDTH*17 + 10);
     dump_hex(sp,cursor_pos);
 
-    p = "lr : 0x";
-    cursor_pos = WIDTH*5 + 10;
-    while(*p) {
-        letter_data[cursor_pos++] = *p++;
-    }
+    cursor_pos = dump_text("lr  : 0x", WIDTH*18 + 10);
     dump_hex(lr,cursor_pos);
 
-    p = "pc : 0x";
-    cursor_pos = WIDTH*6 + 10;
-    while(*p) {
-        letter_data[cursor_pos++] = *p++;
+    cursor_pos = dump_text("pc  : 0x", WIDTH*19 + 10);
+    dump_hex((pc-8)&0x03fffffc,cursor_pos);
+
+    cursor_pos = dump_text("psr : 0x", WIDTH*21 + 10);
+    dump_hex((pc)&0xfc000003,cursor_pos);
+
+    char *mode = NULL;
+    switch(pc&3) {
+    case 0:
+        mode = "USR";
+        break;
+    case 1:
+        mode = "FIQ";
+        break;
+    case 2:
+        mode = "IRQ";
+        break;
+    case 3:
+        mode = "SUP";
+        break;
     }
-    dump_hex(pc-8,cursor_pos);
+
+    cursor_pos = dump_text("mode:    ", WIDTH*22 + 10);
+    (void) dump_text(mode, cursor_pos);
 
     while(1) {
         wait_for_interrupt();

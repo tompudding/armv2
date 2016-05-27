@@ -628,7 +628,7 @@ class Application(Tkinter.Frame):
         self.stop_button.config(command=self.resume)
         self.step_button.enable()
         self.send_message(messages.Stop())
-        #self.disassembly.centre(0x30000)
+        self.memory.centre(0xffff0)
         #self.frame.configure(bg=self.disassembly.selected_bg)
 
     def resume(self):

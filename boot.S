@@ -225,18 +225,39 @@ not_implemented:
 software_interrupt_done:
         SUBS PC,LR,#4
 
+/* In these error handling functions I want to preserve all registers without duplicating code*/
 handle_illegal_instruction:
-        MOV R0,#0
+        PUSH {PC}
         B handle_error
 handle_prefetch_error:
-        MOV R0,#1
+        PUSH {PC}
         B handle_error
 handle_data_abort:
-        MOV R0,#2
+        PUSH {PC}
         B handle_error
 handle_address_exception:
-        MOV R0,#3
+        PUSH {PC}
 handle_error:
+        /* Back up all the registers */
+        PUSH {R0-R12}
+        /* Which exception is it? */
+        LDR R0, [SP, #13*4]
+        AND R0, #0x03fffffc
+        SUB R0, #4 /* shouldn't this be 8? This's how the CPU seems to behave anyway */
+        ADR R1, handle_illegal_instruction
+        SUB R0, R1
+        /* Current R0 is the offset from the start of the error cases, but each is 2 instructions
+           so divide by 8 */
+        
+        LSR R0,#3
+        LDR R4,=0x20004
+        ADD R5, R4, #13*4
+/* copy the saved registers into place */
+restore_regs_loop:      
+        LDR R3, [SP], #4
+        STR R3, [R4], #4
+        CMP R4, R5
+        BLS restore_regs_loop
         MOV R1,LR
         ADR R5,handle_error_usr
         MOVS PC,R5
