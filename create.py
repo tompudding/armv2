@@ -22,7 +22,7 @@ def get_symbols(elf):
         #     self._emitline('   Num:    Value          Size Type    Bind   Vis      Ndx Name')
 
         for nsym, symbol in enumerate(section.iter_symbols()):
-            if symbol['st_size'] == 0 or symbol['st_value'] == 0:
+            if symbol['st_shndx'] == 'SHN_ABS' or symbol['st_value'] == 0:
                 continue
             yield symbol['st_value'],symbol.name
 
@@ -68,11 +68,17 @@ def create_binary(header, elf, boot=False):
 
         entry_point = elffile.header['e_entry']
         symbols = [c for c in get_symbols(elffile)]
+    if boot:
+        with open('boot.o','rb') as f:
+            elf = ELFFile(f)
+            boot_symbols = [c for c in get_symbols(elf)]
+            symbols = boot_symbols + symbols
+            
     #get rid of any "bx lr"s
     data = data.replace(struct.pack('<I',0xe12fff1e),struct.pack('<I',0xe1a0f00e))
     header = header.replace(struct.pack('<I',0xcafebabe),struct.pack('<I',entry_point))
     #We'll stick the symbols on the end
-    symbols = ''.join(struct.pack('<I',value) + name + '\00' for (value,name) in symbols)
+    symbols = ''.join(struct.pack('>I',value) + name + '\00' for (value,name) in symbols)
 
     if boot:
         assert len(header) < 0x1000

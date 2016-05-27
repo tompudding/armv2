@@ -11,6 +11,7 @@ enum tape_codes {
     END_OF_TAPE = 2,
     DRIVE_EMPTY = 3,
     READY       = 4,
+    ERROR       = 5,
 };
 
 enum colours    {
@@ -43,19 +44,21 @@ enum letter_codes {
 #define WIDTH  40
 #define HEIGHT 30
 #define RINGBUFFER_SIZE 128
+#define MAX_SYMBOLS_SIZE 0x10000
 #define PALETTE(background,foreground) ((background<<4)|foreground)
 #define INT_ID(info) ((info)&0xffffffff)
 #define CLOCK_ID 0x92d177b0
 
-extern uint8_t              *palette_data;
-extern uint8_t              *letter_data;
+extern uint8_t                       *palette_data;
+extern uint8_t                       *letter_data;
 extern volatile uint32_t             *keyboard_bitmask;
 extern volatile uint8_t              *keyboard_ringbuffer;
 extern volatile uint8_t              *ringbuffer_pos;
 extern volatile struct tape_control  *tape_control;
-extern uint8_t              *tape_load_area;
+extern uint8_t                       *tape_load_area;
+extern uint8_t                       *symbols_load_area;
 extern volatile uint32_t             *rng;
-extern void                **crash_handler_word;
+extern void                         **crash_handler_word;
 
 uint64_t wait_for_interrupt();
 void set_alarm(int milliseconds);
@@ -64,3 +67,4 @@ void toggle_pos(size_t pos, uint32_t normal, uint32_t inverted);
 void clear_screen(enum colours background, enum colours foreground);
 void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size);
 void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr);
+uint32_t ntohl( uint32_t );

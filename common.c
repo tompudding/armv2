@@ -3,15 +3,16 @@
 #include <ctype.h>
 #include "synapse.h"
 
-uint8_t *palette_data = (void*)0x01001000;
-uint8_t *letter_data  = (void*)0x01001000 + WIDTH*HEIGHT;
-volatile uint32_t *keyboard_bitmask = (void*)0x01000000;
-volatile uint8_t *keyboard_ringbuffer = (void*)0x01000020;
-volatile uint8_t *ringbuffer_pos      = (void*)0x010000a0;
-volatile struct tape_control *tape_control = (void*)0x01002000;
-uint8_t *tape_load_area = (void*)0xf0000;
-volatile uint32_t *rng = (void*)0x01001000 + WIDTH*HEIGHT*2;
-void **crash_handler_word = (void*)0x20000;
+uint8_t                       *palette_data        = (void*)0x01001000;
+uint8_t                       *letter_data         = (void*)0x01001000 + WIDTH*HEIGHT;
+volatile uint32_t             *keyboard_bitmask    = (void*)0x01000000;
+volatile uint8_t              *keyboard_ringbuffer = (void*)0x01000020;
+volatile uint8_t              *ringbuffer_pos      = (void*)0x010000a0;
+volatile struct tape_control  *tape_control        = (void*)0x01002000;
+uint8_t                       *tape_load_area      = (void*)0xf0000;
+uint8_t                       *symbols_load_area   = (void*)0x30000;
+volatile uint32_t             *rng                 = (void*)0x01001000 + WIDTH*HEIGHT*2;
+void                         **crash_handler_word  = (void*)0x20000;
 
 uint64_t wait_for_interrupt() {
     asm("push {r7}");
@@ -40,6 +41,10 @@ void clear_screen(enum colours background, enum colours foreground) {
     uint8_t palette_byte = background << 4 | foreground;
     memset(palette_data, palette_byte, WIDTH*HEIGHT);
     memset(letter_data, 0, WIDTH*HEIGHT);
+}
+
+uint32_t ntohl( uint32_t in ) {
+    return __builtin_bswap32( in );
 }
 
 void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size) {

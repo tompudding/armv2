@@ -128,6 +128,7 @@ int tape_next_word(uint32_t *out) {
 int load_tape_data( uint8_t *tape_area ) {
     uint32_t section_length = 0;
     int result = tape_next_word( &section_length );
+
     while(result == READY && section_length != 0) {
         uint8_t byte;
         result = tape_next_byte( &byte );
@@ -141,22 +142,57 @@ int load_tape_data( uint8_t *tape_area ) {
             }
         }
     }
-    return result == READY ? 0 : tape_control->read + 1;
+    return result;
+}
+
+enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
+    //First find our entry position in the symbols area
+    uint32_t  symbol_value     = 0;
+    uint8_t  *symbol_entry_pos = symbols_area;
+    uint8_t *symbols_end      = symbols_area + MAX_SYMBOLS_SIZE;
+
+    while( (uint8_t*)symbol_value < tape_area && symbol_entry_pos < symbols_end ) {
+        symbol_value = ntohl( ((uint32_t*)symbol_entry_pos)[0] );
+        if( 0 == symbol_value ) {
+            //This is the end
+            break;
+        }
+        symbol_entry_pos += sizeof(uint32_t);
+
+        while(*symbol_entry_pos && symbol_entry_pos < symbols_end) {
+            symbol_entry_pos++;
+        }
+        symbol_entry_pos++;
+    }
+
+    if( symbol_entry_pos >= symbols_end ) {
+        //We ran off the end
+        return ERROR;
+    }
+
+    //Now we can load symbols from the tape in
+    return load_tape_data( symbol_entry_pos );
 }
     
-int load_tape(uint8_t *tape_area) {
+enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area) {
     //Tapes are comprised of 2 sections, the data and (optionally) the symbols. Just load the first for now
 
-    return load_tape_data( tape_area );
+    enum tape_codes result = load_tape_data( tape_area );
+    if( READY == result ) {
+        result = load_tape_symbols( tape_area, symbols_area );
+    }
+
+    return result;
 }
 
 void handle_command() {
     if(command_size) {
         if(0 == strcasecmp(command,"load")) {
             process_string("Loading...\r");
-            int result = load_tape(tape_load_area);
+            int result = load_tape(tape_load_area, symbols_load_area);
             switch(result) {
-            case 0:
+            case READY:
+            case END_OF_TAPE:
             {
                 //The tape is loaded so let's clear the screen and jump to the tape
                 void (*fn)(void) = (void*)tape_load_area;
@@ -164,7 +200,7 @@ void handle_command() {
                 fn();
                 break;
             }
-            case DRIVE_EMPTY+1:
+            case DRIVE_EMPTY:
                 process_string("Tape drive empty\r>");
                 break;
             default:
