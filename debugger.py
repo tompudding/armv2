@@ -7,6 +7,7 @@ import string
 import glob
 import messages
 import disassemble
+import struct
 from pygame.locals import *
 
 
@@ -14,6 +15,7 @@ class Debugger(object):
     BKPT = 0xef000000 | armv2.SWI_BREAKPOINT
     FRAME_CYCLES = 66666
     PORT = 16705
+    SYMBOLS_ADDR = 0x30000
 
     def __init__(self,machine):
         self.machine          = machine
@@ -34,8 +36,9 @@ class Debugger(object):
         }
         self.tapes = glob.glob(os.path.join('tapes','*'))
         self.loaded_tape = None
+        self.need_symbols = False
         self.load_symbols()
-        self.machine.tape_drive.registerCallback(self.load_symbols)
+        self.machine.tape_drive.registerCallback(self.set_need_symbols)
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
         try:
@@ -125,8 +128,29 @@ class Debugger(object):
             data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
             self.connection.send(messages.MemViewReply(message.id,message.watch_start,data))
 
+    def set_need_symbols(self):
+        self.need_symbols = True
+        print 'need symbols'
+
     def load_symbols(self):
-        print 'load symbols'
+        #reloading all symbols
+        self.need_symbols = False
+        self.symbols = []
+        pos = self.SYMBOLS_ADDR
+        value = None
+
+        while value != 0:
+            value = struct.unpack('>I',self.machine.mem[pos:pos+4])[0]
+            if 0 == value:
+                break
+            name = []
+            pos += 4
+            while self.machine.mem[pos] != '\x00':
+                name.append(self.machine.mem[pos])
+                pos += 1
+            pos += 1
+            name = ''.join(name)
+            self.symbols.append( ( value, name ) )
 
     def AddBreakpoint(self,addr):
         if addr&3:
@@ -167,6 +191,8 @@ class Debugger(object):
             status = self.machine.StepAndWait(num)
 
         #self.state_window.Update()
+        if self.need_symbols:
+            self.load_symbols()
         self.send_register_update()
         self.send_mem_update()
         return status
