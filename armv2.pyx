@@ -343,6 +343,7 @@ debugf = None
 log_lock = threading.Lock()
 def DebugLog(message):
     global debugf
+    return 
     message = str(thread.get_ident()) + ' ' + message
     with log_lock:
         if debugf == None:

@@ -404,18 +404,21 @@ class Machine:
         with self.cv:
             return self.cpu.pc
 
+    def threadMainLoop(self):
+        while self.running and \
+              ((self.steps_to_run == 0) or\
+               (self.status == armv2.Status.WaitForInterrupt and not (self.cpu.pins & armv2.Pins.Interrupt))):
+            armv2.DebugLog('%d %d %x' % (self.steps_to_run,self.status,self.cpu.pins))
+            self.cv.wait(5)
+            self.status = self.cpu.Step(self.steps_to_run)
+            self.steps_to_run = 0
+            self.cv.notify()
+
     def threadMain(self):
         try:
             with self.cv:
                 while self.running:
-                    while self.running and \
-                            ((self.steps_to_run == 0) or\
-                                 (self.status == armv2.Status.WaitForInterrupt and not (self.cpu.pins & armv2.Pins.Interrupt))):
-                        armv2.DebugLog('%d %d %x' % (self.steps_to_run,self.status,self.cpu.pins))
-                        self.cv.wait(5)
-                    self.status = self.cpu.Step(self.steps_to_run)
-                    self.steps_to_run = 0
-                    self.cv.notify()
+                    self.threadMainLoop()
         finally:
             #in case we exit this and leave running on (due to an exception say)
             self.running = False
