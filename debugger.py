@@ -121,7 +121,6 @@ class Debugger(object):
     def send_mem_update(self):
         for message in self.mem_watches.itervalues():
             data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
-            #print 'sending mem_update',message.start,len(data)
             self.connection.send(messages.MemViewReply(message.id,message.watch_start,data))
 
     def AddBreakpoint(self,addr):

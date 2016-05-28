@@ -103,13 +103,13 @@ class MemView(Message):
 
     def to_binary(self):
         first = super(MemView,self).to_binary()
-        data = struct.pack('>III',self.id,self.start,self.size)
+        data = struct.pack('>IIIII',self.id, self.start, self.size, self.watch_start, self.watch_size)
         return first + data
 
     @staticmethod
     def from_binary(data):
-        id,start,size = struct.unpack('>III',data)
-        return MemView(id, start,size)
+        id, start, size, watch_start, watch_size = struct.unpack('>IIIII',data)
+        return MemView(id, start, size, watch_start, watch_size)
 
 
 class MemdumpView(MemView):
@@ -124,9 +124,14 @@ class TapesView(MemView):
     def __init__(self, start, size, watch_start=0, watch_size=0):
         super(TapesView,self).__init__(self.id, start, size, watch_start, watch_size)
 
+    def to_binary(self):
+        first = super(MemView,self).to_binary()
+        data = struct.pack('>III',self.id, self.start, self.size)
+        return first + data
+
     @staticmethod
     def from_binary(data):
-        id,start,size = struct.unpack('>III',data)
+        id, start, size = struct.unpack('>III',data)
         return TapesView(start, size)    
 
 class TapeReply(TapesView):
@@ -156,8 +161,9 @@ class MemViewReply(MemView):
         self.data = data
 
     def to_binary(self):
-        first = super(MemViewReply,self).to_binary()
-        return first + self.data
+        first = super(MemView,self).to_binary()
+        data = struct.pack('>III',self.id, self.start, self.size)
+        return first + data + self.data
 
     @staticmethod
     def from_binary(data):
@@ -179,8 +185,8 @@ class DisassemblyView(MemView):
 
     @staticmethod
     def from_binary(data):
-        id,start,size = struct.unpack('>III',data)
-        return DisassemblyView(start,size)
+        id, start, size, watch_start, watch_size = struct.unpack('>IIIII',data)
+        return DisassemblyView(start, size, watch_start, watch_size)
 
 
 class DisassemblyViewReply(Message):
