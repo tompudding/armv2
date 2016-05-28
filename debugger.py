@@ -34,6 +34,8 @@ class Debugger(object):
         }
         self.tapes = glob.glob(os.path.join('tapes','*'))
         self.loaded_tape = None
+        self.load_symbols()
+        self.machine.tape_drive.registerCallback(self.load_symbols)
         self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
         try:
@@ -122,6 +124,9 @@ class Debugger(object):
         for message in self.mem_watches.itervalues():
             data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
             self.connection.send(messages.MemViewReply(message.id,message.watch_start,data))
+
+    def load_symbols(self):
+        print 'load symbols'
 
     def AddBreakpoint(self,addr):
         if addr&3:

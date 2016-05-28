@@ -91,17 +91,20 @@ def SetPixels(pixels,word):
         pixels[j/8][j%8] = ((word>>j)&1)
 
 class TapeDrive(armv2.Device):
-    """
-    A Tape Drive
+    """A Tape Drive
 
     It has three bytes. The first two are control bytes and the third data
     0 : control byte containing status for the user to read
     1 : control byte for the user to write to
     2 : data byte
 
-    The protocol is: write NEXT_BYTE to the write control and the read control will change to NOT_READY
-    until there is a data byte ready, when it will change to READY. Alternatively it might change to END_OF_TAPE or DRIVE_EMPTY.
-    It will generate interrupts for READY and END_OF_TAPE and DRIVE_EMPTY
+    The protocol is: write NEXT_BYTE to the write control and the read control will change to NOT_READY until
+    there is a data byte ready, when it will change to READY. Alternatively it might change to END_OF_TAPE or
+    DRIVE_EMPTY.  It will generate interrupts for READY and END_OF_TAPE and DRIVE_EMPTY
+
+    Optionally the user can write READY to the control byte signifying that the tape drive can remain at the
+    current position and power down, the user is done with it for now.
+
     """
     id=0x2730eb6c
 
@@ -124,10 +127,14 @@ class TapeDrive(armv2.Device):
         self.byte_required = False
         #self.thread.start()
         self.loading   = False
+        self.end_callback = None
 
     def loadTape(self, filename):
         self.tape = open(filename,'rb')
         self.tape_name = filename
+
+    def registerCallback(self, callback):
+        self.end_callback = callback
 
     def unloadTape(self):
         if self.tape:
@@ -153,7 +160,14 @@ class TapeDrive(armv2.Device):
                     self.data_byte = 0
                     self.status = self.Codes.END_OF_TAPE
                     self.loading = False
+                    if self.end_callback:
+                        self.end_callback()
                     self.cpu.cpu.Interrupt(self.id, self.status)
+
+    def power_down(self):
+        #We don't actually need to do any powering down, but alert any potential debugger that they can update
+        #their symbols
+        self.end_callback()
 
     def readByteCallback(self,addr,value):
         if addr == 0:
@@ -194,6 +208,9 @@ class TapeDrive(armv2.Device):
                     self.data_byte = 0
                     self.status = self.Codes.DRIVE_EMPTY
                     self.cpu.cpu.Interrupt(self.id, self.status)
+            elif value == self.Codes.READY:
+                #power down
+                self.power_down()
         elif addr == 2:
             #Can't write to the data byte
             pass

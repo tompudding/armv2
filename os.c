@@ -200,6 +200,9 @@ enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area, void **entr
     if( READY != result ) {
         return result;
     }
+
+    //Now we're done, but let the tape drive know that we won't be needing it for a while
+    tape_control->write = READY;
     
     *entry_point_out = (void *)entry_point;
     return READY;
