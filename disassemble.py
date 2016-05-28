@@ -1,4 +1,5 @@
 import armv2
+import bisect
 
 registerNames = [('r%d' % i) for i in xrange(13)] + ['sp','lr','pc']
 shiftTypes = ['LSL','LSR','ASR','ROR']
@@ -48,9 +49,10 @@ class Instruction(object):
                   'GT','LE','','NV']
     mneumonic = 'UNK'
     args = []
-    def __init__(self,addr,word,cpu):
+    def __init__(self, addr, word, cpu):
         self.addr = addr
         self.word = word
+
     def ToString(self):
         mneumonic = self.mneumonic + self.conditions[(self.word>>28)&0xf]
         return '%4s %s' % (mneumonic.ljust(4),', '.join(self.args))
@@ -185,14 +187,26 @@ class SingleDataTransferInstruction(Instruction):
 
 
 class BranchInstruction(Instruction):
-    def __init__(self,addr,word,cpu):
+    def __init__(self, addr, word, cpu, symbols, symbol_addrs):
         super(BranchInstruction,self).__init__(addr,word,cpu)
         if (word>>24)&1:
             self.mneumonic = 'BL'
         else:
             self.mneumonic = 'B'
         offset = (word&0xffffff)<<2
-        self.args = ['#0x%x' % ((addr + offset + 8)&0xffffff)]
+        target = (addr + offset + 8) & 0xffffff
+        index = bisect.bisect_left(symbol_addrs, target)
+        sym_addr, sym_name = symbols[index]
+
+        if target == sym_addr:
+            arg = sym_name
+        elif index > 0:
+            sym_addr, sym_name = symbols[index - 1]
+            offset = target - sym_addr
+            arg = '%s + 0x%x' % (sym_name, offset)
+        else:
+            arg = '#0x%x' % target
+        self.args = [arg]
 
 class MultiDataTransferInstruction(Instruction):
     MDT_LDM        = 0x00100000
@@ -229,7 +243,7 @@ class MultiDataTransferInstruction(Instruction):
 class SoftwareInterruptInstruction(Instruction):
     mneumonic = 'SWI'
     def __init__(self,addr,word,cpu):
-        super(SoftwareInterruptInstruction,self).__init__(addr,word,cpu)
+        super(SoftwareInterruptInstruction,self).__init__(addr, word, cpu)
         self.args = ['#0x%x' % (word&0xffffff)]
 
 class CoprocessorDataTransferInstruction(Instruction):
@@ -258,7 +272,7 @@ class CoprocessorRegisterTransferInstruction(CoprocessorInstruction):
 class CoprocessorDataOperationInstruction(CoprocessorInstruction):
     mneumonic = 'CDP'
 
-def InstructionFactory(addr,word,cpu):
+def InstructionFactory(addr, word, cpu, symbols, symbol_addrs):
     tag = (word>>26)&3
     handler = None
     if tag == 0:
@@ -272,7 +286,7 @@ def InstructionFactory(addr,word,cpu):
         handler = SingleDataTransferInstruction
     elif tag == 2:
         if word&0x02000000:
-            handler = BranchInstruction
+            return BranchInstruction(addr, word, cpu, symbols, symbol_addrs)
         else:
             handler = MultiDataTransferInstruction
     else:
@@ -284,9 +298,10 @@ def InstructionFactory(addr,word,cpu):
             handler = CoprocessorRegisterTransferInstruction
         else:
             handler = CoprocessorDataOperationInstruction
-    return handler(addr,word,cpu)
+    return handler(addr, word, cpu)
 
-def Disassemble(cpu,breakpoints,start,end):
+def Disassemble(cpu, breakpoints, start, end, symbols):
+    symbol_addrs = [addr for (addr, name) in symbols]
     for addr in xrange(start,end,4):
         if addr in breakpoints:
             word = breakpoints[addr]
@@ -296,4 +311,4 @@ def Disassemble(cpu,breakpoints,start,end):
             word = 0
             for byte in ((ord(cpu.mem[addr+i]) << ((3-i)*8)) for i in xrange(4)):
                 word |= byte
-        yield InstructionFactory(addr,word,cpu)
+        yield InstructionFactory(addr, word, cpu, symbols, symbol_addrs)

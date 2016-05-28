@@ -111,7 +111,7 @@ class Debugger(object):
     def handle_disassembly(self, message):
         start = message.start
         end   = message.start + message.size
-        dis   = list(disassemble.Disassemble(self.machine, self.breakpoints, message.start, message.start + message.size))
+        dis   = list(disassemble.Disassemble(self.machine, self.breakpoints, message.start, message.start + message.size, self.symbols))
         lines = [ins.ToString() for ins in dis]
         mem   = self.machine.mem[start:end]
         self.connection.send(messages.DisassemblyViewReply(start, mem, lines))
@@ -151,6 +151,8 @@ class Debugger(object):
             pos += 1
             name = ''.join(name)
             self.symbols.append( ( value, name ) )
+
+        #self.connection.send(messages.Symbols(self.symbols))
 
     def AddBreakpoint(self,addr):
         if addr&3:
