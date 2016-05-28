@@ -41,7 +41,7 @@ def pad(data, alignment):
         data += '\00'*(target-len(data))
     return data
 
-def to_synapse_format(data, symbols):
+def to_synapse_format(data, symbols, entry_point):
     """
 We have a very simple format for the synapse binaries:
          Offset   |   Contents
@@ -52,21 +52,26 @@ We have a very simple format for the synapse binaries:
       4 + len + 4 |   symbols
 """
     data = pad(data, 4)
-    return struct.pack('>I', len(data)) + data + struct.pack('>I', len(symbols)) + symbols
+    out = struct.pack('>I', len(data)) + data + struct.pack('>I', len(symbols)) + symbols
+    if entry_point != None:
+        out = struct.pack('>I', entry_point) + out
+    return out
 
 def create_binary(header, elf, boot=False):
-    header = load(header)
     elf_data = load(elf)
     with open(elf,'rb') as f:
         elffile = ELFFile(f)
+        data = []
         for segment in elffile.iter_segments():
             offset = segment['p_offset']
             v_addr = segment['p_vaddr']
             filesz = segment['p_filesz']
             memsz  = segment['p_memsz']
+            if segment['p_type'] != 'PT_LOAD':
+                continue
             print offset,v_addr,filesz,memsz
-            data = elf_data[offset:offset + filesz]
-            data += '\x00'*(memsz-filesz)
+            data.append(elf_data[offset:offset + filesz] + '\x00'*(memsz-filesz))
+        data = ''.join(data)
 
         entry_point = elffile.header['e_entry']
         symbols = [c for c in get_symbols(elffile)]
@@ -80,16 +85,18 @@ def create_binary(header, elf, boot=False):
             
     #get rid of any "bx lr"s
     data = data.replace(struct.pack('<I',0xe12fff1e),struct.pack('<I',0xe1a0f00e))
-    header = header.replace(struct.pack('<I',0xcafebabe),struct.pack('<I',entry_point))
     #We'll stick the symbols on the end
     symbols = ''.join(struct.pack('>I',value) + name + '\00' for (value,name) in symbols)
 
     if boot:
+        header = load(header)
+        header = header.replace(struct.pack('<I',0xcafebabe),struct.pack('<I',entry_point))
         assert len(header) < 0x1000
         header = header + '\x00'*(0x1000 - len(header))
+        entry_point = None
     else:
-        header = header.replace(struct.pack('<I',0x41414141),struct.pack('<I',len(data)))
-    return to_synapse_format(header+data, symbols)
+        header = ''
+    return to_synapse_format(header+data, symbols, entry_point)
 
 if __name__ == '__main__':
     import argparse
