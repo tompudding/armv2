@@ -10,14 +10,6 @@ import disassemble
 import struct
 from pygame.locals import *
 
-class Symbols(object):
-    def __init__(self, symbols_list):
-        self.symbols = symbols_list
-        self.addrs   = [addr for (addr, name) in symbols_list]
-
-    def __getitem__(self, index):
-        return self.symbols[index]
-
 class Debugger(object):
     BKPT         = 0xef000000 | armv2.SWI_BREAKPOINT
     FRAME_CYCLES = 66666
@@ -40,15 +32,16 @@ class Debugger(object):
                          messages.Types.TAPEREQUEST : self.handle_taperequest,
                          messages.Types.TAPE_LOAD   : self.handle_load_tape,
                          messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
+                         messages.Types.SYMBOL_DATA : self.handle_request_symbols,
         }
         self.tapes = glob.glob(os.path.join('tapes','*'))
         self.loaded_tape = None
         self.need_symbols = False
-        self.load_symbols()
         self.machine.tape_drive.registerCallback(self.set_need_symbols)
-        self.connection       = messages.Server(port = self.PORT, callback = self.handle_message)
+        self.connection = messages.Server(port = self.PORT, callback = self.handle_message)
         self.connection.start()
         try:
+            self.load_symbols()
             self.mem_watches = {}
             self.num_to_step    = 0
             #stopped means that the debugger has halted execution and is waiting for input
@@ -100,6 +93,9 @@ class Debugger(object):
         self.machine.tape_drive.unloadTape()
         self.loaded_tape = None
 
+    def handle_request_symbols(self, message):
+        self.connection.send( self.symbols )
+
     def handle_memory_watch(self, message):
         self.mem_watches[message.id] = message
         if message.size:
@@ -141,14 +137,13 @@ class Debugger(object):
 
     def set_need_symbols(self):
         self.need_symbols = True
-        print 'need symbols'
 
     def load_symbols(self):
         #reloading all symbols
         self.need_symbols = False
         symbols = []
-        pos = self.SYMBOLS_ADDR
-        value = None
+        pos     = self.SYMBOLS_ADDR
+        value   = None
 
         while value != 0:
             value = struct.unpack('>I',self.machine.mem[pos:pos+4])[0]
@@ -163,8 +158,9 @@ class Debugger(object):
             name = ''.join(name)
             symbols.append( ( value, name ) )
 
-        self.symbols = Symbols(symbols)
-        #self.connection.send(messages.Symbols(self.symbols))
+        self.symbols = messages.Symbols(symbols)
+        #pretend they just requested the symbols
+        self.handle_request_symbols(self.symbols)
 
     def AddBreakpoint(self,addr):
         if addr&3:

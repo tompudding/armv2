@@ -1,6 +1,5 @@
 import Tkinter
 import random
-import disassemble
 import messages
 import string
 import struct
@@ -615,6 +614,7 @@ class Application(Tkinter.Frame):
                                  messages.Types.DISASSEMBLYDATA : self.receive_disassembly,
                                  messages.Types.STOP : self.stop,
                                  messages.Types.TAPE_LIST  : self.receive_tapes,
+                                 messages.Types.SYMBOL_DATA : self.receive_symbols,
         }
         Tkinter.Frame.__init__(self, master)
         self.stopped = False
@@ -622,7 +622,12 @@ class Application(Tkinter.Frame):
         self.breakpoints = set()
         self.pack()
         self.createWidgets()
+        self.need_symbols = True
+        self.client = False
         self.process_messages()
+
+    def init(self, client):
+        self.client = client
 
     def process_messages(self):
         while not self.queue.empty():
@@ -632,6 +637,9 @@ class Application(Tkinter.Frame):
                 handler(message)
             except KeyError:
                 print 'Unexpected message %d' % message.type
+        if self.need_symbols and self.client:
+            #send a symbols request
+            self.send_message( messages.Symbols( [] ) )
         self.after(10, self.process_messages)
 
     def stop(self, event=None):
@@ -753,6 +761,11 @@ class Application(Tkinter.Frame):
     def receive_tapes(self, message):
         self.tapes.receive(message)
 
+    def receive_symbols(self, symbols):
+        self.need_symbols = False
+        self.symbols = symbols
+
+
 def run():
     #import hanging_threads
     root = Tkinter.Tk()
@@ -761,7 +774,7 @@ def run():
     app = Application(master=root)
     with messages.Client('localhost', 0x4141, callback=app.message_handler) as client:
         print client
-        app.client = client
+        app.init(client)
         app.mainloop()
     root.destroy()
 

@@ -30,6 +30,7 @@ class Types:
     TAPE_LIST       = 16
     TAPE_LOAD       = 17
     TAPE_UNLOAD     = 18
+    SYMBOL_DATA     = 19
 
 
 class DynamicObject(object):
@@ -214,6 +215,31 @@ class DisassemblyViewReply(Message):
             raise Error('Dissasembly num_lines %d should be %d' % (len(lines),mem_length/4))
         return DisassemblyViewReply(start, mem, lines)
 
+class Symbols(Message):
+    type = Types.SYMBOL_DATA
+    def __init__(self, symbols_list):
+        self.symbols = symbols_list
+        self.addrs   = [addr for (addr, name) in symbols_list]
+
+    def to_binary(self):
+        first = super(Symbols, self).to_binary()
+        data = []
+        for addr,name in self.symbols:
+            data.append(struct.pack('>I', addr) + name + '\x00')
+        return first + ''.join(data)
+
+    def __getitem__(self, index):
+        return self.symbols[index]
+
+    @staticmethod
+    def from_binary(data):
+        symbols = []
+        while data:
+            addr = struct.unpack('>I',data[:4])[0]
+            name,data = data[4:].split('\x00',1)
+            symbols.append( (addr, name) )
+        return Symbols(symbols)
+        
 
 class SetBreakpoint(Message):
     type = Types.SETBKPT
@@ -316,6 +342,7 @@ messages_by_type = {Types.CONNECT         : Handshake,
                     Types.TAPE_LIST       : TapeReply,
                     Types.TAPE_LOAD       : TapeLoad,
                     Types.TAPE_UNLOAD     : TapeUnload,
+                    Types.SYMBOL_DATA     : Symbols,
 }
 
 def MessageFactory(data):
@@ -417,6 +444,8 @@ class Comms(object):
             except socket.error:
                 self.connected = False
                 print 'got disconnected'
+        else:
+            print 'lost',type(message)
 
     def handle(self, message):
         if self.callback:
