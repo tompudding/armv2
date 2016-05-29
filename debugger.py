@@ -10,28 +10,35 @@ import disassemble
 import struct
 from pygame.locals import *
 
+class Symbols(object):
+    def __init__(self, symbols_list):
+        self.symbols = symbols_list
+        self.addrs   = [addr for (addr, name) in symbols_list]
+
+    def __getitem__(self, index):
+        return self.symbols[index]
 
 class Debugger(object):
-    BKPT = 0xef000000 | armv2.SWI_BREAKPOINT
+    BKPT         = 0xef000000 | armv2.SWI_BREAKPOINT
     FRAME_CYCLES = 66666
-    PORT = 16705
+    PORT         = 16705
     SYMBOLS_ADDR = 0x30000
 
     def __init__(self,machine):
         self.machine          = machine
         self.breakpoints      = {}
-        self.handlers = {messages.Types.RESUME    : self.handle_resume,
-                         messages.Types.STOP      : self.handle_stop,
-                         messages.Types.STEP      : self.handle_step,
-                         messages.Types.RESTART   : self.handle_restart,
-                         messages.Types.SETBKPT   : self.handle_set_breakpoint,
-                         messages.Types.UNSETBKPT : self.handle_unset_breakpoint,
-                         messages.Types.MEMWATCH  : self.handle_memory_watch,
-                         messages.Types.UNWATCH   : self.handle_memory_unwatch,
-                         messages.Types.CONNECT   : self.handle_connect,
+        self.handlers = {messages.Types.RESUME      : self.handle_resume,
+                         messages.Types.STOP        : self.handle_stop,
+                         messages.Types.STEP        : self.handle_step,
+                         messages.Types.RESTART     : self.handle_restart,
+                         messages.Types.SETBKPT     : self.handle_set_breakpoint,
+                         messages.Types.UNSETBKPT   : self.handle_unset_breakpoint,
+                         messages.Types.MEMWATCH    : self.handle_memory_watch,
+                         messages.Types.UNWATCH     : self.handle_memory_unwatch,
+                         messages.Types.CONNECT     : self.handle_connect,
                          messages.Types.DISASSEMBLY : self.handle_disassembly,
                          messages.Types.TAPEREQUEST : self.handle_taperequest,
-                         messages.Types.TAPE_LOAD : self.handle_load_tape,
+                         messages.Types.TAPE_LOAD   : self.handle_load_tape,
                          messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
         }
         self.tapes = glob.glob(os.path.join('tapes','*'))
@@ -111,7 +118,11 @@ class Debugger(object):
     def handle_disassembly(self, message):
         start = message.start
         end   = message.start + message.size
-        dis   = list(disassemble.Disassemble(self.machine, self.breakpoints, message.start, message.start + message.size, self.symbols))
+        dis   = list(disassemble.Disassemble(self.machine, 
+                                             self.breakpoints,
+                                             message.start,
+                                             message.start + message.size,
+                                             self.symbols))
         lines = [ins.ToString() for ins in dis]
         mem   = self.machine.mem[start:end]
         self.connection.send(messages.DisassemblyViewReply(start, mem, lines))
@@ -135,7 +146,7 @@ class Debugger(object):
     def load_symbols(self):
         #reloading all symbols
         self.need_symbols = False
-        self.symbols = []
+        symbols = []
         pos = self.SYMBOLS_ADDR
         value = None
 
@@ -150,8 +161,9 @@ class Debugger(object):
                 pos += 1
             pos += 1
             name = ''.join(name)
-            self.symbols.append( ( value, name ) )
+            symbols.append( ( value, name ) )
 
+        self.symbols = Symbols(symbols)
         #self.connection.send(messages.Symbols(self.symbols))
 
     def AddBreakpoint(self,addr):

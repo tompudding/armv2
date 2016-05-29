@@ -187,7 +187,7 @@ class SingleDataTransferInstruction(Instruction):
 
 
 class BranchInstruction(Instruction):
-    def __init__(self, addr, word, cpu, symbols, symbol_addrs):
+    def __init__(self, addr, word, cpu, symbols):
         super(BranchInstruction,self).__init__(addr,word,cpu)
         if (word>>24)&1:
             self.mneumonic = 'BL'
@@ -195,7 +195,7 @@ class BranchInstruction(Instruction):
             self.mneumonic = 'B'
         offset = (word&0xffffff)<<2
         target = (addr + offset + 8) & 0xffffff
-        index = bisect.bisect_left(symbol_addrs, target)
+        index = bisect.bisect_left(symbols.addrs, target)
         sym_addr, sym_name = symbols[index]
 
         if target == sym_addr:
@@ -272,7 +272,7 @@ class CoprocessorRegisterTransferInstruction(CoprocessorInstruction):
 class CoprocessorDataOperationInstruction(CoprocessorInstruction):
     mneumonic = 'CDP'
 
-def InstructionFactory(addr, word, cpu, symbols, symbol_addrs):
+def InstructionFactory(addr, word, cpu, symbols):
     tag = (word>>26)&3
     handler = None
     if tag == 0:
@@ -286,7 +286,7 @@ def InstructionFactory(addr, word, cpu, symbols, symbol_addrs):
         handler = SingleDataTransferInstruction
     elif tag == 2:
         if word&0x02000000:
-            return BranchInstruction(addr, word, cpu, symbols, symbol_addrs)
+            return BranchInstruction(addr, word, cpu, symbols)
         else:
             handler = MultiDataTransferInstruction
     else:
@@ -301,7 +301,6 @@ def InstructionFactory(addr, word, cpu, symbols, symbol_addrs):
     return handler(addr, word, cpu)
 
 def Disassemble(cpu, breakpoints, start, end, symbols):
-    symbol_addrs = [addr for (addr, name) in symbols]
     for addr in xrange(start,end,4):
         if addr in breakpoints:
             word = breakpoints[addr]
@@ -311,4 +310,4 @@ def Disassemble(cpu, breakpoints, start, end, symbols):
             word = 0
             for byte in ((ord(cpu.mem[addr+i]) << ((3-i)*8)) for i in xrange(4)):
                 word |= byte
-        yield InstructionFactory(addr, word, cpu, symbols, symbol_addrs)
+        yield InstructionFactory(addr, word, cpu, symbols)
