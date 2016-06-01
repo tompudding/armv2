@@ -163,6 +163,7 @@ class Scrollable(View):
         return ((addr - self.view_start)/self.line_size) - self.buffer
 
     def select(self, addr, index=None):
+        print 'select addr=%s index=%s' % (addr,index)
         if index is None:
             selected = self.addr_to_index(addr)
         else:
@@ -210,13 +211,13 @@ class Scrollable(View):
         self.adjust_view(1)
 
     def keyboard_up(self, event):
-        self.select(None, self.selected - 1 if self.selected is not None else 0)
+        self.select(None, self.addr_to_index(self.selected_addr - self.line_size) if self.selected is not None else 0)
         #self.adjust_view(-1)
         self.centre(self.selected_addr)
 
     def keyboard_down(self, event):
         #self.adjust_view(1)
-        self.select(None, self.selected + 1 if self.selected is not None else 0)
+        self.select(None, self.addr_to_index(self.selected + self.line_size) if self.selected is not None else 0)
         self.centre(self.selected_addr)
 
     def centre(self, pos):
@@ -353,7 +354,20 @@ class Disassembly(Seekable):
     def centre(self, pos=None):
         if pos is None:
             pos = self.pc
-        return super(Disassembly, self).centre(pos)
+        #Centering is slightly tricky for us due to the labels. Starting at pos, we go backwards counting
+        #how many labels we encounter until we've accounted for the size/2 lines we need
+        p = pos
+        n = 1 if p in self.symbols else 0
+        while n < len(self.label_rows)/2 and p >= 0:
+            n += 1
+            p -= self.line_size
+            if p in self.symbols:
+                n += 1
+
+        print 'centre start %x for centre %x, n of %d' % (p, pos, n)
+
+        start = p - self.buffer*self.line_size
+        self.adjust_view((start - self.view_start) / self.line_size)
 
     def set_pc(self, pc):
         #first turn off the old label
