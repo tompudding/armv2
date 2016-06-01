@@ -218,18 +218,25 @@ class DisassemblyViewReply(Message):
 class Symbols(Message):
     type = Types.SYMBOL_DATA
     def __init__(self, symbols_list):
-        self.symbols = symbols_list
+        self.symbols_list = symbols_list
         self.addrs   = [addr for (addr, name) in symbols_list]
+        self.lookup  = dict(self.symbols_list)
 
     def to_binary(self):
         first = super(Symbols, self).to_binary()
         data = []
-        for addr,name in self.symbols:
+        for addr,name in self.symbols_list:
             data.append(struct.pack('>I', addr) + name + '\x00')
         return first + ''.join(data)
 
-    def __getitem__(self, index):
-        return self.symbols[index]
+    def by_index(self, index):
+        return self.symbols_list[index]
+
+    def __contains__(self, addr):
+        return addr in self.lookup
+
+    def __getitem__(self, addr):
+        return self.lookup[addr]
 
     @staticmethod
     def from_binary(data):

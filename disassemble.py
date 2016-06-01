@@ -196,7 +196,7 @@ class BranchInstruction(Instruction):
         offset = (word&0xffffff)<<2
         target = (addr + offset + 8) & 0xffffff
         index = bisect.bisect_left(symbols.addrs, target)
-        sym_addr, sym_name = symbols[index]
+        sym_addr, sym_name = symbols.by_index(index)
 
         if target == sym_addr:
             arg = sym_name

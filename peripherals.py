@@ -122,8 +122,9 @@ class Scrollable(View):
                 self.widget_rows.append(widgets)
             self.label_rows.append(labels)
 
-
+        
         self.num_lines = self.height + self.buffer*2
+        self.lines = [' ' for i in xrange(self.num_lines)]
         self.num_cols = self.width
 
         self.view_start = -self.buffer*self.line_size
@@ -252,26 +253,25 @@ class Scrollable(View):
             self.select(self.selected_addr)
 
         if abs(amount) < self.view_size/self.line_size:
-            #we can reuse some labels
+            #we can reuse some lines
             if amount < 0:
-                start,step,stride = len(self.label_rows)-1, -1, -1
+                start,step,stride = len(self.lines)-1, -1, -1
                 unknown_start = self.view_start
                 unknown_size = -adjust
             else:
-                start,step,stride = 0, len(self.label_rows), 1
-                unknown_start = self.view_start + self.view_size -adjust
+                start,step,stride = 0, len(self.lines), 1
+                unknown_start = self.view_start + self.view_size - adjust
                 unknown_size = adjust
 
             for i in xrange(start, step, stride):
-                if i + amount >= 0 and i + amount < len(self.label_rows):
-                    new_value = (self.label_rows[i+amount][j].get() for j in xrange(self.labels_per_row))
+                if i + amount >= 0 and i + amount < len(self.lines):
+                    new_value = self.lines[i+amount]
                 else:
-                    new_value = (' ' for j in xrange(self.labels_per_row))
-                for j,val in enumerate(new_value):
-                    self.label_rows[i][j].set(val)
+                    new_value = ''
+                self.lines[i] = new_value
         else:
             unknown_start = self.view_start
-            unknown_size = self.view_size
+            unknown_size  = self.view_size
 
         #we now need an update for the region we don't have
         if unknown_start < 0:
@@ -282,11 +282,11 @@ class Scrollable(View):
             return
         watch_start,watch_size = self.update_params()
         self.request_data(unknown_start, unknown_size, watch_start, watch_size)
+        self.redraw()
 
     def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
         self.app.send_message(self.message_class(unknown_start, unknown_size, watch_start, watch_size))
 
-        #self.update()
 
 class Seekable(Scrollable):
     def __init__(self, *args, **kwargs):
@@ -313,15 +313,17 @@ class Disassembly(Seekable):
     word_size = 4
     line_size = word_size
 
-    view_min = -Scrollable.buffer*word_size
-    view_max = 1<<26
-    message_class = messages.DisassemblyView
+    view_min       = -Scrollable.buffer*word_size
+    view_max       = 1<<26
+    message_class  = messages.DisassemblyView
     labels_per_row = 3
-    content_label = 2
-    label_widths = [1,1,0]
+    content_label  = 2
+    label_widths   = [1,1,0]
 
     def __init__(self, *args, **kwargs):
         self.pc = None
+        self.symbols = {}
+        self.last_message = None
         super(Disassembly,self).__init__(*args, **kwargs)
 
     def set_pc_label(self, pc, label):
@@ -358,21 +360,42 @@ class Disassembly(Seekable):
         if self.app.follow_pc:
             self.centre()
 
-    def receive(self, message):
-        for (i,dis) in enumerate(message.lines):
-            addr = message.start + i*4
-            label_index = (addr - self.view_start)/self.word_size
-            if label_index < 0 or label_index >= len(self.label_rows):
-                continue
-            word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
-            line = '%07x %08x : %s' % (addr,word,dis)
-            self.label_rows[label_index][2].set(line)
+    def receive_symbols(self, symbols):
+        self.symbols = symbols
+        self.redraw()
+
+    def redraw(self):
+        line_index = self.buffer
+        label_index = 0
+        addr = self.view_start + self.buffer*self.line_size
+        while label_index < len(self.label_rows):
+            if addr in self.symbols:
+                for j in (0,1):
+                    self.label_rows[label_index][j] = '='
+                self.label_rows[label_index][2] = '%s:' % self.symbols[addr]
+                label_index += 1
+            
+            indicator_labels = [' ',' ']
             if addr in self.app.breakpoints:
-                self.label_rows[label_index][1].set('*')
-            else:
-                self.label_rows[label_index][1].set(' ')
+                indicator_labels[0] = '*'
             if addr == self.pc:
-                self.label_rows[label_index][0].set('>')
+                indicator_labels[1] = '>'
+            for j,lab in enumerate(indicator_labels):
+                self.label_rows[line_index][j].set(lab)
+            line_index += 1
+            label_index += 1
+
+    def receive(self, message):
+        line_index = (message.start - self.view_start)/self.word_size
+
+        for (i,dis) in enumerate(message.lines):
+            if line_index < 0 or line_index >= len(self.lines):
+                continue
+            addr = message.start + i*4
+            word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
+            self.lines[line_index] = '%07x %08x : %s' % (addr,word,dis)
+            line_index += 1
+        self.redraw()
 
 
 class Memory(Seekable):
@@ -384,20 +407,29 @@ class Memory(Seekable):
     label_widths = [0]
     printable = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
+    def redraw(self):
+        line_index = self.buffer
+        label_index = 0
+        addr = self.view_start + self.buffer*self.line_size
+        while label_index < len(self.label_rows):
+            self.label_rows[label_index][self.content_label].set(self.lines[line_index])
+            line_index += 1
+            label_index += 1
+
     def receive(self, message):
         if message.start&7:
             return
 
         for addr in xrange(message.start, message.start + message.size, 8):
-            label_index = (addr - self.view_start)/self.line_size
-            if label_index < 0 or label_index >= len(self.label_rows):
+            line_index = (addr - self.view_start)/self.line_size
+            if line_index < 0 or line_index >= len(self.label_rows):
                 continue
             data = message.data[addr - message.start:addr + self.line_size - message.start]
             if len(data) < self.line_size:
                 data += '??'*(self.line_size-len(data))
             data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.line_size))
             ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
-            self.label_rows[label_index][0].set('%07x : %s   %s' % (addr,data_string,ascii_string))
+            self.lines[line_index]= '%07x : %s   %s' % (addr,data_string,ascii_string)
 
     def activate_item(self, event=None):
         print 'memory activate',self.selected
@@ -420,6 +452,12 @@ class Tapes(Scrollable):
         self.tape_max = None
         super(Tapes,self).__init__(*args, **kwargs)
 
+    def redraw(self):
+        for pos in xrange(self.view_start, self.view_start + len(self.label_rows)):
+            index = pos - self.view_start
+            self.label_rows[index][self.content_label].set(self.lines[self.buffer + index])
+            self.label_rows[index][0].set(self.loaded_message if pos == self.loaded else self.not_loaded_message)
+
     def receive(self, message):
         self.view_max = max(message.size - self.height,0)
         self.tape_max = message.start + message.size
@@ -430,7 +468,7 @@ class Tapes(Scrollable):
             label_index = pos - self.view_start
             if label_index < 0 or label_index >= len(self.label_rows):
                 continue
-            self.label_rows[label_index][self.content_label].set(name)
+            self.lines[label_index] = name
             if pos == self.loaded:
                 self.label_rows[label_index][0].set(self.loaded_message)
             else:
@@ -763,7 +801,7 @@ class Application(Tkinter.Frame):
 
     def receive_symbols(self, symbols):
         self.need_symbols = False
-        self.symbols = symbols
+        self.disassembly.receive_symbols(symbols)
 
 
 def run():
