@@ -468,13 +468,14 @@ class Tapes(Scrollable):
             self.label_rows[index][0].set(self.loaded_message if pos == self.loaded else self.not_loaded_message)
 
     def receive(self, message):
-        self.view_max = max(message.size - self.height,0)
+        self.view_max = max(message.max - self.height,0)
         self.tape_max = message.start + message.size
         #TODO: If we just reduced tape_max we'd better turn off LOADED labels for the
         #ones we can't press anymore
         for (i,name) in enumerate(message.tape_list):
             pos = message.start + i
             label_index = pos - self.view_start
+            print pos,label_index,name
             if label_index < 0 or label_index >= len(self.label_rows):
                 continue
             self.lines[label_index] = name

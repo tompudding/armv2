@@ -196,12 +196,17 @@ class BranchInstruction(Instruction):
         offset = (word&0xffffff)<<2
         target = (addr + offset + 8) & 0xffffff
         index = bisect.bisect_left(symbols.addrs, target)
-        sym_addr, sym_name = symbols.by_index(index)
+        try:
+            sym_addr, sym_name = symbols.by_index(index)
+        except IndexError:
+            #the target is past all the symbols
+            sym_addr = None
+            sym_name = None
 
         if target == sym_addr:
             arg = sym_name
         elif index > 0:
-            sym_addr, sym_name = symbols[index - 1]
+            sym_addr, sym_name = symbols.by_index(index - 1)
             offset = target - sym_addr
             arg = '%s + 0x%x' % (sym_name, offset)
         else:
