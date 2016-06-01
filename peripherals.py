@@ -217,7 +217,7 @@ class Scrollable(View):
 
     def keyboard_down(self, event):
         #self.adjust_view(1)
-        self.select(None, self.addr_to_index(self.selected + self.line_size) if self.selected is not None else 0)
+        self.select(None, self.addr_to_index(self.selected_addr + self.line_size) if self.selected is not None else 0)
         self.centre(self.selected_addr)
 
     def centre(self, pos):
@@ -243,20 +243,14 @@ class Scrollable(View):
         if new_start > self.view_max:
             new_start = self.view_max
 
+
         if new_start == self.view_start:
             return
 
         adjust = new_start - self.view_start
         amount = adjust / self.line_size
         self.view_start = new_start
-        self.redraw()
-
-        if abs(amount) >= self.height:
-            #We've switched a whole page. We should select the middle
-            self.select(self.view_start + self.full_height*self.line_size/2)
-        else:
-            #It's a small amount so try to stay where we are
-            self.select(self.selected_addr)
+        print 'new_start',hex(new_start),hex(adjust),hex(amount)
 
         if abs(amount) < self.view_size/self.line_size:
             #we can reuse some lines
@@ -280,15 +274,23 @@ class Scrollable(View):
             unknown_size  = self.view_size
 
         #we now need an update for the region we don't have
+        print 'unknown',hex(unknown_start),hex(unknown_size)
         if unknown_start < 0:
             unknown_size += unknown_start
             unknown_start = 0
-        if unknown_size <= 0:
-            #no point
-            return
-        watch_start,watch_size = self.update_params()
-        self.request_data(unknown_start, unknown_size, watch_start, watch_size)
+        if unknown_size > 0:
+            #we need more data
+            watch_start,watch_size = self.update_params()
+            self.request_data(unknown_start, unknown_size, watch_start, watch_size)
         self.redraw()
+
+        if abs(amount) >= self.height:
+            #We've switched a whole page. We should select the middle
+            self.select(self.view_start + self.full_height*self.line_size/2)
+        else:
+            #It's a small amount so try to stay where we are
+            self.select(self.selected_addr)
+
 
     def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
         self.app.send_message(self.message_class(unknown_start, unknown_size, watch_start, watch_size))
@@ -335,13 +337,13 @@ class Disassembly(Seekable):
         super(Disassembly,self).__init__(app, height, width)
 
     def set_pc_label(self, pc, label):
-        label_index = (pc - self.view_start)/self.word_size
+        label_index = self.addr_to_index(pc)
         if label_index >= 0 and label_index < len(self.label_rows):
             self.label_rows[label_index][0].set(label)
 
     def activate_item(self, event=None):
         if self.selected is not None:
-            addr = self.view_start + self.selected*self.line_size
+            addr = self.index_to_addr(self.selected)
             self.app.toggle_breakpoint(addr)
             self.update_breakpoint(addr, self.selected)
 
@@ -410,6 +412,7 @@ class Disassembly(Seekable):
         label_index = 0
         addr = self.view_start + self.buffer*self.line_size
         self.index_lookups = {}
+        print 'li',line_index
         while label_index < len(self.label_rows):
             if addr in self.symbols:
                 for j in (0,1):
@@ -423,9 +426,9 @@ class Disassembly(Seekable):
 
             indicator_labels = [' ',' ']
             if addr in self.app.breakpoints:
-                indicator_labels[0] = '*'
+                indicator_labels[1] = '*'
             if addr == self.pc:
-                indicator_labels[1] = '>'
+                indicator_labels[0] = '>'
             for j,lab in enumerate(indicator_labels):
                 self.label_rows[label_index][j].set(lab)
 
