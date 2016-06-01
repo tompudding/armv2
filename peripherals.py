@@ -248,6 +248,7 @@ class Scrollable(View):
         adjust = new_start - self.view_start
         amount = adjust / self.line_size
         self.view_start = new_start
+        self.redraw()
 
         if abs(amount) >= self.height:
             #We've switched a whole page. We should select the middle
@@ -324,11 +325,13 @@ class Disassembly(Seekable):
     content_label  = 2
     label_widths   = [1,1,0]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, app, height, width):
         self.pc = None
         self.symbols = {}
         self.last_message = None
-        super(Disassembly,self).__init__(*args, **kwargs)
+        self.addr_lookups = {i:-self.buffer*self.line_size + (self.buffer + i)*self.line_size for i in xrange(height)}
+        self.index_lookups = {value:key for key,value in self.addr_lookups.iteritems()}
+        super(Disassembly,self).__init__(app, height, width)
 
     def set_pc_label(self, pc, label):
         label_index = (pc - self.view_start)/self.word_size
@@ -368,15 +371,38 @@ class Disassembly(Seekable):
         self.symbols = symbols
         self.redraw()
 
+    def index_to_addr(self, index):
+        return self.addr_lookups[index]
+
+    def addr_to_index(self, addr):
+        if addr in self.index_lookups:
+            return self.index_lookups[addr]
+
+        #Hmm, we don't have that one, it might be off the end
+        max_index = len(self.label_rows) - 1
+        max_addr = self.addr_lookups[ max_index ]
+        min_addr = self.addr_lookups[ 0 ]
+        if addr > max_addr:
+            #We can work this out
+            return max_index + (addr - max_addr)/self.line_size
+        elif addr < min_addr:
+            return (addr - min_addr)/self.line_size
+        else:
+            raise TypeError('Addr to index with misaligned addr %x' % addr)
+
+
     def redraw(self):
         line_index = self.buffer
         label_index = 0
         addr = self.view_start + self.buffer*self.line_size
+        self.index_lookups = {}
         while label_index < len(self.label_rows):
             if addr in self.symbols:
                 for j in (0,1):
                     self.label_rows[label_index][j].set('=')
                 self.label_rows[label_index][2].set('%s:' % self.symbols[addr])
+                self.addr_lookups[label_index] = addr
+                self.index_lookups[addr] = label_index
                 label_index += 1
                 if label_index >= len(self.label_rows):
                     break
@@ -390,6 +416,8 @@ class Disassembly(Seekable):
                 self.label_rows[label_index][j].set(lab)
 
             self.label_rows[label_index][2].set(self.lines[line_index])
+            self.addr_lookups[label_index] = addr
+            self.index_lookups[addr] = label_index
             line_index += 1
             label_index += 1
             addr += self.line_size
@@ -475,7 +503,6 @@ class Tapes(Scrollable):
         for (i,name) in enumerate(message.tape_list):
             pos = message.start + i
             label_index = pos - self.view_start
-            print pos,label_index,name
             if label_index < 0 or label_index >= len(self.label_rows):
                 continue
             self.lines[label_index] = name
@@ -680,11 +707,13 @@ class Application(Tkinter.Frame):
     def process_messages(self):
         while not self.queue.empty():
             message = self.queue.get_nowait()
+            handler = None
             try:
                 handler = self.message_handlers[message.type]
-                handler(message)
             except KeyError:
                 print 'Unexpected message %d' % message.type
+            if handler:
+                handler(message)
         if self.need_symbols and self.client:
             #send a symbols request
             self.send_message( messages.Symbols( [] ) )
