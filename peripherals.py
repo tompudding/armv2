@@ -356,21 +356,7 @@ class Disassembly(Seekable):
     def centre(self, pos=None):
         if pos is None:
             pos = self.pc
-        #Centering is slightly tricky for us due to the labels. Starting at pos, we go backwards counting
-        #how many labels we encounter until we've accounted for the size/2 lines we need
-        p = pos
-        n = 1 if p in self.symbols else 0
-        while n < len(self.label_rows)/2 and p >= 0:
-            n += 1
-            p -= self.line_size
-            if p in self.symbols:
-                n += 1
-
-        print 'centre start %x for centre %x, n of %d' % (p, pos, n)
-
-        start = p - self.buffer*self.line_size
-        self.adjust_view((start - self.view_start) / self.line_size)
-
+        super(Disassembly,self).centre(pos)
     def set_pc(self, pc):
         #first turn off the old label
         if pc == self.pc:
@@ -387,43 +373,13 @@ class Disassembly(Seekable):
         self.symbols = symbols
         self.redraw()
 
-    def index_to_addr(self, index):
-        return self.addr_lookups[index]
-
-    def addr_to_index(self, addr):
-        if addr in self.index_lookups:
-            return self.index_lookups[addr]
-
-        #Hmm, we don't have that one, it might be off the end
-        max_index = len(self.label_rows) - 1
-        max_addr = self.addr_lookups[ max_index ]
-        min_addr = self.addr_lookups[ 0 ]
-        if addr > max_addr:
-            #We can work this out
-            return max_index + (addr - max_addr)/self.line_size
-        elif addr < min_addr:
-            return (addr - min_addr)/self.line_size
-        else:
-            raise TypeError('Addr to index with misaligned addr %x' % addr)
 
 
     def redraw(self):
         line_index = self.buffer
         label_index = 0
         addr = self.view_start + self.buffer*self.line_size
-        self.index_lookups = {}
-        print 'li',line_index
         while label_index < len(self.label_rows):
-            if addr in self.symbols:
-                for j in (0,1):
-                    self.label_rows[label_index][j].set('=')
-                self.label_rows[label_index][2].set('%s:' % self.symbols[addr])
-                self.addr_lookups[label_index] = addr
-                self.index_lookups[addr] = label_index
-                label_index += 1
-                if label_index >= len(self.label_rows):
-                    break
-
             indicator_labels = [' ',' ']
             if addr in self.app.breakpoints:
                 indicator_labels[1] = '*'
