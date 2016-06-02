@@ -289,7 +289,7 @@ class Scrollable(View):
             self.request_data(unknown_start, unknown_size, watch_start, watch_size)
         self.redraw()
 
-        #It's a small amount so try to stay where we are
+        #Try to stay where we are
         self.select(self.selected_addr)
 
 
