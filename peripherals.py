@@ -120,17 +120,21 @@ class Scrollable(View):
             self.widget_rows.append(widgets)
             self.label_rows.append(labels)
 
+        self.init_lines()
 
+        self.select(0)
+
+    def seek(self, event):
+        pass
+
+    def init_lines(self):
         self.num_lines = self.height + self.buffer*2
         self.lines = [' ' for i in xrange(self.num_lines)]
         self.num_cols = self.width
 
         self.view_start = -self.buffer*self.line_size
         self.view_size = self.num_lines * self.line_size
-        self.select(0)
 
-    def seek(self, event):
-        pass
 
     def update_params(self):
         view_start = self.view_start
@@ -142,8 +146,7 @@ class Scrollable(View):
 
     def update(self):
         view_start, view_size = self.update_params()
-        if view_size > 0:
-            self.app.send_message(self.message_class(view_start, view_size, view_start, view_size))
+        self.request_data(view_start, view_size, view_start, view_size)
 
     def click(self, index):
         now = time.time()
@@ -234,24 +237,8 @@ class Scrollable(View):
     def keyboard_page_down(self, event):
         self.adjust_view(self.height)
 
-    def adjust_view(self, amount):
-        if amount == 0:
-            return
-        new_start = self.view_start + amount*self.line_size
-        if new_start < self.view_min:
-            new_start = self.view_min
-        if new_start > self.view_max:
-            new_start = self.view_max
-
-
-        if new_start == self.view_start:
-            return
-
-        adjust = new_start - self.view_start
-        amount = adjust / self.line_size
-        self.view_start = new_start
-        print 'new_start',hex(new_start),hex(adjust),hex(amount)
-
+    def rotate_lines(self, amount):
+        adjust = amount * self.line_size
         if abs(amount) < self.view_size/self.line_size:
             #we can reuse some lines
             if amount < 0:
@@ -282,6 +269,26 @@ class Scrollable(View):
             #we need more data
             watch_start,watch_size = self.update_params()
             self.request_data(unknown_start, unknown_size, watch_start, watch_size)
+
+
+    def adjust_view(self, amount):
+        if amount == 0:
+            return
+        new_start = self.view_start + amount*self.line_size
+        if new_start < self.view_min:
+            new_start = self.view_min
+        if new_start > self.view_max:
+            new_start = self.view_max
+
+
+        if new_start == self.view_start:
+            return
+
+        adjust = new_start - self.view_start
+        amount = adjust / self.line_size
+        self.view_start = new_start
+        print 'new_start',hex(new_start),hex(adjust),hex(amount)
+        self.rotate_lines(amount)
         self.redraw()
 
         if abs(amount) >= self.height:
@@ -319,8 +326,8 @@ class Seekable(Scrollable):
 
 class Disassembly(Seekable):
     word_size = 4
-    line_size = word_size
-
+    line_size = 2 # weird thing with labels. Not sure if this will work
+    buffer = Seekable.buffer*2
     view_min       = -Scrollable.buffer*word_size
     view_max       = 1<<26
     message_class  = messages.DisassemblyView
@@ -335,6 +342,14 @@ class Disassembly(Seekable):
         self.addr_lookups = {i:-self.buffer*self.line_size + (self.buffer + i)*self.line_size for i in xrange(height)}
         self.index_lookups = {value:key for key,value in self.addr_lookups.iteritems()}
         super(Disassembly,self).__init__(app, height, width)
+
+    def init_lines(self):
+        self.num_lines = self.height*2 + self.buffer*2 #One each for the potential label and one for the content
+        self.lines = ['' for i in xrange(self.num_lines)]
+        self.num_cols = self.width
+
+        self.view_start = -self.buffer*self.line_size
+        self.view_size = self.num_lines * self.line_size
 
     def set_pc_label(self, pc, label):
         label_index = self.addr_to_index(pc)
@@ -357,6 +372,7 @@ class Disassembly(Seekable):
         if pos is None:
             pos = self.pc
         super(Disassembly,self).centre(pos)
+
     def set_pc(self, pc):
         #first turn off the old label
         if pc == self.pc:
@@ -373,38 +389,60 @@ class Disassembly(Seekable):
         self.symbols = symbols
         self.redraw()
 
-
-
     def redraw(self):
-        line_index = self.buffer
+        line_index = self.buffer*2
         label_index = 0
         addr = self.view_start + self.buffer*self.line_size
         while label_index < len(self.label_rows):
-            indicator_labels = [' ',' ']
-            if addr in self.app.breakpoints:
-                indicator_labels[1] = '*'
-            if addr == self.pc:
-                indicator_labels[0] = '>'
-            for j,lab in enumerate(indicator_labels):
-                self.label_rows[label_index][j].set(lab)
+            if addr&2:
+                #it's a label
+                if self.lines[line_index]:
+                    self.label_rows[label_index][2].set(self.lines[line_index])
+                else:
+                    line_index += 1
+                    addr += self.line_size
+                    continue
+            else:
+                #It's content
+                indicator_labels = [' ',' ']
+                if addr in self.app.breakpoints:
+                    indicator_labels[1] = '*'
+                if addr == self.pc:
+                    indicator_labels[0] = '>'
+                for j,lab in enumerate(indicator_labels):
+                    self.label_rows[label_index][j].set(lab)
 
-            self.label_rows[label_index][2].set(self.lines[line_index])
-            self.addr_lookups[label_index] = addr
-            self.index_lookups[addr] = label_index
+                self.label_rows[label_index][2].set(self.lines[line_index])
+
             line_index += 1
             label_index += 1
             addr += self.line_size
 
     def receive(self, message):
-        line_index = (message.start - self.view_start)/self.word_size
+        line_index = (message.start - self.view_start)/self.line_size
 
         for (i,dis) in enumerate(message.lines):
+            print i,line_index
             if line_index < 0 or line_index >= len(self.lines):
+                line_index += 2
                 continue
             addr = message.start + i*4
             word = struct.unpack('<I',message.memory[i*4:(i+1)*4])[0]
             self.lines[line_index] = '%07x %08x : %s' % (addr,word,dis)
-            line_index += 1
+            if addr in self.symbols:
+                self.lines[line_index + 1] = '%s:' % self.symbols[addr]
+            else:
+                self.lines[line_index + 1] = ''
+            line_index += 2
+
+    def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
+        unknown_start &= 0xfffffffc
+        watch_start   &= 0xfffffffc
+        unknown_size  &= 0xfffffffc
+        watch_size    &= 0xfffffffc
+        print 'Sending request %x %x %x %x' % (unknown_start, unknown_size, watch_start, watch_size)
+        self.app.send_message(self.message_class(unknown_start, unknown_size, watch_start, watch_size))
+
 
 
 class Memory(Seekable):
