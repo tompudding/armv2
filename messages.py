@@ -133,27 +133,28 @@ class TapesView(MemView):
     @staticmethod
     def from_binary(data):
         id, start, size = struct.unpack('>III',data)
-        return TapesView(start, size)    
+        return TapesView(start, size)
 
 class TapeReply(TapesView):
     type = Types.TAPE_LIST
-    def __init__(self, id, start, tape_list):
+    def __init__(self, id, start, tape_list, num_tapes):
         super(TapeReply, self).__init__(start, len(tape_list))
         self.tape_list = tape_list
+        self.max = num_tapes
 
     def to_binary(self):
         first = super(TapeReply,self).to_binary()
-        return first + '\x00'.join(self.tape_list)
+        return first + struct.pack('>I',self.max) + '\x00'.join(self.tape_list)
 
     @staticmethod
     def from_binary(data):
-        id,start,size = struct.unpack('>III',data[:12])
-        data = data[12:]
+        id,start,size,num_tapes = struct.unpack('>IIII',data[:16])
+        data = data[16:]
         tape_list = data.split('\x00')
         if len(tape_list) != size:
             print 'Error tape_list mismatch lengths %d %d' % (len(tape_list), size)
             return None
-        return TapeReply(id, start, tape_list)
+        return TapeReply(id, start, tape_list, num_tapes)
 
 class MemViewReply(MemView):
     type = Types.MEMDATA
@@ -218,18 +219,25 @@ class DisassemblyViewReply(Message):
 class Symbols(Message):
     type = Types.SYMBOL_DATA
     def __init__(self, symbols_list):
-        self.symbols = symbols_list
+        self.symbols_list = symbols_list
         self.addrs   = [addr for (addr, name) in symbols_list]
+        self.lookup  = dict(self.symbols_list)
 
     def to_binary(self):
         first = super(Symbols, self).to_binary()
         data = []
-        for addr,name in self.symbols:
+        for addr,name in self.symbols_list:
             data.append(struct.pack('>I', addr) + name + '\x00')
         return first + ''.join(data)
 
-    def __getitem__(self, index):
-        return self.symbols[index]
+    def by_index(self, index):
+        return self.symbols_list[index]
+
+    def __contains__(self, addr):
+        return addr in self.lookup
+
+    def __getitem__(self, addr):
+        return self.lookup[addr]
 
     @staticmethod
     def from_binary(data):
@@ -239,7 +247,7 @@ class Symbols(Message):
             name,data = data[4:].split('\x00',1)
             symbols.append( (addr, name) )
         return Symbols(symbols)
-        
+
 
 class SetBreakpoint(Message):
     type = Types.SETBKPT
