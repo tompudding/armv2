@@ -54,11 +54,9 @@ class Debugger(object):
 
     def handle_message(self,message):
         try:
-            handler = self.handlers[message.type]
+            return self.handlers[message.type](message)
         except KeyError:
             print 'Ooops got unknown message type',message.type
-            return
-        return handler(message)
 
     def handle_resume(self,message):
         self.Continue(explicit=True)
@@ -84,13 +82,13 @@ class Debugger(object):
         if message.size:
             tape_list = self.tapes[message.start : message.start + message.size]
             if tape_list:
-                self.connection.send(messages.TapeReply(message.id, message.start, tape_list, len(self.tapes)))
+                self.connection.send(messages.TapeReply(message.id, message.start, tape_list))
 
     def handle_load_tape(self, message):
         if message.num < len(self.tapes):
             self.machine.tape_drive.loadTape(self.tapes[message.num])
             self.loaded_tape = message.num
-
+            
     def handle_unload_tape(self, message):
         self.machine.tape_drive.unloadTape()
         self.loaded_tape = None
@@ -116,7 +114,7 @@ class Debugger(object):
     def handle_disassembly(self, message):
         start = message.start
         end   = message.start + message.size
-        dis   = list(disassemble.Disassemble(self.machine,
+        dis   = list(disassemble.Disassemble(self.machine, 
                                              self.breakpoints,
                                              message.start,
                                              message.start + message.size,
