@@ -427,7 +427,8 @@ class Machine:
                (self.status == armv2.Status.WaitForInterrupt and not (self.cpu.pins & armv2.Pins.Interrupt))):
             armv2.DebugLog('%d %d %x' % (self.steps_to_run,self.status,self.cpu.pins))
             self.cv.wait(5)
-            self.status = self.cpu.Step(self.steps_to_run)
+            if self.steps_to_run > 0:
+                self.status = self.cpu.Step(self.steps_to_run)
             self.steps_to_run = 0
             self.cv.notify()
 
@@ -477,10 +478,13 @@ class Machine:
             self.tape_drive.Delete()
 
     def Interrupt(self, hw_id, code):
-        armv2.DebugLog('Interrupting1')
+        #print 'Interrupting1'
         with self.cv:
             self.cpu.Interrupt(hw_id, code)
-            armv2.DebugLog('Interrupting2')
+            #If the CPU is presently paused, it won't ever know it's received an interrupt, it needs to take one step
+            #to take the exception
+            if self.steps_to_run == 0:
+                self.steps_to_run = 1
             self.cv.notify()
 
     def is_waiting(self):

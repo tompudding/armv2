@@ -83,7 +83,7 @@ class Emulator(object):
                 return True
 
             if event.type == pygame.USEREVENT:
-                if not self.dbg.stopped:
+                if self.dbg.wants_interrupt():
                     self.dbg.machine.clock.fired()
 
             if event.type == pygame.locals.KEYDOWN:
