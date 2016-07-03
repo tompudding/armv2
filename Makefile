@@ -3,10 +3,15 @@ AR=ar
 CFLAGS=-std=gnu99 -Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -O3 -fPIC
 AS=arm-none-eabi-as
 COPY=arm-none-eabi-objcopy
-TAPES= guessing adventure trivia one_letter_werewolf
-ARMCFLAGS=-std=gnu99 -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic
+TAPES_DIR  = tapes
+BUILD_DIR  = build
+TAPE_NAMES = guessing adventure trivia one_letter_werewolf
+TAPES_BIN  = $(patsubst %, ${TAPES_DIR}/%.tape, ${TAPE_NAMES})
+ARMCFLAGS  =-std=gnu99 -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc
 
-all: armtest armv2.so boot.rom tapes/1_guessing.bin tapes/2_trivia.bin tapes/3_adventure.bin tapes/1lw.bin
+$(warning ${TAPES_BIN})
+
+all: armtest armv2.so boot.rom ${TAPES_BIN}
 
 run: armv2.so boot.rom emulate.py debugger.py
 	python emulate.py
@@ -36,34 +41,26 @@ tape_loader.bin: tape_loader.S
 	${AS} -march=armv2a -mapcs-26 -o tape_loader.o $<
 	${COPY} -O binary tape_loader.o $@
 
-os: os.c common.c synapse.h
-	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ os.c common.c
+os: src/os.c src/common.c src/synapse.h
+	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c src/common.c
 
-tapes/1_guessing.bin: tape_loader.bin guessing 
+${TAPES_DIR}/%.tape: tape_loader.bin ${BUILD_DIR}/% | ${BUILD_DIR} ${TAPES_DIR}
 	python create.py -o $@ $^
 
-guessing: guessing.c common.c synapse.h
-	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ guessing.c common.c
+${BUILD_DIR}/%: src/tapes/%.c | ${BUILD_DIR}
+	arm-none-eabi-gcc ${ARMCFLAGS} -I.. -o $@ $< src/common.c
 
-tapes/2_trivia.bin: tape_loader.bin trivia 
-	python create.py -o $@ $^
+${BUILD_DIR}: 
+	mkdir -p $@
 
-trivia: trivia.c common.c synapse.h
-	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ trivia.c common.c
-
-tapes/3_adventure.bin: tape_loader.bin adventure 
-	python create.py -o $@ $^
-
-adventure: adventure.c common.c synapse.h
-	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ adventure.c common.c
-
-tapes/1lw.bin: tape_loader.bin one_letter_werewolf 
-	#arm-none-eabi-gcc ${ARMCFLAGS} -o $@ $< common.c
-	python create.py -o $@ $^
-
-one_letter_werewolf: one_letter_werewolf.c common.c synapse.h
-	arm-none-eabi-gcc ${ARMCFLAGS} -o $@ one_letter_werewolf.c common.c
+${TAPES_DIR}:
+	mkdir -p ${TAPES_DIR}
 
 clean:
-	rm -f armv2 os tapes/3_adventure.bin adventure tapes/2_trivia.bin trivia tapes/1_guessing.bin tapes/1lw.bin guessing boot.rom armtest step.o instructions.o init.o armv2.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
+	rm -f armv2 os tapes/*.tape boot.rom armtest step.o instructions.o init.o armv2.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
+	rm -f ${TAPES_DIR}/*
+	rm -df ${TAPES_DIR}
+	rm -rf ${BUILD_DIR}/temp*
+	rm -f ${BUILD_DIR}/*
+	rm -df ${BUILD_DIR}
 	python setup.py clean

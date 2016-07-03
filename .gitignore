@@ -4,3 +4,8 @@ errorlog.log
 *.o
 .idea/
 build/
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+tapes/*.tape

@@ -34,7 +34,7 @@ class Debugger(object):
                          messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
                          messages.Types.SYMBOL_DATA : self.handle_request_symbols,
         }
-        self.tapes = glob.glob(os.path.join('tapes','*'))
+        self.tapes = glob.glob(os.path.join('tapes','*.tape'))
         self.loaded_tape = None
         self.need_symbols = False
         self.machine.tape_drive.registerCallback(self.set_need_symbols)
