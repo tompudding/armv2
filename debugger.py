@@ -221,6 +221,9 @@ class Debugger(object):
             self.Stop()
         #raise SystemExit('bob %d' % self.num_to_step)
 
+    def wants_interrupt(self):
+        return not self.stopped or self.machine.is_waiting()
+
     def StepNum(self,num):
         self.num_to_step = num
         if not self.stopped:
