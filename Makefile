@@ -11,16 +11,10 @@ ARMCFLAGS  =-std=gnu99 -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork 
 
 $(warning ${TAPES_BIN})
 
-all: armtest armv2.so build/boot.rom ${TAPES_BIN}
-
-run: armv2.so boot.rom emulate.py debugger.py
-	python emulate.py
+all: armv2.so build/boot.rom ${TAPES_BIN}
 
 armv2.so: libarmv2.a armv2.pyx carmv2.pxd
 	python setup.py build_ext --inplace
-
-armtest: armtest.c libarmv2.a
-	${CC} ${CFLAGS} -o $@ $^
 
 libarmv2.a: step.o instructions.o init.o armv2.h mmu.o hw_manager.o
 	${AR} rcs $@ step.o instructions.o init.o mmu.o hw_manager.o
