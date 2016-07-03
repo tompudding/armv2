@@ -76,7 +76,7 @@ def create_binary(header, elf, boot=False):
         entry_point = elffile.header['e_entry']
         symbols = [c for c in get_symbols(elffile)]
     if boot:
-        with open('boot.o','rb') as f:
+        with open('build/boot.o','rb') as f:
             elf = ELFFile(f)
             boot_symbols = [c for c in get_symbols(elf)]
             symbols = boot_symbols + symbols

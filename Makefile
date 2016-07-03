@@ -11,7 +11,7 @@ ARMCFLAGS  =-std=gnu99 -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork 
 
 $(warning ${TAPES_BIN})
 
-all: armtest armv2.so boot.rom ${TAPES_BIN}
+all: armtest armv2.so build/boot.rom ${TAPES_BIN}
 
 run: armv2.so boot.rom emulate.py debugger.py
 	python emulate.py
@@ -25,42 +25,40 @@ armtest: armtest.c libarmv2.a
 libarmv2.a: step.o instructions.o init.o armv2.h mmu.o hw_manager.o
 	${AR} rcs $@ step.o instructions.o init.o mmu.o hw_manager.o
 
-boot.rom: boot.bin os
+build/boot.rom: build/boot.bin build/os
 	python create.py --boot $^ -o $@
 
-boot.bin: boot.o
+build/boot.bin: build/boot.o
 	${COPY} -O binary $< $@
 
-boot.symbols: boot.o
+build/boot.symbols: build/boot.o
 	python create_symbols $< $@
 
-boot.o: boot.S
+build/boot.o: src/boot.S
 	${AS} -march=armv2a -mapcs-26 -o $@ $<
 
-tape_loader.bin: tape_loader.S
+build/tape_loader.bin: src/tape_loader.S
 	${AS} -march=armv2a -mapcs-26 -o tape_loader.o $<
 	${COPY} -O binary tape_loader.o $@
 
-os: src/os.c src/common.c src/synapse.h
+build/os: src/os.c src/common.c src/synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c src/common.c
 
-${TAPES_DIR}/%.tape: tape_loader.bin ${BUILD_DIR}/% | ${BUILD_DIR} ${TAPES_DIR}
+${TAPES_DIR}/%.tape: tape_loader.bin build/% | build ${TAPES_DIR}
 	python create.py -o $@ $^
 
-${BUILD_DIR}/%: src/tapes/%.c | ${BUILD_DIR}
+build/%: src/tapes/%.c | build
 	arm-none-eabi-gcc ${ARMCFLAGS} -I.. -o $@ $< src/common.c
 
-${BUILD_DIR}: 
+build: 
 	mkdir -p $@
 
 ${TAPES_DIR}:
 	mkdir -p ${TAPES_DIR}
 
 clean:
-	rm -f armv2 os tapes/*.tape boot.rom armtest step.o instructions.o init.o armv2.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
-	rm -f ${TAPES_DIR}/*
-	rm -df ${TAPES_DIR}
-	rm -rf ${BUILD_DIR}/temp*
-	rm -f ${BUILD_DIR}/*
-	rm -df ${BUILD_DIR}
+	rm -f armv2 ${TAPES_DIR}/*.tape boot.rom armtest step.o instructions.o init.o armv2.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
+	rm -rf build/temp*
+	rm -f build/*
+	rm -df build
 	python setup.py clean

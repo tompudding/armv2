@@ -15,7 +15,7 @@ width,height = (960, 720)
 globals.screen = Point(width,height)
 
 def new_machine():
-    machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
+    machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'build/boot.rom')
     try:
         machine.AddHardware(hardware.Keyboard(machine), name='keyboard')
         machine.AddHardware(hardware.Display(machine,scale_factor=1),name='display')
