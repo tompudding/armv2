@@ -75,7 +75,9 @@ class Scrollable(View):
                                    highlightcolor='lawn green',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
-        self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
+        #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
+        self.row_number = self.app.frame.grid_size()[1]
+        self.frame.grid(padx=5)
         self.frame.bind("<Up>", self.keyboard_up)
         self.frame.bind("<Down>", self.keyboard_down)
         self.frame.bind("<Next>", self.keyboard_page_down)
@@ -301,14 +303,44 @@ class Seekable(Scrollable):
     def __init__(self, *args, **kwargs):
         self.seeking = False
         super(Seekable, self).__init__(*args, **kwargs)
+        self.seek_frame = Tkinter.Frame(self.app.frame,
+                                        width=self.width,
+                                        height=self.height,
+                                        borderwidth=4,
+                                        bg='black',
+                                        highlightbackground='#004000',
+                                        highlightcolor='lawn green',
+                                        highlightthickness=1,
+                                        relief=Tkinter.SOLID)
+        self.text_entry = Tkinter.Entry(self.seek_frame,
+                                        width = sum(self.label_widths),
+                                        font='TkFixedFont',
+                                        bd=0,
+                                        highlightthickness=0,
+                                        foreground=self.unselected_fg,
+                                        background=self.unselected_bg,
+                                        insertbackground=self.unselected_fg,
+                                        selectbackground=self.selected_bg,
+                                        selectforeground=self.selected_fg,
+                                        )
+        self.text_entry.grid(padx=3)
+        self.separator = Tkinter.Frame(self.seek_frame, height=1, width=1, bg=self.unselected_fg)
+        self.separator.grid(pady=4)
+
+
 
     def seek(self, event):
-        #While we're seekable
         if self.seeking:
             self.seeking = False
+            self.seek_frame.grid_forget()
+            self.frame.grid(row=self.row_number,padx=5)
         else:
             self.seeking = True
-        print self.seeking
+            self.seek_frame.grid(row=self.row_number,padx=5)
+            self.app.master.update()
+            self.separator.config(width=self.seek_frame.winfo_width() - 20)
+            self.frame.grid_forget()
+
 
     def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
         if not self.seeking:
@@ -582,7 +614,8 @@ class Options(View):
                                    highlightcolor='lawn green',
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
-        self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
+        #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
+        self.frame.grid(padx=5,sticky=Tkinter.N+Tkinter.S+Tkinter.E+Tkinter.W)
         self.var = Tkinter.IntVar()
         self.var.set(1 if self.app.follow_pc else 0)
         self.c = Tkinter.Checkbutton(self.frame,
@@ -627,7 +660,8 @@ class Registers(View):
                                    highlightthickness=1,
                                    relief=Tkinter.SOLID)
         self.frame.bind("<Tab>", self.switch_from)
-        self.frame.pack(padx=0,pady=0,side=Tkinter.TOP)
+        #self.frame.pack(padx=0,pady=0,side=Tkinter.TOP)
+        self.frame.grid()
         self.label_rows = []
         for i in xrange(self.num_entries):
             sv = Tkinter.StringVar()
@@ -715,6 +749,7 @@ class Application(Tkinter.Frame):
 
     def __init__(self, master, emulator_frame):
         self.emulator = None
+        self.master = master
         self.follow_pc = True
         self.emulator_frame = emulator_frame
         self.queue = Queue.Queue()
@@ -814,21 +849,26 @@ class Application(Tkinter.Frame):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
         self.frame = Tkinter.Frame(self, width = 240, height = 720)
-        self.frame.pack(side=Tkinter.TOP)
+        self.frame.grid()
         self.disassembly = Disassembly(self, width=47, height=14)
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
         self.tapes = Tapes(self, width=44, height=6)
         self.options = Options(self, width=50, height=3)
 
-        self.stop_button = Button(self.frame, 'stop', self.stop)
-        self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
+        self.button_frame = Tkinter.Frame(self.frame)
+        self.stop_button = Button(self.button_frame, 'stop', self.stop)
+        #self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
+        self.stop_button.grid(row=0,column=0,pady=6,padx=5)
 
-        self.step_button = Button(self.frame, 'step', self.step, state=Tkinter.DISABLED)
-        self.step_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
+        self.step_button = Button(self.button_frame, 'step', self.step, state=Tkinter.DISABLED)
+        #self.step_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
+        self.step_button.grid(row=0,column=1,pady=6,padx=5)
 
-        self.restart_button = Button(self.frame, 'restart', self.restart)
-        self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
+        self.restart_button = Button(self.button_frame, 'restart', self.restart)
+        #self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
+        self.restart_button.grid(row=0,column=2,pady=6,padx=5)
+        self.button_frame.grid()
 
         self.views = [self.disassembly, self.registers, self.memory, self.tapes, self.options]
         self.tab_views = [self.disassembly, self.memory, self.tapes, self.options]
