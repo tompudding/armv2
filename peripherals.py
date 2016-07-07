@@ -20,6 +20,44 @@ Tkinter.Text.delete = insert_wrapper(Tkinter.Text.delete)
 
 mode_names = ['USR','FIQ','IRQ','SUP']
 
+class Button(Tkinter.Button):
+    unselected_fg = 'lawn green'
+    unselected_bg = 'black'
+    #Inverted for selected
+    selected_fg = unselected_bg
+    selected_bg = unselected_fg
+    disabled_border = '#004000'
+
+    def __init__(self, parent, text, callback, state=Tkinter.NORMAL):
+        self.parent = parent
+        self.callback = callback
+        border = self.unselected_fg if state == Tkinter.NORMAL else self.disabled_border
+        Tkinter.Button.__init__(self,
+                                self.parent,
+                                width=6,
+                                pady=2,
+                                highlightbackground=border,
+                                highlightcolor=self.unselected_fg,
+                                highlightthickness=1,
+                                fg=self.unselected_fg,
+                                bg=self.unselected_bg,
+                                activebackground=self.selected_bg,
+                                activeforeground=self.selected_fg,
+                                command=self.callback,
+                                text=text,
+                                relief=Tkinter.SOLID,
+                                state=state,
+                                )
+
+    def disable(self):
+        self.config(state=Tkinter.DISABLED)
+        self.config(highlightbackground=self.disabled_border)
+
+    def enable(self):
+        self.config(state=Tkinter.NORMAL)
+        self.config(highlightbackground=self.unselected_fg)
+
+
 class View(object):
     unselected_fg = 'lawn green'
     unselected_bg = 'black'
@@ -47,6 +85,18 @@ class View(object):
                 content = ' '*self.width
             label[self.content_label].set(str(content))
 
+class Frame(Tkinter.Frame):
+    def __init__(self, parent, width, height):
+        Tkinter.Frame.__init__(self,
+                               parent, 
+                               width=width,
+                               height=height, 
+                               borderwidth=4,
+                               bg='black',
+                               highlightbackground='#004000',
+                               highlightcolor='lawn green',
+                               highlightthickness=1,
+                               relief=Tkinter.SOLID)
 
 class Scrollable(View):
     buffer = 20 #number of lines above and below to cache
@@ -66,15 +116,10 @@ class Scrollable(View):
         self.selected_addr = None
         self.last_click_time = 0
         self.last_click_index = None
-        self.frame = Tkinter.Frame(app.frame,
-                                   width=self.width,
-                                   height=self.height,
-                                   borderwidth=4,
-                                   bg='black',
-                                   highlightbackground='#004000',
-                                   highlightcolor='lawn green',
-                                   highlightthickness=1,
-                                   relief=Tkinter.SOLID)
+        self.frame = Frame(app.frame,
+                           width=self.width,
+                           height=self.height)
+
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
         self.row_number = self.app.frame.grid_size()[1]
         self.frame.grid(padx=5)
@@ -303,15 +348,9 @@ class Seekable(Scrollable):
     def __init__(self, *args, **kwargs):
         self.seeking = False
         super(Seekable, self).__init__(*args, **kwargs)
-        self.seek_frame = Tkinter.Frame(self.app.frame,
-                                        width=self.width,
-                                        height=self.height,
-                                        borderwidth=4,
-                                        bg='black',
-                                        highlightbackground='#004000',
-                                        highlightcolor='lawn green',
-                                        highlightthickness=1,
-                                        relief=Tkinter.SOLID)
+        self.seek_frame = Frame(self.app.frame,
+                                width=self.width,
+                                height=self.height)
         self.text_entry = Tkinter.Entry(self.seek_frame,
                                         width = sum(self.label_widths),
                                         font='TkFixedFont',
@@ -604,16 +643,10 @@ class Options(View):
         self.height = height
         self.app    = app
         self.label_rows = []
-        self.frame = Tkinter.Frame(app.frame,
-                                   width=self.width,
-                                   height=self.height,
-                                   borderwidth=4,
-                                   padx=0,
-                                   bg='black',
-                                   highlightbackground='#004000',
-                                   highlightcolor='lawn green',
-                                   highlightthickness=1,
-                                   relief=Tkinter.SOLID)
+        self.frame = Frame(app.frame,
+                           width=self.width,
+                           height=self.height)
+
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
         self.frame.grid(padx=5,sticky=Tkinter.N+Tkinter.S+Tkinter.E+Tkinter.W)
         self.var = Tkinter.IntVar()
@@ -652,13 +685,8 @@ class Registers(View):
         self.widgets = []
         self.frame = Tkinter.Frame(app.frame,
                                    width=self.width,
-                                   height=self.height,
-                                   borderwidth=4,
-                                   bg='black',
-                                   highlightbackground='#004000',
-                                   highlightcolor='lawn green',
-                                   highlightthickness=1,
-                                   relief=Tkinter.SOLID)
+                                   height=self.height)
+
         self.frame.bind("<Tab>", self.switch_from)
         #self.frame.pack(padx=0,pady=0,side=Tkinter.TOP)
         self.frame.grid()
@@ -702,43 +730,6 @@ class Registers(View):
             return 'r%d' % i
         else:
             return ['fp','sp','lr','r15','MODE','PC'][i-12]
-
-class Button(Tkinter.Button):
-    unselected_fg = 'lawn green'
-    unselected_bg = 'black'
-    #Inverted for selected
-    selected_fg = unselected_bg
-    selected_bg = unselected_fg
-    disabled_border = '#004000'
-
-    def __init__(self, parent, text, callback, state=Tkinter.NORMAL):
-        self.parent = parent
-        self.callback = callback
-        border = self.unselected_fg if state == Tkinter.NORMAL else self.disabled_border
-        Tkinter.Button.__init__(self,
-                                self.parent,
-                                width=6,
-                                pady=2,
-                                highlightbackground=border,
-                                highlightcolor=self.unselected_fg,
-                                highlightthickness=1,
-                                fg=self.unselected_fg,
-                                bg=self.unselected_bg,
-                                activebackground=self.selected_bg,
-                                activeforeground=self.selected_fg,
-                                command=self.callback,
-                                text=text,
-                                relief=Tkinter.SOLID,
-                                state=state,
-                                )
-
-    def disable(self):
-        self.config(state=Tkinter.DISABLED)
-        self.config(highlightbackground=self.disabled_border)
-
-    def enable(self):
-        self.config(state=Tkinter.NORMAL)
-        self.config(highlightbackground=self.unselected_fg)
 
 class Application(Tkinter.Frame):
     unselected_fg = 'lawn green'
