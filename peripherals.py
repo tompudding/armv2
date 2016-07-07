@@ -98,6 +98,30 @@ class Frame(Tkinter.Frame):
                                highlightthickness=1,
                                relief=Tkinter.SOLID)
 
+class Label(Tkinter.Label):
+    def __init__(self, parent, width, text, bg='black', fg='lawn green', anchor='w', padx=2):
+        self.sv = Tkinter.StringVar()
+        self.sv.set(text)
+        Tkinter.Label.__init__(self,
+                               parent,
+                               width=width,
+                               height=1,
+                               borderwidth=0,
+                               pady=0,
+                               padx=padx,
+                               font='TkFixedFont',
+                               bg=bg,
+                               fg=fg,
+                               anchor=anchor,
+                               textvariable=self.sv,
+                               relief=Tkinter.SOLID)
+
+    def set(self, text):
+        self.sv.set(text)
+
+    def get(self, text):
+        return self.sv.get()
+
 class Scrollable(View):
     buffer = 20 #number of lines above and below to cache
     view_min = None
@@ -111,7 +135,6 @@ class Scrollable(View):
         self.width  = width
         self.label_widths[self.content_label] = width
         self.app    = app
-        self.widget_rows = []
         self.selected = None
         self.selected_addr = None
         self.last_click_time = 0
@@ -139,32 +162,17 @@ class Scrollable(View):
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.label_rows = []
         for i in xrange(self.height):
-            widgets = []
             labels = []
             for j in xrange(self.labels_per_row):
-                sv = Tkinter.StringVar()
-                sv.set(' ')
-                widget = Tkinter.Label(self.frame,
-                                       width = self.label_widths[j],
-                                       height = 1,
-                                       borderwidth = 0,
-                                       pady=0,
-                                       padx=2,
-                                       font='TkFixedFont',
-                                       bg=self.unselected_bg,
-                                       fg=self.unselected_fg,
-                                       anchor='w',
-                                       textvariable=sv,
-                                       relief=Tkinter.SOLID)
+                widget = Label(self.frame, width = self.label_widths[j], text=' ')
+
                 widget.bind("<Button-1>", lambda x,i=i: [self.click(i),self.frame.focus_set()])
                 widget.bind("<MouseWheel>", self.mouse_wheel)
                 widget.bind("<Button-4>", self.mousewheel_up)
                 widget.bind("<Button-5>", self.mousewheel_down)
                 widget.grid(row=i, column=j, padx=0, pady=0)
-                widgets.append(widget)
-                labels.append(sv)
+                labels.append(widget)
 
-            self.widget_rows.append(widgets)
             self.label_rows.append(labels)
 
 
@@ -230,8 +238,8 @@ class Scrollable(View):
         #turn off the old one
         if self.selected is not None:
             widget_selected = self.selected
-            if widget_selected >= 0 and widget_selected < len(self.widget_rows):
-                for widget in self.widget_rows[widget_selected]:
+            if widget_selected >= 0 and widget_selected < len(self.label_rows):
+                for widget in self.label_rows[widget_selected]:
                     widget.configure(fg=self.unselected_fg, bg=self.unselected_bg)
 
         self.selected = selected
@@ -240,8 +248,8 @@ class Scrollable(View):
         #turn on the new one
         if self.selected is not None:
             widget_selected = self.selected
-            if widget_selected >= 0 and widget_selected < len(self.widget_rows):
-                for widget in self.widget_rows[widget_selected]:
+            if widget_selected >= 0 and widget_selected < len(self.label_rows):
+                for widget in self.label_rows[widget_selected]:
                     widget.configure(fg=self.selected_fg, bg=self.selected_bg)
 
     def mouse_wheel(self, event):
@@ -682,33 +690,17 @@ class Registers(View):
         self.width  = width
         self.col_width = self.width/3
         self.app    = app
-        self.widgets = []
         self.frame = Tkinter.Frame(app.frame,
                                    width=self.width,
                                    height=self.height)
 
         self.frame.bind("<Tab>", self.switch_from)
-        #self.frame.pack(padx=0,pady=0,side=Tkinter.TOP)
         self.frame.grid()
         self.label_rows = []
         for i in xrange(self.num_entries):
-            sv = Tkinter.StringVar()
-            sv.set('bobbins')
-            widget = Tkinter.Label(self.frame,
-                                   width = self.col_width,
-                                   height = 1,
-                                   borderwidth = 0,
-                                   pady=0,
-                                   padx=3,
-                                   font='TkFixedFont',
-                                   bg=self.unselected_bg,
-                                   fg=self.unselected_fg,
-                                   anchor='w',
-                                   textvariable=sv,
-                                   relief=Tkinter.SOLID)
+            widget = Label(self.frame, width=self.col_width, padx=3, text='bobbins')
             widget.grid(row = i%self.height, column=i/self.height, padx=0)
-            self.widgets.append(widget)
-            self.label_rows.append([sv])
+            self.label_rows.append([widget])
         self.num_lines = self.height
         self.num_cols = self.width
 
