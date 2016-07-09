@@ -390,10 +390,16 @@ class Seekable(Scrollable):
         if self.seeking:
             self.seeking = False
             self.seek_frame.place_forget()
-            self.frame.place(x = self.frame_pos[0],y = self.frame_pos[1], height=self.height_pixels)
+            self.frame.place(x=self.frame_pos[0],
+                             y=self.frame_pos[1],
+                             height=self.height_pixels,
+                             width=self.width_pixels)
         else:
             self.seeking = True
-            self.seek_frame.place(x = self.frame_pos[0], y = self.frame_pos[1], height = self.height_pixels)
+            self.seek_frame.place(x=self.frame_pos[0],
+                                  y=self.frame_pos[1],
+                                  height=self.height_pixels,
+                                  width=self.width_pixels)
             self.app.master.update()
             self.separator.config(width=self.seek_frame.winfo_width() - 20)
             self.frame.place_forget()
