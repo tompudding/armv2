@@ -153,17 +153,8 @@ class Scrollable(View):
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
         #self.row_number = self.app.frame.grid_size()[1]
         #self.frame.grid(padx=5)
-        self.frame.bind("<Up>", self.keyboard_up)
-        self.frame.bind("<Down>", self.keyboard_down)
-        self.frame.bind("<Next>", self.keyboard_page_down)
-        self.frame.bind("<Prior>", self.keyboard_page_up)
-        self.frame.bind("<MouseWheel>", self.mouse_wheel)
-        self.frame.bind("<Button-4>", self.keyboard_up)
-        self.frame.bind("<Button-5>", self.keyboard_down)
-        self.frame.bind("<Tab>", self.switch_from)
-        self.frame.bind("<space>", self.activate_item)
+        self.set_frame_bindings(self.frame)
         self.frame.bind("<s>", self.app.step)
-        self.frame.bind("<g>", self.seek)
         self.full_height = self.height + 2*self.buffer
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
@@ -190,6 +181,18 @@ class Scrollable(View):
         self.view_start = -self.buffer*self.line_size
         self.view_size = self.num_lines * self.line_size
         self.select(0)
+
+    def set_frame_bindings(self, frame):
+        frame.bind("<Up>", self.keyboard_up)
+        frame.bind("<Down>", self.keyboard_down)
+        frame.bind("<Next>", self.keyboard_page_down)
+        frame.bind("<Prior>", self.keyboard_page_up)
+        frame.bind("<MouseWheel>", self.mouse_wheel)
+        frame.bind("<Button-4>", self.keyboard_up)
+        frame.bind("<Button-5>", self.keyboard_down)
+        frame.bind("<Tab>", self.switch_from)
+        frame.bind("<space>", self.activate_item)
+        frame.bind("<g>", self.seek)
 
     def seek(self, event):
         pass
@@ -358,6 +361,13 @@ class Scrollable(View):
     def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
         self.app.send_message(self.message_class(unknown_start, unknown_size, watch_start, watch_size))
 
+def seekable_passthrough(func):
+    def func_wrapper(self, *args, **kwargs):
+        func_name = func.__name__
+        if not self.seeking:
+            return getattr(Scrollable,func_name)(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
+    return func_wrapper
 
 class Seekable(Scrollable):
     def __init__(self, *args, **kwargs):
@@ -366,6 +376,7 @@ class Seekable(Scrollable):
         self.seek_frame = Frame(self.app.frame,
                                 width=self.width,
                                 height=self.height)
+        self.set_frame_bindings(self.seek_frame)
         self.text_entry = Tkinter.Entry(self.seek_frame,
                                         width = sum(self.label_widths)-5,
                                         font='TkFixedFont',
@@ -385,6 +396,25 @@ class Seekable(Scrollable):
         self.separator = Tkinter.Frame(self.seek_frame, height=1, width=1, bg=self.unselected_fg)
         self.separator.grid(pady=4,columnspan=2)
 
+    @seekable_passthrough
+    def keyboard_up(self, event):
+        pass
+
+    @seekable_passthrough
+    def keyboard_down(self, event):
+        pass
+
+    @seekable_passthrough
+    def keyboard_page_down(self, event):
+        pass
+
+    @seekable_passthrough
+    def keyboard_page_up(self, event):
+        pass
+
+    @seekable_passthrough
+    def mouse_wheel(self, event):
+        pass
 
     def seek(self, event):
         if self.seeking:
@@ -394,6 +424,7 @@ class Seekable(Scrollable):
                              y=self.frame_pos[1],
                              height=self.height_pixels,
                              width=self.width_pixels)
+            self.frame.focus_set()
         else:
             self.seeking = True
             self.seek_frame.place(x=self.frame_pos[0],
@@ -403,6 +434,7 @@ class Seekable(Scrollable):
             self.app.master.update()
             self.separator.config(width=self.seek_frame.winfo_width() - 20)
             self.frame.place_forget()
+            self.seek_frame.focus_set()
 
 
     def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
