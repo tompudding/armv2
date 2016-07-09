@@ -155,6 +155,7 @@ class Scrollable(View):
         #self.frame.grid(padx=5)
         self.set_frame_bindings(self.frame)
         self.frame.bind("<s>", self.app.step)
+        self.frame.bind("<g>", self.seek)
         self.full_height = self.height + 2*self.buffer
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
@@ -192,7 +193,7 @@ class Scrollable(View):
         frame.bind("<Button-5>", self.keyboard_down)
         frame.bind("<Tab>", self.switch_from)
         frame.bind("<space>", self.activate_item)
-        frame.bind("<g>", self.seek)
+        
 
     def seek(self, event):
         pass
@@ -390,6 +391,7 @@ class Seekable(Scrollable):
                                         selectbackground=self.selected_bg,
                                         selectforeground=self.selected_fg,
                                         )
+        self.set_frame_bindings(self.text_entry)
         self.goto_label = Label(self.seek_frame, width=5, text='Goto:')
         self.text_entry.grid(row=0,column=1,padx=3)
         self.goto_label.grid(row=0,column=0,padx=0)
@@ -398,11 +400,11 @@ class Seekable(Scrollable):
 
     @seekable_passthrough
     def keyboard_up(self, event):
-        pass
+        print 'ku'
 
     @seekable_passthrough
     def keyboard_down(self, event):
-        pass
+        print 'kd'
 
     @seekable_passthrough
     def keyboard_page_down(self, event):
@@ -415,6 +417,9 @@ class Seekable(Scrollable):
     @seekable_passthrough
     def mouse_wheel(self, event):
         pass
+
+    def activate_item(self, event=None):
+        return 'break'
 
     def seek(self, event):
         if self.seeking:
@@ -435,6 +440,7 @@ class Seekable(Scrollable):
             self.separator.config(width=self.seek_frame.winfo_width() - 20)
             self.frame.place_forget()
             self.seek_frame.focus_set()
+            self.text_entry.focus()
 
 
     def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
@@ -471,6 +477,8 @@ class Disassembly(Seekable):
             self.label_rows[label_index][0].set(label)
 
     def activate_item(self, event=None):
+        if self.seeking:
+            return super(Disassembly,self).activate_item(event)
         if self.selected is not None:
             addr = self.index_to_addr(self.selected)
             self.app.toggle_breakpoint(addr)
@@ -630,9 +638,6 @@ class Memory(Seekable):
             data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.line_size))
             ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
             self.lines[line_index] = '%07x : %s   %s' % (addr, data_string, ascii_string)
-
-    def activate_item(self, event=None):
-        print 'memory activate',self.selected
 
 class Tapes(Scrollable):
     line_size = 1
