@@ -65,6 +65,8 @@ class View(object):
     selected_fg = unselected_bg
     selected_bg = unselected_fg
     content_label = 0
+    row_height = 16
+    width_pixels = 372
 
     def __init__(self):
         self.num_lines = self.widget.config()['height'][-1]
@@ -85,12 +87,16 @@ class View(object):
                 content = ' '*self.width
             label[self.content_label].set(str(content))
 
+    def place(self):
+        self.frame_pos = self.app.current_pos(self.height_pixels)
+        self.frame.place(x=self.frame_pos[0], y=self.frame_pos[1], width=self.width_pixels, height=self.height_pixels)
+
 class Frame(Tkinter.Frame):
     def __init__(self, parent, width, height):
         Tkinter.Frame.__init__(self,
                                parent, 
                                width=width,
-                               height=height, 
+                               height=height*10, 
                                borderwidth=4,
                                bg='black',
                                highlightbackground='#004000',
@@ -133,6 +139,7 @@ class Scrollable(View):
     def __init__(self, app, height, width):
         self.height = height
         self.width  = width
+        self.height_pixels = height*self.row_height
         self.label_widths[self.content_label] = width
         self.app    = app
         self.selected = None
@@ -142,10 +149,10 @@ class Scrollable(View):
         self.frame = Frame(app.frame,
                            width=self.width,
                            height=self.height)
-
+        self.place()
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
-        self.row_number = self.app.frame.grid_size()[1]
-        self.frame.grid(padx=5)
+        #self.row_number = self.app.frame.grid_size()[1]
+        #self.frame.grid(padx=5)
         self.frame.bind("<Up>", self.keyboard_up)
         self.frame.bind("<Down>", self.keyboard_down)
         self.frame.bind("<Next>", self.keyboard_page_down)
@@ -360,33 +367,36 @@ class Seekable(Scrollable):
                                 width=self.width,
                                 height=self.height)
         self.text_entry = Tkinter.Entry(self.seek_frame,
-                                        width = sum(self.label_widths),
+                                        width = sum(self.label_widths)-5,
                                         font='TkFixedFont',
                                         bd=0,
-                                        highlightthickness=0,
+                                        highlightthickness=1,
+                                        highlightbackground='#004000',
+                                        highlightcolor='#008000',
                                         foreground=self.unselected_fg,
                                         background=self.unselected_bg,
                                         insertbackground=self.unselected_fg,
                                         selectbackground=self.selected_bg,
                                         selectforeground=self.selected_fg,
                                         )
-        self.text_entry.grid(padx=3)
+        self.goto_label = Label(self.seek_frame, width=5, text='Goto:')
+        self.text_entry.grid(row=0,column=1,padx=3)
+        self.goto_label.grid(row=0,column=0,padx=0)
         self.separator = Tkinter.Frame(self.seek_frame, height=1, width=1, bg=self.unselected_fg)
-        self.separator.grid(pady=4)
-
+        self.separator.grid(pady=4,columnspan=2)
 
 
     def seek(self, event):
         if self.seeking:
             self.seeking = False
-            self.seek_frame.grid_forget()
-            self.frame.grid(row=self.row_number,padx=5)
+            self.seek_frame.place_forget()
+            self.frame.place(x = self.frame_pos[0],y = self.frame_pos[1], height=self.height_pixels)
         else:
             self.seeking = True
-            self.seek_frame.grid(row=self.row_number,padx=5)
+            self.seek_frame.place(x = self.frame_pos[0], y = self.frame_pos[1], height = self.height_pixels)
             self.app.master.update()
             self.separator.config(width=self.seek_frame.winfo_width() - 20)
-            self.frame.grid_forget()
+            self.frame.place_forget()
 
 
     def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
@@ -656,7 +666,8 @@ class Options(View):
                            height=self.height)
 
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
-        self.frame.grid(padx=5,sticky=Tkinter.N+Tkinter.S+Tkinter.E+Tkinter.W)
+        #self.frame.grid(padx=5,sticky=Tkinter.N+Tkinter.S+Tkinter.E+Tkinter.W)
+        self.frame.place()
         self.var = Tkinter.IntVar()
         self.var.set(1 if self.app.follow_pc else 0)
         self.c = Tkinter.Checkbutton(self.frame,
@@ -687,6 +698,7 @@ class Registers(View):
     num_entries = 19
     def __init__(self, app, width, height):
         self.height = height
+        self.height_pixels = self.height * self.row_height
         self.width  = width
         self.col_width = self.width/3
         self.app    = app
@@ -695,7 +707,7 @@ class Registers(View):
                                    height=self.height)
 
         self.frame.bind("<Tab>", self.switch_from)
-        self.frame.grid()
+        self.place()
         self.label_rows = []
         for i in xrange(self.num_entries):
             widget = Label(self.frame, width=self.col_width, padx=3, text='bobbins')
@@ -729,6 +741,7 @@ class Application(Tkinter.Frame):
     #Inverted for selected
     selected_fg = unselected_bg
     selected_bg = unselected_fg
+    width_pixels = View.width_pixels
 
     def __init__(self, master, emulator_frame):
         self.emulator = None
@@ -736,6 +749,7 @@ class Application(Tkinter.Frame):
         self.follow_pc = True
         self.emulator_frame = emulator_frame
         self.queue = Queue.Queue()
+        self.frame_pos = 0
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
                                  messages.Types.CONNECT    : self.connected,
                                  messages.Types.STATE      : self.receive_register_state,
@@ -745,7 +759,7 @@ class Application(Tkinter.Frame):
                                  messages.Types.TAPE_LIST  : self.receive_tapes,
                                  messages.Types.SYMBOL_DATA : self.receive_symbols,
         }
-        Tkinter.Frame.__init__(self, master)
+        Tkinter.Frame.__init__(self, master,width=self.width_pixels + 8,height=720)
         self.stopped = False
         self.pc = None
         self.breakpoints = set()
@@ -754,9 +768,15 @@ class Application(Tkinter.Frame):
         self.need_symbols = True
         self.client = False
         self.process_messages()
+        self.grid_propagate(0)
 
     def init(self, client):
         self.client = client
+
+    def current_pos(self,height):
+        out = 0,self.frame_pos
+        self.frame_pos += height
+        return out
 
     def process_messages(self):
         while not self.queue.empty():
@@ -831,8 +851,9 @@ class Application(Tkinter.Frame):
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
-        self.frame = Tkinter.Frame(self, width = 240, height = 720)
+        self.frame = Tkinter.Frame(self, width = self.width_pixels, height = 720)
         self.frame.grid()
+        self.frame.grid_propagate(0)
         self.disassembly = Disassembly(self, width=47, height=14)
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
@@ -840,6 +861,7 @@ class Application(Tkinter.Frame):
         self.options = Options(self, width=50, height=3)
 
         self.button_frame = Tkinter.Frame(self.frame)
+        self.button_frame_pos = self.current_pos(100)
         self.stop_button = Button(self.button_frame, 'stop', self.stop)
         #self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
         self.stop_button.grid(row=0,column=0,pady=6,padx=5)
@@ -851,7 +873,10 @@ class Application(Tkinter.Frame):
         self.restart_button = Button(self.button_frame, 'restart', self.restart)
         #self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
         self.restart_button.grid(row=0,column=2,pady=6,padx=5)
-        self.button_frame.grid()
+        self.button_frame.place(x=self.button_frame_pos[0],
+                                y=self.button_frame_pos[1],
+                                width=self.registers.width_pixels,
+                                height=100)
 
         self.views = [self.disassembly, self.registers, self.memory, self.tapes, self.options]
         self.tab_views = [self.disassembly, self.memory, self.tapes, self.options]
