@@ -371,6 +371,7 @@ def seekable_passthrough(func):
     return func_wrapper
 
 class Seekable(Scrollable):
+    seek_label_widths = [6,0]
     def __init__(self, *args, **kwargs):
         self.seeking = False
         super(Seekable, self).__init__(*args, **kwargs)
@@ -397,6 +398,20 @@ class Seekable(Scrollable):
         self.goto_label.grid(row=0,column=0,padx=0)
         self.separator = Tkinter.Frame(self.seek_frame, height=1, width=1, bg=self.unselected_fg)
         self.separator.grid(pady=4,columnspan=2)
+        #Now a bunch of labels for the symbol entries
+        self.seek_labels = []
+        for i in xrange(5):
+            labels = []
+            for j in xrange(len(self.seek_label_widths)):
+                widget = Label(self.seek_frame, width=self.seek_label_widths[j], text='0x1234')
+                widget.bind("<Button-1>", lambda x,i=i: [self.click(i),self.seek_frame.focus_set()])
+                widget.bind("<MouseWheel>", self.mouse_wheel)
+                widget.bind("<Button-4>", self.mousewheel_up)
+                widget.bind("<Button-5>", self.mousewheel_down)
+                widget.grid(row=2+i, column=j, padx=0, pady=0, sticky=Tkinter.W)
+                labels.append(widget)
+            self.seek_labels.append(labels)
+                
 
     @seekable_passthrough
     def keyboard_up(self, event):
