@@ -94,9 +94,9 @@ class View(object):
 class Frame(Tkinter.Frame):
     def __init__(self, parent, width, height):
         Tkinter.Frame.__init__(self,
-                               parent, 
+                               parent,
                                width=width,
-                               height=height*10, 
+                               height=height*10,
                                borderwidth=4,
                                bg='black',
                                highlightbackground='#004000',
@@ -136,11 +136,11 @@ class Scrollable(View):
     labels_per_row = 0
     label_widths = None
     double_click_time = 0.5
-    def __init__(self, app, height, width):
+    def __init__(self, app, height, width, invisible=False):
         self.height = height
         self.width  = width
         self.height_pixels = height*self.row_height
-        self.label_widths[self.content_label] = width
+        self.label_widths[self.content_label] = width - sum(self.label_widths)
         self.app    = app
         self.selected = None
         self.selected_addr = None
@@ -149,17 +149,19 @@ class Scrollable(View):
         self.frame = Frame(app.frame,
                            width=self.width,
                            height=self.height)
-        self.place()
+        if not invisible:
+            self.place()
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP)
         #self.row_number = self.app.frame.grid_size()[1]
         #self.frame.grid(padx=5)
         self.set_frame_bindings(self.frame)
         self.frame.bind("<s>", self.app.step)
-        self.frame.bind("<g>", self.seek)
+        self.frame.bind("<g>", self.search)
         self.full_height = self.height + 2*self.buffer
 
         self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
         self.label_rows = []
+        start_row = self.initial_decoration()
         for i in xrange(self.height):
             labels = []
             for j in xrange(self.labels_per_row):
@@ -169,7 +171,7 @@ class Scrollable(View):
                 widget.bind("<MouseWheel>", self.mouse_wheel)
                 widget.bind("<Button-4>", self.mousewheel_up)
                 widget.bind("<Button-5>", self.mousewheel_down)
-                widget.grid(row=i, column=j, padx=0, pady=0)
+                widget.grid(row=start_row + i, column=j, padx=0, pady=0, sticky=Tkinter.W)
                 labels.append(widget)
 
             self.label_rows.append(labels)
@@ -183,6 +185,9 @@ class Scrollable(View):
         self.view_size = self.num_lines * self.line_size
         self.select(0)
 
+    def initial_decoration(self):
+        return 0
+
     def set_frame_bindings(self, frame):
         frame.bind("<Up>", self.keyboard_up)
         frame.bind("<Down>", self.keyboard_down)
@@ -192,10 +197,12 @@ class Scrollable(View):
         frame.bind("<Button-4>", self.keyboard_up)
         frame.bind("<Button-5>", self.keyboard_down)
         frame.bind("<Tab>", self.switch_from)
-        frame.bind("<space>", self.activate_item)
-        
+        frame.bind("<space>", self.handle_space)
 
-    def seek(self, event):
+    def handle_space(self, event):
+        return self.activate_item(self, event)
+
+    def search(self, event):
         pass
 
     def update_params(self):
@@ -208,7 +215,7 @@ class Scrollable(View):
 
     def update(self):
         view_start, view_size = self.update_params()
-        if view_size > 0:
+        if view_size > 0 and self.message_class is not None:
             self.app.send_message(self.message_class(view_start, view_size, view_start, view_size))
 
     def click(self, index):
@@ -220,6 +227,7 @@ class Scrollable(View):
                 return self.activate_item(index)
         self.last_click_time = now
         self.last_click_index = index
+        print 'bob',index
         self.select(self.index_to_addr(index))
 
     def index_to_addr(self, index):
@@ -360,27 +368,28 @@ class Scrollable(View):
 
 
     def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
-        self.app.send_message(self.message_class(unknown_start, unknown_size, watch_start, watch_size))
+        if self.message_class is not None:
+            self.app.send_message(self.message_class(unknown_start, unknown_size, watch_start, watch_size))
 
-def seekable_passthrough(func):
-    def func_wrapper(self, *args, **kwargs):
-        func_name = func.__name__
-        if not self.seeking:
-            return getattr(Scrollable,func_name)(self, *args, **kwargs)
-        return func(self, *args, **kwargs)
-    return func_wrapper
+class SymbolsSearcher(Scrollable):
+    line_size      = 1
+    buffer         = 0
+    view_min       = 0
+    view_max       = 1<<26
+    message_class  = None
+    labels_per_row = 2
+    content_label  = 1
+    label_widths   = [6,0]
+    def __init__(self, app, height, width):
+        self.parent = None
+        super(SymbolsSearcher, self).__init__(app, height, width, invisible=True)
 
-class Seekable(Scrollable):
-    seek_label_widths = [6,0]
-    def __init__(self, *args, **kwargs):
-        self.seeking = False
-        super(Seekable, self).__init__(*args, **kwargs)
-        self.seek_frame = Frame(self.app.frame,
-                                width=self.width,
-                                height=self.height)
-        self.set_frame_bindings(self.seek_frame)
-        self.text_entry = Tkinter.Entry(self.seek_frame,
-                                        width = sum(self.label_widths)-5,
+    def set_parent(self, parent):
+        self.parent = parent
+
+    def initial_decoration(self):
+        self.text_entry = Tkinter.Entry(self.frame,
+                                        width = self.label_widths[self.content_label],
                                         font='TkFixedFont',
                                         bd=0,
                                         highlightthickness=1,
@@ -393,80 +402,50 @@ class Seekable(Scrollable):
                                         selectforeground=self.selected_fg,
                                         )
         self.set_frame_bindings(self.text_entry)
-        self.goto_label = Label(self.seek_frame, width=5, text='Goto:')
-        self.text_entry.grid(row=0,column=1,padx=3)
+        self.goto_label = Label(self.frame, width=5, text='Goto:')
+        self.text_entry.grid(row=0,column=1,padx=0, sticky=Tkinter.W)
         self.goto_label.grid(row=0,column=0,padx=0)
-        self.separator = Tkinter.Frame(self.seek_frame, height=1, width=1, bg=self.unselected_fg)
+        self.separator = Tkinter.Frame(self.frame, height=1, width=1, bg=self.unselected_fg)
         self.separator.grid(pady=4,columnspan=2)
-        #Now a bunch of labels for the symbol entries
-        self.seek_labels = []
-        for i in xrange(5):
-            labels = []
-            for j in xrange(len(self.seek_label_widths)):
-                widget = Label(self.seek_frame, width=self.seek_label_widths[j], text='0x1234')
-                widget.bind("<Button-1>", lambda x,i=i: [self.click(i),self.seek_frame.focus_set()])
-                widget.bind("<MouseWheel>", self.mouse_wheel)
-                widget.bind("<Button-4>", self.mousewheel_up)
-                widget.bind("<Button-5>", self.mousewheel_down)
-                widget.grid(row=2+i, column=j, padx=0, pady=0, sticky=Tkinter.W)
-                labels.append(widget)
-            self.seek_labels.append(labels)
-                
+        #return number of rows
+        return 2
 
-    @seekable_passthrough
-    def keyboard_up(self, event):
-        print 'ku'
+    def set_frame_bindings(self, frame):
+        super(SymbolsSearcher, self).set_frame_bindings(frame)
+        #also allow an escape to send us back
+        frame.bind("<Escape>",self.stop_searching)
 
-    @seekable_passthrough
-    def keyboard_down(self, event):
-        print 'kd'
-
-    @seekable_passthrough
-    def keyboard_page_down(self, event):
-        pass
-
-    @seekable_passthrough
-    def keyboard_page_up(self, event):
-        pass
-
-    @seekable_passthrough
-    def mouse_wheel(self, event):
-        pass
-
-    def activate_item(self, event=None):
+    def stop_searching(self, event):
+        self.hide()
+        self.parent.show()
         return 'break'
 
-    def seek(self, event):
-        if self.seeking:
-            self.seeking = False
-            self.seek_frame.place_forget()
-            self.frame.place(x=self.frame_pos[0],
-                             y=self.frame_pos[1],
-                             height=self.height_pixels,
-                             width=self.width_pixels)
-            self.frame.focus_set()
-        else:
-            self.seeking = True
-            self.seek_frame.place(x=self.frame_pos[0],
-                                  y=self.frame_pos[1],
-                                  height=self.height_pixels,
-                                  width=self.width_pixels)
-            self.app.master.update()
-            self.separator.config(width=self.seek_frame.winfo_width() - 20)
-            self.frame.place_forget()
-            self.seek_frame.focus_set()
-            self.text_entry.focus()
+    def search(self, event):
+        pass
 
+    def handle_space(self, event):
+        return 'break'
 
-    def request_data(self, unknown_start, unknown_size, watch_start, watch_size):
-        if not self.seeking:
-            super(Seekable, self).request_data(unknown_start, unknown_size, watch_start, watch_size)
-        else:
-            #For the symbol options we already have them so we don't need to request anything
-            pass
+    def activate_item(self, item):
+        pass
 
+    def redraw(self):
+        pass
 
-class Disassembly(Seekable):
+    def show(self):
+        self.frame.place(x=self.parent.frame_pos[0],
+                         y=self.parent.frame_pos[1],
+                         height=self.parent.height_pixels,
+                         width=self.parent.width_pixels)
+        self.app.master.update()
+        self.separator.config(width=self.frame.winfo_width() - 30)
+        self.frame.focus_set()
+        self.text_entry.focus()
+
+    def hide(self):
+        self.frame.place_forget()
+
+class Disassembly(Scrollable):
     word_size = 4
     line_size = word_size
 
@@ -477,14 +456,40 @@ class Disassembly(Seekable):
     content_label  = 2
     label_widths   = [1,1,0]
 
-    def __init__(self, app, height, width):
+    def __init__(self, app, symbols_searcher, height, width):
         self.pc = None
+        self.symbols_searcher = symbols_searcher
         self.symbols = {}
         self.last_message = None
         self.addr_lookups = {i:-self.buffer*self.line_size + (self.buffer + i)*self.line_size for i in xrange(height)}
         self.index_lookups = {value:key for key,value in self.addr_lookups.iteritems()}
         self.show_first_label = True
         super(Disassembly,self).__init__(app, height, width)
+        self.symbols_searcher.set_parent(self)
+        self.hidden = False
+
+    def search(self, event):
+        self.hide()
+        self.symbols_searcher.show()
+
+    def show(self):
+        self.frame.place(x=self.frame_pos[0],
+                         y=self.frame_pos[1],
+                         height=self.height_pixels,
+                         width=self.width_pixels)
+        self.frame.focus_set()
+        self.hidden = False
+
+    def focus_set(self):
+        if self.hidden:
+            self.symbols_searcher.focus_set()
+        else:
+            return super(Disassembly,self).focus_set()
+
+    def hide(self):
+        self.hidden = True
+        self.frame.place_forget()
+
 
     def set_pc_label(self, pc, label):
         label_index = self.addr_to_index(pc)
@@ -620,7 +625,7 @@ class Disassembly(Seekable):
             line_index += 1
 
 
-class Memory(Seekable):
+class Memory(Scrollable):
     line_size = 8
     view_min = -Scrollable.buffer*line_size
     view_max = 1<<26
@@ -653,6 +658,9 @@ class Memory(Seekable):
             data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.line_size))
             ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
             self.lines[line_index] = '%07x : %s   %s' % (addr, data_string, ascii_string)
+
+    def activate_item(self, item):
+        pass
 
 class Tapes(Scrollable):
     line_size = 1
@@ -888,6 +896,8 @@ class Application(Tkinter.Frame):
             self.emulator.restart()
 
     def next_item(self, item):
+        if item is self.disassembly.symbols_searcher:
+            item = self.disassembly
         try:
             index = self.tab_views.index(item)
         except ValueError:
@@ -912,7 +922,8 @@ class Application(Tkinter.Frame):
         self.frame = Tkinter.Frame(self, width = self.width_pixels, height = 720)
         self.frame.grid()
         self.frame.grid_propagate(0)
-        self.disassembly = Disassembly(self, width=47, height=14)
+        symbols_searcher = SymbolsSearcher(self, width=50, height=12)
+        self.disassembly = Disassembly(self, symbols_searcher, width=47, height=14)
         self.registers = Registers(self, width=50, height=8)
         self.memory = Memory(self, width=50, height=13)
         self.tapes = Tapes(self, width=44, height=6)
