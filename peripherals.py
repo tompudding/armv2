@@ -251,6 +251,8 @@ class Scrollable(View):
             selected = len(self.label_rows) - 1
 
         addr = self.index_to_addr(selected)
+        if addr >= self.select_max:
+            return
         if selected == self.selected:
             self.selected_addr = addr
             return
@@ -376,6 +378,7 @@ class SymbolsSearcher(Scrollable):
     buffer         = 0
     view_min       = 0
     view_max       = 1<<26
+    select_max     = view_max
     message_class  = None
     labels_per_row = 2
     content_label  = 1
@@ -424,8 +427,9 @@ class SymbolsSearcher(Scrollable):
             self.contents = self.substrings[self.entry_label.get()]
         except KeyError:
             self.contents = []
-        self.view_max = len(self.contents) + 1
+        self.select_max = len(self.contents) + 1
         self.view_start = self.view_min
+        self.view_max = max(self.select_max - self.height,0)
         self.select(0)
         self.redraw()
 
@@ -502,6 +506,7 @@ class Disassembly(Scrollable):
 
     view_min       = -Scrollable.buffer*word_size
     view_max       = 1<<26
+    select_max     = view_max
     message_class  = messages.DisassemblyView
     labels_per_row = 3
     content_label  = 2
@@ -681,6 +686,7 @@ class Memory(Scrollable):
     line_size = 8
     view_min = -Scrollable.buffer*line_size
     view_max = 1<<26
+    select_max = view_max
     labels_per_row = 1
     message_class = messages.MemdumpView
     label_widths = [0]
@@ -720,6 +726,7 @@ class Tapes(Scrollable):
     #view_min = -Scrollable.buffer*line_size
     view_min = 0
     view_max = 64
+    select_max = view_max
     labels_per_row = 2
     content_label = 1
     message_class = messages.TapesView
@@ -740,6 +747,7 @@ class Tapes(Scrollable):
 
     def receive(self, message):
         self.view_max = max(message.max - self.height,0)
+        self.select_max = message.max
         self.tape_max = message.start + message.size
         #TODO: If we just reduced tape_max we'd better turn off LOADED labels for the
         #ones we can't press anymore
