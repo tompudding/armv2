@@ -382,7 +382,7 @@ class SymbolsSearcher(Scrollable):
     message_class  = None
     labels_per_row = 2
     content_label  = 1
-    label_widths   = [6,0]
+    label_widths   = [9,0]
     def __init__(self, app, height, width):
         self.parent = None
         super(SymbolsSearcher, self).__init__(app, height, width, invisible=True)
@@ -428,6 +428,8 @@ class SymbolsSearcher(Scrollable):
         except KeyError:
             self.contents = []
         self.select_max = len(self.contents) + 1
+        if self.get_first_entry() is None:
+            self.select_max -= 1
         self.view_start = self.view_min
         self.view_max = max(self.select_max - self.height,0)
         self.select(0)
@@ -464,14 +466,25 @@ class SymbolsSearcher(Scrollable):
 
     def redraw(self):
         label_index = 0
+        offset = 0
+        first_entry = self.get_first_entry()
+        if first_entry is None:
+            try:
+                first_entry = self.contents[0]
+                first_entry = ('%08x' % first_entry[0],first_entry[1])
+            except IndexError:
+                first_entry = '',''
+            offset = 0
+        else:
+            offset = 1
         for i,row in enumerate(self.label_rows):
             pos = self.view_start + i
             if pos == 0:
-                addr,name = self.get_first_entry()
+                addr,name = first_entry
             else:
                 try:
-                    addr,name = self.contents[pos-1]
-                    addr = '%04x' % addr
+                    addr,name = self.contents[pos - offset]
+                    addr = '%08x' % addr
                 except IndexError:
                     addr,name = '',''
 
@@ -481,10 +494,10 @@ class SymbolsSearcher(Scrollable):
     def get_first_entry(self):
         contents = self.text_entry.get()
         try:
-            addr = int(contents,16)&0xffff
-            addr = '%04x' % addr
+            addr = int(contents,16)&0xffffffff
+            addr = '%08x' % addr
         except ValueError:
-            addr = '????'
+            return None
         return addr, 'Address %s' % contents
 
     def show(self):
