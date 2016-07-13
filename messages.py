@@ -222,6 +222,7 @@ class Symbols(Message):
         self.symbols_list = symbols_list
         self.addrs   = [addr for (addr, name) in symbols_list]
         self.lookup  = dict(self.symbols_list)
+        self.names = dict( ((name,addr) for (addr, name) in symbols_list) )
 
     def to_binary(self):
         first = super(Symbols, self).to_binary()
@@ -230,8 +231,21 @@ class Symbols(Message):
             data.append(struct.pack('>I', addr) + name + '\x00')
         return first + ''.join(data)
 
+    def by_name(self, name):
+        return self.names[name]
+
     def by_index(self, index):
         return self.symbols_list[index]
+
+    def __iter__(self):
+        return self.lookup.__iter__()
+
+    def __next__(self):
+        return self.lookup.__next__()
+
+    def iteritems(self):
+        for item in self.lookup.iteritems():
+            yield item
 
     def __contains__(self, addr):
         return addr in self.lookup

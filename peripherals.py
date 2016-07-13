@@ -429,8 +429,27 @@ class SymbolsSearcher(Scrollable):
     def activate_item(self, item):
         pass
 
+    def receive_symbols(self, symbols):
+        self.symbols = symbols
+        self.substrings = {}
+        for addr,name in symbols.iteritems():
+            for substring_length in xrange(1,len(name)):
+                for start_pos in xrange(0,len(name)+1-substring_length):
+                    substring = name[start_pos:start_pos + substring_length]
+                    try:
+                        self.substrings[substring].append(name)
+                    except KeyError:
+                        self.substrings[substring] = [name]
+
     def redraw(self):
-        pass
+        contents = self.text_entry.get()
+        try:
+            addr = int(contents,16)&0xffff
+            addr = '0x%4x' % addr
+        except ValueError:
+            addr = '0x????'
+        self.label_rows[0][0].set(addr)
+        self.label_rows[0][1].set('Address %s' % contents)
 
     def show(self):
         self.frame.place(x=self.parent.frame_pos[0],
@@ -556,6 +575,7 @@ class Disassembly(Scrollable):
 
     def receive_symbols(self, symbols):
         self.symbols = symbols
+        self.symbols_searcher.receive_symbols(symbols)
         self.redraw()
         #In case those labels have messed us up, reset the selected position
         self.select(self.selected_addr)
