@@ -501,6 +501,7 @@ class SymbolsSearcher(Scrollable):
         return addr, 'Address %s' % contents
 
     def show(self):
+        self.entry_label.set('')
         self.frame.place(x=self.parent.frame_pos[0],
                          y=self.parent.frame_pos[1],
                          height=self.parent.height_pixels,
