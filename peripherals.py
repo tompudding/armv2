@@ -198,9 +198,13 @@ class Scrollable(View):
         frame.bind("<Button-5>", self.keyboard_down)
         frame.bind("<Tab>", self.switch_from)
         frame.bind("<space>", self.handle_space)
+        frame.bind("<Return>", self.handle_enter)
 
     def handle_space(self, event):
-        return self.activate_item(self, event)
+        return self.activate_item(event)
+
+    def handle_enter(self, event):
+        return self.activate_item( event)
 
     def search(self, event):
         pass
@@ -416,6 +420,15 @@ class SymbolsSearcher(Scrollable):
         #return number of rows
         return 2
 
+    def activate_item(self, event):
+        if self.selected is not None:
+            index = self.index_to_addr(self.selected)
+            addr = self.contents[index][0]
+            self.hide()
+            self.parent.show()
+            self.parent.centre(addr)
+            self.parent.select(addr)
+
     def set_frame_bindings(self, frame):
         super(SymbolsSearcher, self).set_frame_bindings(frame)
         #also allow an escape to send us back
@@ -427,9 +440,12 @@ class SymbolsSearcher(Scrollable):
             self.contents = self.substrings[self.entry_label.get()]
         except KeyError:
             self.contents = []
-        self.select_max = len(self.contents) + 1
-        if self.get_first_entry() is None:
-            self.select_max -= 1
+
+        first = self.get_first_entry()
+        if first is not None:
+            self.contents.insert(0, first)
+
+        self.select_max = len(self.contents)
         self.view_start = self.view_min
         self.view_max = max(self.select_max - self.height,0)
         self.select(0)
@@ -445,9 +461,6 @@ class SymbolsSearcher(Scrollable):
 
     def handle_space(self, event):
         return 'break'
-
-    def activate_item(self, item):
-        pass
 
     def receive_symbols(self, symbols):
         self.symbols = symbols
@@ -466,27 +479,14 @@ class SymbolsSearcher(Scrollable):
 
     def redraw(self):
         label_index = 0
-        offset = 0
-        first_entry = self.get_first_entry()
-        if first_entry is None:
-            try:
-                first_entry = self.contents[0]
-                first_entry = ('%08x' % first_entry[0],first_entry[1])
-            except IndexError:
-                first_entry = '',''
-            offset = 0
-        else:
-            offset = 1
+
         for i,row in enumerate(self.label_rows):
             pos = self.view_start + i
-            if pos == 0:
-                addr,name = first_entry
-            else:
-                try:
-                    addr,name = self.contents[pos - offset]
-                    addr = '%08x' % addr
-                except IndexError:
-                    addr,name = '',''
+            try:
+                addr,name = self.contents[pos]
+                addr = '%08x' % addr
+            except IndexError:
+                addr,name = '',''
 
             row[0].set(addr)
             row[1].set(name)
@@ -495,12 +495,12 @@ class SymbolsSearcher(Scrollable):
         contents = self.text_entry.get()
         try:
             addr = int(contents,16)&0xffffffff
-            addr = '%08x' % addr
         except ValueError:
             return None
         return addr, 'Address %s' % contents
 
     def show(self):
+        self.select(0)
         self.entry_label.set('')
         self.frame.place(x=self.parent.frame_pos[0],
                          y=self.parent.frame_pos[1],
@@ -567,8 +567,6 @@ class Disassembly(Scrollable):
             self.label_rows[label_index][0].set(label)
 
     def activate_item(self, event=None):
-        if self.seeking:
-            return super(Disassembly,self).activate_item(event)
         if self.selected is not None:
             addr = self.index_to_addr(self.selected)
             self.app.toggle_breakpoint(addr)
