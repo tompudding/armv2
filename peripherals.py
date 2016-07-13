@@ -388,6 +388,8 @@ class SymbolsSearcher(Scrollable):
         self.parent = parent
 
     def initial_decoration(self):
+        self.entry_label = Tkinter.StringVar()
+        self.entry_label.trace('w', lambda name, index, mode: self.entry_changed())
         self.text_entry = Tkinter.Entry(self.frame,
                                         width = self.label_widths[self.content_label],
                                         font='TkFixedFont',
@@ -400,6 +402,7 @@ class SymbolsSearcher(Scrollable):
                                         insertbackground=self.unselected_fg,
                                         selectbackground=self.selected_bg,
                                         selectforeground=self.selected_fg,
+                                        textvariable=self.entry_label,
                                         )
         self.set_frame_bindings(self.text_entry)
         self.goto_label = Label(self.frame, width=5, text='Goto:')
@@ -414,6 +417,17 @@ class SymbolsSearcher(Scrollable):
         super(SymbolsSearcher, self).set_frame_bindings(frame)
         #also allow an escape to send us back
         frame.bind("<Escape>",self.stop_searching)
+
+    def entry_changed(self):
+        #reset us to the top of the list and redraw
+        try:
+            self.contents = self.substrings[self.entry_label.get()]
+        except KeyError:
+            self.contents = []
+        self.view_max = len(self.contents) + 1
+        self.view_start = self.view_min
+        self.select(0)
+        self.redraw()
 
     def stop_searching(self, event):
         self.hide()
@@ -434,22 +448,40 @@ class SymbolsSearcher(Scrollable):
         self.substrings = {}
         for addr,name in symbols.iteritems():
             for substring_length in xrange(1,len(name)):
-                for start_pos in xrange(0,len(name)+1-substring_length):
+                for start_pos in xrange(0,len(name) + 1 - substring_length):
                     substring = name[start_pos:start_pos + substring_length]
                     try:
-                        self.substrings[substring].append(name)
+                        self.substrings[substring].append( (addr,name) )
                     except KeyError:
-                        self.substrings[substring] = [name]
+                        self.substrings[substring] = [(addr,name)]
+
+        for substring,name_list in self.substrings.iteritems():
+            name_list.sort(lambda x,y: cmp(x[0],y[0]))
 
     def redraw(self):
+        label_index = 0
+        for i,row in enumerate(self.label_rows):
+            pos = self.view_start + i
+            if pos == 0:
+                addr,name = self.get_first_entry()
+            else:
+                try:
+                    addr,name = self.contents[pos-1]
+                    addr = '%04x' % addr
+                except IndexError:
+                    addr,name = '',''
+
+            row[0].set(addr)
+            row[1].set(name)
+
+    def get_first_entry(self):
         contents = self.text_entry.get()
         try:
             addr = int(contents,16)&0xffff
-            addr = '0x%4x' % addr
+            addr = '%04x' % addr
         except ValueError:
-            addr = '0x????'
-        self.label_rows[0][0].set(addr)
-        self.label_rows[0][1].set('Address %s' % contents)
+            addr = '????'
+        return addr, 'Address %s' % contents
 
     def show(self):
         self.frame.place(x=self.parent.frame_pos[0],
