@@ -140,6 +140,7 @@ class Scrollable(View):
         self.height = height
         self.width  = width
         self.height_pixels = height*self.row_height
+        self.label_widths = self.label_widths_initial[:]
         self.label_widths[self.content_label] = width - sum(self.label_widths)
         self.app    = app
         self.selected = None
@@ -165,7 +166,7 @@ class Scrollable(View):
         for i in xrange(self.height):
             labels = []
             for j in xrange(self.labels_per_row):
-                widget = Label(self.frame, width = self.label_widths[j], text=' ')
+                widget = Label(self.frame, width = self.label_widths[j], text=' ', padx=1)
 
                 widget.bind("<Button-1>", lambda x,i=i: [self.click(i),self.frame.focus_set()])
                 widget.bind("<MouseWheel>", self.mouse_wheel)
@@ -386,12 +387,13 @@ class SymbolsSearcher(Scrollable):
     message_class  = None
     labels_per_row = 2
     content_label  = 1
-    label_widths   = [9,0]
+    label_widths_initial = [9,0]
     def __init__(self, app, height, width):
         self.parent = None
         self.substrings = {}
         self.contents = []
         super(SymbolsSearcher, self).__init__(app, height, width, invisible=True)
+        print 'ted',self.label_widths
 
     def set_parent(self, parent):
         self.parent = parent
@@ -399,6 +401,7 @@ class SymbolsSearcher(Scrollable):
     def initial_decoration(self):
         self.entry_label = Tkinter.StringVar()
         self.entry_label.trace('w', lambda name, index, mode: self.entry_changed())
+        print 'making entry',self.label_widths,self.content_label
         self.text_entry = Tkinter.Entry(self.frame,
                                         width = self.label_widths[self.content_label],
                                         font='TkFixedFont',
@@ -566,7 +569,7 @@ class Disassembly(Searchable):
     message_class  = messages.DisassemblyView
     labels_per_row = 3
     content_label  = 2
-    label_widths   = [1,1,0]
+    label_widths_initial = [1,1,0]
 
     def __init__(self, app, symbols_searcher, height, width):
         self.pc = None
@@ -709,7 +712,7 @@ class Memory(Searchable):
     select_max = view_max
     labels_per_row = 1
     message_class = messages.MemdumpView
-    label_widths = [0]
+    label_widths_initial = [0]
     printable = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
     def redraw(self):
@@ -750,7 +753,7 @@ class Tapes(Scrollable):
     labels_per_row = 2
     content_label = 1
     message_class = messages.TapesView
-    label_widths=[6,0]
+    label_widths_initial=[6,0]
     loaded_message = 'LOADED'
     not_loaded_message = ' '*len(loaded_message)
 
@@ -805,6 +808,7 @@ class Options(View):
     def __init__(self, app, width, height):
         self.width  = width
         self.height = height
+        self.height_pixels = self.height * self.row_height
         self.app    = app
         self.label_rows = []
         self.frame = Frame(app.frame,
@@ -813,7 +817,7 @@ class Options(View):
 
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
         #self.frame.grid(padx=5,sticky=Tkinter.N+Tkinter.S+Tkinter.E+Tkinter.W)
-        self.frame.place()
+        self.place()
         self.var = Tkinter.IntVar()
         self.var.set(1 if self.app.follow_pc else 0)
         self.c = Tkinter.Checkbutton(self.frame,
@@ -1002,14 +1006,14 @@ class Application(Tkinter.Frame):
         self.frame = Tkinter.Frame(self, width = self.width_pixels, height = 720)
         self.frame.grid()
         self.frame.grid_propagate(0)
-        symbols_searcher = SymbolsSearcher(self, width=50, height=12)
-        self.disassembly = Disassembly(self, symbols_searcher, width=47, height=14)
+        symbols_searcher = SymbolsSearcher(self, width=51, height=12)
+        self.disassembly = Disassembly(self, symbols_searcher, width=51, height=14)
 
-        self.registers = Registers(self, width=50, height=8)
-        memory_searcher = SymbolsSearcher(self, width=50, height=11)
-        self.memory = Memory(self, memory_searcher, width=50, height=13)
-        self.tapes = Tapes(self, width=44, height=6)
-        self.options = Options(self, width=50, height=3)
+        self.registers = Registers(self, width=51, height=8)
+        memory_searcher = SymbolsSearcher(self, width=51, height=11)
+        self.memory = Memory(self, memory_searcher, width=51, height=13)
+        self.tapes = Tapes(self, width=51, height=6)
+        self.options = Options(self, width=50, height=2)
 
         self.button_frame = Tkinter.Frame(self.frame)
         self.button_frame_pos = self.current_pos(100)
@@ -1103,6 +1107,7 @@ def main():
     import emulate
     import os
     root = Tkinter.Tk()
+    root.resizable(0,0)
     root.tk_setPalette(background='black',
                        highlightbackground='lawn green')
     embed = Tkinter.Frame(root, width = 960, height = 720)
