@@ -204,11 +204,11 @@ class BranchInstruction(Instruction):
             sym_name = None
 
         if target == sym_addr:
-            arg = sym_name
+            arg = '0x%x(%s)' % (target,sym_name)
         elif index > 0:
             sym_addr, sym_name = symbols.by_index(index - 1)
             offset = target - sym_addr
-            arg = '%s + 0x%x' % (sym_name, offset)
+            arg = '0x%x(%s + 0x%x)' % (target, sym_name, offset)
         else:
             arg = '#0x%x' % target
         self.args = [arg]
