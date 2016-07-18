@@ -104,6 +104,28 @@ class Frame(Tkinter.Frame):
                                highlightthickness=1,
                                relief=Tkinter.SOLID)
 
+class Check(Tkinter.Checkbutton):
+    def __init__(self, parent, text, val, callback):
+        self.var = Tkinter.IntVar()
+        self.var.set(val)
+        Tkinter.Checkbutton.__init__(self,
+                                     parent,
+                                     font='TkFixedFont',
+                                     highlightbackground='#000000',
+                                     highlightcolor='lawn green',
+                                     highlightthickness=1,
+                                     padx=5,
+                                     relief=Tkinter.SOLID,
+                                     bg=View.unselected_bg,
+                                     fg=View.unselected_fg,
+                                     activeforeground=View.unselected_bg,
+                                     activebackground=View.unselected_fg,
+                                     selectcolor='black',
+                                     anchor='w',
+                                     text=text,
+                                     variable=self.var,
+                                     command=callback)
+
 class Label(Tkinter.Label):
     def __init__(self, parent, width, text, bg='black', fg='lawn green', anchor='w', padx=2):
         self.sv = Tkinter.StringVar()
@@ -715,6 +737,9 @@ class Memory(Searchable):
     label_widths_initial = [0]
     printable = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
+    def __init__(self, *args, **kwargs):
+        super(Memory, self).__init__(*args, **kwargs)
+
     def redraw(self):
         line_index = self.buffer
         label_index = 0
@@ -818,24 +843,10 @@ class Options(View):
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
         #self.frame.grid(padx=5,sticky=Tkinter.N+Tkinter.S+Tkinter.E+Tkinter.W)
         self.place()
-        self.var = Tkinter.IntVar()
-        self.var.set(1 if self.app.follow_pc else 0)
-        self.c = Tkinter.Checkbutton(self.frame,
-                                     font='TkFixedFont',
-                                     highlightbackground='#000000',
-                                     highlightcolor='lawn green',
-                                     highlightthickness=1,
-                                     padx=5,
-                                     relief=Tkinter.SOLID,
-                                     bg=self.unselected_bg,
-                                     fg=self.unselected_fg,
-                                     activeforeground=self.unselected_bg,
-                                     activebackground=self.unselected_fg,
-                                     selectcolor='black',
-                                     anchor='w',
-                                     text="Follow PC",
-                                     variable=self.var,
-                                     command=self.cb)
+        self.c = Check(self.frame,
+                       "Follow PC",
+                       val = 1 if self.app.follow_pc else 0,
+                       callback = self.cb)
         self.c.pack(side=Tkinter.LEFT)
 
     def cb(self):
