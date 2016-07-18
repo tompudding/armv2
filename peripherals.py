@@ -389,6 +389,8 @@ class SymbolsSearcher(Scrollable):
     label_widths   = [9,0]
     def __init__(self, app, height, width):
         self.parent = None
+        self.substrings = {}
+        self.contents = []
         super(SymbolsSearcher, self).__init__(app, height, width, invisible=True)
 
     def set_parent(self, parent):
@@ -476,6 +478,7 @@ class SymbolsSearcher(Scrollable):
 
         for substring,name_list in self.substrings.iteritems():
             name_list.sort(lambda x,y: cmp(x[0],y[0]))
+        self.entry_changed()
 
     def redraw(self):
         label_index = 0
@@ -514,27 +517,11 @@ class SymbolsSearcher(Scrollable):
     def hide(self):
         self.frame.place_forget()
 
-class Disassembly(Scrollable):
-    word_size = 4
-    line_size = word_size
-
-    view_min       = -Scrollable.buffer*word_size
-    view_max       = 1<<26
-    select_max     = view_max
-    message_class  = messages.DisassemblyView
-    labels_per_row = 3
-    content_label  = 2
-    label_widths   = [1,1,0]
-
+class Searchable(Scrollable):
     def __init__(self, app, symbols_searcher, height, width):
-        self.pc = None
         self.symbols_searcher = symbols_searcher
         self.symbols = {}
-        self.last_message = None
-        self.addr_lookups = {i:-self.buffer*self.line_size + (self.buffer + i)*self.line_size for i in xrange(height)}
-        self.index_lookups = {value:key for key,value in self.addr_lookups.iteritems()}
-        self.show_first_label = True
-        super(Disassembly,self).__init__(app, height, width)
+        super(Searchable, self).__init__(app, height, width)
         self.symbols_searcher.set_parent(self)
         self.hidden = False
 
@@ -554,11 +541,40 @@ class Disassembly(Scrollable):
         if self.hidden:
             self.symbols_searcher.focus_set()
         else:
-            return super(Disassembly,self).focus_set()
+            return super(Searchable,self).focus_set()
 
     def hide(self):
         self.hidden = True
         self.frame.place_forget()
+
+    def receive_symbols(self, symbols):
+        self.symbols = symbols
+        self.symbols_searcher.receive_symbols(symbols)
+        self.redraw()
+        #In case those labels have messed us up, reset the selected position
+        self.select(self.selected_addr)
+        self.centre(self.selected_addr)
+
+
+class Disassembly(Searchable):
+    word_size = 4
+    line_size = word_size
+
+    view_min       = -Scrollable.buffer*word_size
+    view_max       = 1<<26
+    select_max     = view_max
+    message_class  = messages.DisassemblyView
+    labels_per_row = 3
+    content_label  = 2
+    label_widths   = [1,1,0]
+
+    def __init__(self, app, symbols_searcher, height, width):
+        self.pc = None
+        self.last_message = None
+        self.addr_lookups = {i:-self.buffer*self.line_size + (self.buffer + i)*self.line_size for i in xrange(height)}
+        self.index_lookups = {value:key for key,value in self.addr_lookups.iteritems()}
+        self.show_first_label = True
+        super(Disassembly,self).__init__(app, symbols_searcher, height, width)
 
 
     def set_pc_label(self, pc, label):
@@ -621,14 +637,6 @@ class Disassembly(Scrollable):
             self.centre(self.pc)
         if diff is None or abs(diff) > self.height*self.line_size:
             self.select(self.pc)
-
-    def receive_symbols(self, symbols):
-        self.symbols = symbols
-        self.symbols_searcher.receive_symbols(symbols)
-        self.redraw()
-        #In case those labels have messed us up, reset the selected position
-        self.select(self.selected_addr)
-        self.centre(self.selected_addr)
 
     def index_to_addr(self, index):
         return self.addr_lookups[index]
@@ -694,7 +702,7 @@ class Disassembly(Scrollable):
             line_index += 1
 
 
-class Memory(Scrollable):
+class Memory(Searchable):
     line_size = 8
     view_min = -Scrollable.buffer*line_size
     view_max = 1<<26
@@ -996,8 +1004,10 @@ class Application(Tkinter.Frame):
         self.frame.grid_propagate(0)
         symbols_searcher = SymbolsSearcher(self, width=50, height=12)
         self.disassembly = Disassembly(self, symbols_searcher, width=47, height=14)
+
         self.registers = Registers(self, width=50, height=8)
-        self.memory = Memory(self, width=50, height=13)
+        memory_searcher = SymbolsSearcher(self, width=50, height=11)
+        self.memory = Memory(self, memory_searcher, width=50, height=13)
         self.tapes = Tapes(self, width=44, height=6)
         self.options = Options(self, width=50, height=3)
 
@@ -1069,6 +1079,7 @@ class Application(Tkinter.Frame):
     def receive_symbols(self, symbols):
         self.need_symbols = False
         self.disassembly.receive_symbols(symbols)
+        self.memory.receive_symbols(symbols)
 
 
 def run():
