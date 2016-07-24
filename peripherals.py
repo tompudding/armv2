@@ -22,17 +22,22 @@ Tkinter.Text.delete = insert_wrapper(Tkinter.Text.delete)
 mode_names = ['USR','FIQ','IRQ','SUP']
 
 class Button(Tkinter.Button):
-    unselected_fg = 'lawn green'
+    unselected_fg = '#56f82e'
+    #unselected_border = '#46cb26'
+    unselected_border = '#2b9c17'
     unselected_bg = 'black'
     #Inverted for selected
     selected_fg = unselected_bg
     selected_bg = unselected_fg
     disabled_border = '#004000'
 
-    def __init__(self, parent, text, callback, state=Tkinter.NORMAL):
+    def __init__(self, app, parent, text, callback, state=Tkinter.NORMAL):
+        self.app = app
         self.parent = parent
+        self.text = text
         self.callback = callback
-        border = self.unselected_fg if state == Tkinter.NORMAL else self.disabled_border
+        self.enabled = state == Tkinter.NORMAL
+        border = self.unselected_border if self.enabled else self.disabled_border
         Tkinter.Button.__init__(self,
                                 self.parent,
                                 width=6,
@@ -46,17 +51,30 @@ class Button(Tkinter.Button):
                                 activeforeground=self.selected_fg,
                                 command=self.callback,
                                 text=text,
-                                relief=Tkinter.SOLID,
+                                relief=Tkinter.FLAT,
                                 state=state,
                                 )
+        self.bind("<Tab>", self.tab)
 
     def disable(self):
+        self.enabled = False
         self.config(state=Tkinter.DISABLED)
         self.config(highlightbackground=self.disabled_border)
 
     def enable(self):
+        self.enabled = True
         self.config(state=Tkinter.NORMAL)
-        self.config(highlightbackground=self.unselected_fg)
+        self.config(highlightbackground=self.unselected_border)
+
+    def focus_set(self):
+        if self.enabled:
+            Tkinter.Button.focus_set(self)
+        else:
+            self.app.next_item(self).focus_set()
+
+    def tab(self, event):
+        self.app.next_item(self).focus_set()
+        return 'break'
 
 
 class View(object):
@@ -1062,15 +1080,15 @@ class Application(Tkinter.Frame):
 
         self.button_frame = Tkinter.Frame(self.frame)
         self.button_frame_pos = self.current_pos(100)
-        self.stop_button = Button(self.button_frame, 'stop', self.stop)
+        self.stop_button = Button(self, self.button_frame, 'stop', self.stop)
         #self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
         self.stop_button.grid(row=0,column=0,pady=6,padx=5)
 
-        self.step_button = Button(self.button_frame, 'step', self.step, state=Tkinter.DISABLED)
+        self.step_button = Button(self, self.button_frame, 'step', self.step, state=Tkinter.DISABLED)
         #self.step_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
         self.step_button.grid(row=0,column=1,pady=6,padx=5)
 
-        self.restart_button = Button(self.button_frame, 'restart', self.restart)
+        self.restart_button = Button(self, self.button_frame, 'restart', self.restart)
         #self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
         self.restart_button.grid(row=0,column=2,pady=6,padx=5)
         self.button_frame.place(x=self.button_frame_pos[0],
@@ -1078,8 +1096,9 @@ class Application(Tkinter.Frame):
                                 width=self.registers.width_pixels,
                                 height=100)
 
+        self.buttons = [self.stop_button, self.step_button, self.restart_button]
         self.views = [self.disassembly, self.registers, self.memory, self.tapes, self.options]
-        self.tab_views = [self.disassembly, self.memory, self.tapes, self.options]
+        self.tab_views = [self.disassembly, self.memory, self.tapes, self.options] + self.buttons
 
         self.queue.put(messages.Disconnect())
 
