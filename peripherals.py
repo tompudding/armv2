@@ -106,10 +106,11 @@ class Frame(Tkinter.Frame):
 
 class Check(Tkinter.Checkbutton):
     def __init__(self, parent, text, val, callback):
+        self.parent = parent
         self.var = Tkinter.IntVar()
         self.var.set(val)
         Tkinter.Checkbutton.__init__(self,
-                                     parent,
+                                     parent.frame,
                                      font='TkFixedFont',
                                      highlightbackground='#000000',
                                      highlightcolor='lawn green',
@@ -125,6 +126,13 @@ class Check(Tkinter.Checkbutton):
                                      text=text,
                                      variable=self.var,
                                      command=callback)
+        self.bind("<Tab>", self.handle_tab)
+
+    def handle_tab(self, event):
+        #We want our parent to select the next checkbox
+        item = self.parent.next_item(self)
+        item.focus_set()
+        return 'break'
 
 class Label(Tkinter.Label):
     def __init__(self, parent, width, text, bg='black', fg='lawn green', anchor='w', padx=2):
@@ -254,7 +262,6 @@ class Scrollable(View):
                 return self.activate_item(index)
         self.last_click_time = now
         self.last_click_index = index
-        print 'bob',index
         self.select(self.index_to_addr(index))
 
     def index_to_addr(self, index):
@@ -415,7 +422,6 @@ class SymbolsSearcher(Scrollable):
         self.substrings = {}
         self.contents = []
         super(SymbolsSearcher, self).__init__(app, height, width, invisible=True)
-        print 'ted',self.label_widths
 
     def set_parent(self, parent):
         self.parent = parent
@@ -839,15 +845,29 @@ class Options(View):
         self.frame = Frame(app.frame,
                            width=self.width,
                            height=self.height)
-
+        
+        #self.frame.bind("<Tab>", self.handle_tab)
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
         #self.frame.grid(padx=5,sticky=Tkinter.N+Tkinter.S+Tkinter.E+Tkinter.W)
         self.place()
-        self.c = Check(self.frame,
+        self.c = Check(self,
                        "Follow PC",
                        val = 1 if self.app.follow_pc else 0,
                        callback = self.cb)
         self.c.pack(side=Tkinter.LEFT)
+        self.checks = [self.c]
+        
+    def next_item(self, item):
+        try:
+            index = self.checks.index(item)
+        except ValueError:
+            return None
+        try:
+            return self.checks[index + 1]
+        except IndexError:
+            #we're done
+            return self.app.next_item(self)
+        
 
     def cb(self):
         #The var presently stores 1 or 0, just map that to True or False
@@ -978,11 +998,16 @@ class Application(Tkinter.Frame):
             self.breakpoints.add(addr)
             self.send_message(messages.SetBreakpoint(addr))
 
-    def toggle_stop(self, event):
+    def toggle_stop(self):
         if self.stopped:
             self.resume()
         else:
             self.stop()
+
+    def handle_escape(self, event):
+        self.toggle_stop()
+        if self.stopped:
+            self.disassembly.focus_set()
 
     def restart(self):
         #self.send_message(messages.Restart())
@@ -1139,7 +1164,7 @@ def main():
             emulator = emulate.Emulator()
             app.emulator = emulator
             embed.bind("<Key>", emulator.key_up)
-            root.bind("<Escape>", app.toggle_stop)
+            root.bind("<Escape>", app.handle_escape)
             embed.bind("<KeyRelease>", emulator.key_down)
             embed.bind("<Button-1>", lambda x: embed.focus_set())
             #filthy hack to get tab order working
