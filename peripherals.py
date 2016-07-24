@@ -72,8 +72,7 @@ class Button(Tkinter.Button):
         if self.enabled:
             Tkinter.Button.focus_set(self)
         else:
-            f = self.app.next_item if direction > 0 else self.app.prev_item
-            f(self).take_focus(direction)
+            self.app.adjacent_item(self, direction).take_focus(direction)
 
     def tab(self, event):
         self.app.next_item(self).take_focus(1)
@@ -1075,7 +1074,7 @@ class Application(Tkinter.Frame):
         if self.emulator:
             self.emulator.restart()
 
-    def adjacent_item(self, item, direction, start):
+    def adjacent_item(self, item, direction):
         if item is self.disassembly.symbols_searcher:
             item = self.disassembly
         try:
@@ -1086,13 +1085,14 @@ class Application(Tkinter.Frame):
             return self.tab_views[index + direction]
         except IndexError:
             #we go back to the emulator
-            return start
+            index = 0 if direction > 0 else -1
+            return self.tab_views[index]
 
     def next_item(self, item):
-        return self.adjacent_item(item, 1, self.emulator_frame)
+        return self.adjacent_item(item, 1)
 
     def prev_item(self, item):
-        return self.adjacent_item(item, -1, self.tab_views[-1])
+        return self.adjacent_item(item, -1)
 
     def set_pc(self, pc):
         self.pc = pc
@@ -1137,7 +1137,7 @@ class Application(Tkinter.Frame):
 
         self.buttons = [self.stop_button, self.step_button, self.restart_button]
         self.views = [self.disassembly, self.registers, self.memory, self.tapes, self.options]
-        self.tab_views = [self.disassembly, self.memory, self.tapes, self.options] + self.buttons
+        self.tab_views = [self.emulator_frame, self.disassembly, self.memory, self.tapes, self.options] + self.buttons
 
         self.queue.put(messages.Disconnect())
 
@@ -1274,10 +1274,15 @@ class EmulatorWrapper(object):
             #pass the tab on
             self.emulator.key_down(event)
         else:
-            self.app.disassembly.take_focus(1)
+            self.app.next_item(self).take_focus(1)
         return 'break'
 
     def shift_tab(self, event):
+        if self.locked:
+            #pass the tab on
+            self.emulator.key_down(event)
+        else:
+            self.app.prev_item(self).take_focus(-1)
         return 'break'
 
     def click(self, event):
