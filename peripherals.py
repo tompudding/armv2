@@ -7,6 +7,7 @@ import itertools
 import sys
 import Queue
 import time
+import os
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
@@ -1124,6 +1125,7 @@ class Application(Tkinter.Frame):
         self.memory.receive_symbols(symbols)
 
 
+
 def run():
     #import hanging_threads
     root = Tkinter.Tk()
@@ -1136,23 +1138,91 @@ def run():
         app.mainloop()
     root.destroy()
 
-def switch_to_disassembly(app, event):
-    app.disassembly.focus_set()
-    return 'break'
+class EmulatorWrapper(object):
+    locked_color = '#ff0000'
+    unlocked_color = 'lawn green'
+    def __init__(self, parent, width, height):
+        self.emulator = None
+        self.app = None
+        self.frame = Tkinter.Frame(parent,
+                                   width=width+2,
+                                   height=height+2,
+                                   highlightcolor='lawn green',
+                                   highlightbackground='#004000',
+                                   highlightthickness=1)
+
+        self.embed = Tkinter.Frame(self.frame, 
+                                   width = 960,
+                                   height = 720)
+
+        os.environ['SDL_WINDOWID'] = str(self.embed.winfo_id())
+        self.frame.pack(side=Tkinter.LEFT)
+        self.embed.pack(side=Tkinter.LEFT)
+
+        self.frame.bind("<Key>", self.key_down)
+        self.frame.bind("<KeyRelease>", self.key_up)
+        self.frame.bind("<Button-1>", self.click)
+        #filthy hack to get tab order working
+        self.frame.bind("<Tab>", self.tab)
+        self.frame.bind("<Escape>", self.nolock_key)
+        self.locked = False
+
+    def register_emulator(self, emulator):
+        self.emulator = emulator
+
+    def register_app(self, app):
+        self.app = app
+
+    def key_up(self, event):
+        if self.locked:
+            self.emulator.key_up(event)
+        return 'break'
+
+    def key_down(self, event):
+        self.handle_keydown(event)
+
+        #If we're not locked and we just pressed some key other than tab or escape, then lock on
+        if not self.locked:
+            self.locked = True
+            self.frame.config(highlightcolor=self.locked_color)
+
+    def nolock_key(self, event):
+        self.handle_keydown(event)
+        if self.locked:
+            self.locked = False
+            self.frame.config(highlightcolor=self.unlocked_color)
+        return 'break'
+
+    def handle_keydown(self, event):
+        if self.locked:
+            self.emulator.key_up(event)
+        #return 'break'
+
+    def tab(self, event):
+        if self.locked:
+            #pass the tab on
+            self.emulator.key_down(event)
+        else:
+            self.app.disassembly.focus_set()
+        return 'break'
+
+    def click(self, event):
+        print 'click'
+
+    def focus_set(self, event=None):
+        self.frame.focus_set()
+
 
 def main():
     import pygame
     import emulate
-    import os
     root = Tkinter.Tk()
     root.resizable(0,0)
     root.tk_setPalette(background='black',
                        highlightbackground='lawn green')
-    embed = Tkinter.Frame(root, width = 960, height = 720)
-    os.environ['SDL_WINDOWID'] = str(embed.winfo_id())
+    emulator_wrapper = EmulatorWrapper(root, 960, 720)
     debugger = Tkinter.Frame(root)
-    embed.pack(side=Tkinter.LEFT)
-    app = Application(master=debugger, emulator_frame=embed)
+    app = Application(master=debugger, emulator_frame=emulator_wrapper)
     debugger.pack(side=Tkinter.TOP)
 
     try:
@@ -1162,16 +1232,13 @@ def main():
             #app.mainloop()
             app.update()
             #os.environ['SDL_VIDEODRIVER'] = 'windib'
-            embed.focus_set()
+            emulator_wrapper.focus_set()
             emulate.init()
             emulator = emulate.Emulator()
             app.emulator = emulator
-            embed.bind("<Key>", emulator.key_up)
+            emulator_wrapper.register_emulator(emulator)
+            emulator_wrapper.register_app(app)
             root.bind("<Escape>", app.handle_escape)
-            embed.bind("<KeyRelease>", emulator.key_down)
-            embed.bind("<Button-1>", lambda x: embed.focus_set())
-            #filthy hack to get tab order working
-            embed.bind("<Tab>", lambda event: switch_to_disassembly(app, event))
 
             emulator.run( callback=app.update )
     finally:
