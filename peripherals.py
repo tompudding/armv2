@@ -1186,6 +1186,8 @@ class EmulatorWrapper(object):
             self.locked = True
             self.frame.config(highlightcolor=self.locked_color)
 
+        return 'break'
+
     def nolock_key(self, event):
         self.handle_keydown(event)
         if self.locked:
@@ -1195,8 +1197,7 @@ class EmulatorWrapper(object):
 
     def handle_keydown(self, event):
         if self.locked:
-            self.emulator.key_up(event)
-        #return 'break'
+            return self.emulator.key_down(event)
 
     def tab(self, event):
         if self.locked:
