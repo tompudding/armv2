@@ -457,6 +457,8 @@ class SymbolsSearcher(Scrollable):
         if self.selected is not None:
             index = self.index_to_addr(self.selected)
             addr = self.contents[index][0]
+            #Addr must always be aligned
+            addr = addr&(~3)
             self.hide()
             self.parent.show()
             self.parent.centre(addr)
@@ -476,7 +478,8 @@ class SymbolsSearcher(Scrollable):
 
         first = self.get_first_entry()
         if first is not None:
-            self.contents.insert(0, first)
+            #This is expensive. Some kind of itertools thing to join two lists cheaply?
+            self.contents = [first] + self.contents
 
         self.select_max = len(self.contents)
         self.view_start = self.view_min
