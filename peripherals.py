@@ -173,6 +173,20 @@ class Check(Tkinter.Checkbutton):
     def get(self):
         return self.var.get()
 
+class RadioGrid(View):
+    def __init__(self, parent, modes):
+        self.parent = parent
+        self.buttons = []
+        self.var = Tkinter.StringVar()
+        self.var.set("0")
+        for i,name in enumerate(modes):
+            radio = Tkinter.Radiobutton(self.parent.frame,
+                                        text=name,
+                                        value = str(i),
+                                        variable = self.var)
+            radio.grid(row=i,column=1,sticky=Tkinter.W)
+                                        
+
 class Label(Tkinter.Label):
     def __init__(self, parent, width, text, bg='black', fg='lawn green', anchor='w', padx=2):
         self.sv = Tkinter.StringVar()
@@ -785,13 +799,14 @@ class Memory(Searchable):
     view_min = -Scrollable.buffer*line_size
     view_max = 1<<26
     select_max = view_max
-    labels_per_row = 1
+    labels_per_row = 2
     message_class = messages.MemdumpView
-    label_widths_initial = [0]
+    label_widths_initial = [0,8]
     printable = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
 
     def __init__(self, *args, **kwargs):
         super(Memory, self).__init__(*args, **kwargs)
+        self.mode_chooser = RadioGrid( self, ('bytes','words','dwords') )
 
     def redraw(self):
         line_index = self.buffer
