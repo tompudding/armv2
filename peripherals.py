@@ -1010,8 +1010,8 @@ class Application(Tkinter.Frame):
 
     def handle_escape(self, event):
         self.toggle_stop()
-        if self.stopped:
-            self.disassembly.focus_set()
+        #if self.stopped:
+        #    self.disassembly.focus_set()
 
     def restart(self):
         #self.send_message(messages.Restart())
@@ -1182,7 +1182,7 @@ class EmulatorWrapper(object):
         self.handle_keydown(event)
 
         #If we're not locked and we just pressed some key other than tab or escape, then lock on
-        if not self.locked:
+        if not self.locked and not self.emulator.is_stopped():
             self.locked = True
             self.frame.config(highlightcolor=self.locked_color)
 
@@ -1193,7 +1193,7 @@ class EmulatorWrapper(object):
         if self.locked:
             self.locked = False
             self.frame.config(highlightcolor=self.unlocked_color)
-        return 'break'
+            return 'break'
 
     def handle_keydown(self, event):
         if self.locked:

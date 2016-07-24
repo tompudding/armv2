@@ -75,6 +75,9 @@ class Emulator(object):
         self.dbg.new_machine(new_machine())
         self.dbg.Update()
 
+    def is_stopped(self):
+        return self.dbg.stopped
+
     def mainloop(self, callback):
         globals.t = pygame.time.get_ticks()
         self.dbg.StepNum(self.dbg.FRAME_CYCLES)
