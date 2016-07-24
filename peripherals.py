@@ -1229,9 +1229,10 @@ class EmulatorWrapper(object):
         self.embed.bind("<Button-1>", self.click)
         #filthy hack to get tab order working
         self.frame.bind("<Tab>", self.tab)
+        self.frame.bind("<Shift_L>", self.no_lock_key)
         self.frame.bind("<Shift-Tab>", self.shift_tab)
         self.frame.bind("<Shift-ISO_Left_Tab>", self.shift_tab)
-        self.frame.bind("<Escape>", self.nolock_key)
+        self.frame.bind("<Escape>", self.break_lock_key)
         self.locked = False
 
     def register_emulator(self, emulator):
@@ -1259,7 +1260,11 @@ class EmulatorWrapper(object):
         self.locked = False
         self.frame.config(highlightcolor=self.unlocked_color)
 
-    def nolock_key(self, event):
+    def no_lock_key(self, event):
+        self.handle_keydown(event)
+        return 'break'
+
+    def break_lock_key(self, event):
         self.handle_keydown(event)
         if self.locked:
             self.unlock()
