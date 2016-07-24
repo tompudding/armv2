@@ -1162,6 +1162,7 @@ class EmulatorWrapper(object):
         self.frame.bind("<Key>", self.key_down)
         self.frame.bind("<KeyRelease>", self.key_up)
         self.frame.bind("<Button-1>", self.click)
+        self.embed.bind("<Button-1>", self.click)
         #filthy hack to get tab order working
         self.frame.bind("<Tab>", self.tab)
         self.frame.bind("<Escape>", self.nolock_key)
@@ -1208,7 +1209,7 @@ class EmulatorWrapper(object):
         return 'break'
 
     def click(self, event):
-        print 'click'
+        self.focus_set()
 
     def focus_set(self, event=None):
         self.frame.focus_set()
