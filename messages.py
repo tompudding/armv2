@@ -247,6 +247,9 @@ class Symbols(Message):
         for item in self.lookup.iteritems():
             yield item
 
+    def items(self):
+        return list(self.iteritems())
+
     def __contains__(self, addr):
         return addr in self.lookup
 

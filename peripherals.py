@@ -497,7 +497,7 @@ class SymbolsSearcher(Scrollable):
 
     def receive_symbols(self, symbols):
         self.symbols = symbols
-        self.substrings = {}
+        self.substrings = {'' : symbols.items()}
         for addr,name in symbols.iteritems():
             for substring_length in xrange(1,len(name)):
                 for start_pos in xrange(0,len(name) + 1 - substring_length):
