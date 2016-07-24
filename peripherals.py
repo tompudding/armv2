@@ -135,6 +135,9 @@ class Check(Tkinter.Checkbutton):
         item.focus_set()
         return 'break'
 
+    def get(self):
+        return self.var.get()
+
 class Label(Tkinter.Label):
     def __init__(self, parent, width, text, bg='black', fg='lawn green', anchor='w', padx=2):
         self.sv = Tkinter.StringVar()
@@ -636,6 +639,9 @@ class Disassembly(Searchable):
         self.view_start = new_start
         self.show_first_label = show_first_label
 
+    def centre_pc(self):
+        self.centre(self.pc)
+
     def centre(self, pos):
         #Centering is slightly tricky for us due to the labels. Starting at pos, we go backwards counting
         #how many labels we encounter until we've accounted for the size/2 lines we need
@@ -875,9 +881,9 @@ class Options(View):
 
     def cb(self):
         #The var presently stores 1 or 0, just map that to True or False
-        self.app.follow_pc = True if self.var.get() else False
+        self.app.follow_pc = True if self.c.get() else False
         if self.app.follow_pc:
-            self.app.disassembly.centre()
+            self.app.disassembly.centre_pc()
 
 class Registers(View):
     num_entries = 19
@@ -1189,11 +1195,14 @@ class EmulatorWrapper(object):
 
         return 'break'
 
+    def unlock(self):
+        self.locked = False
+        self.frame.config(highlightcolor=self.unlocked_color)
+
     def nolock_key(self, event):
         self.handle_keydown(event)
         if self.locked:
-            self.locked = False
-            self.frame.config(highlightcolor=self.unlocked_color)
+            self.unlock()
             return 'break'
 
     def handle_keydown(self, event):
@@ -1209,9 +1218,12 @@ class EmulatorWrapper(object):
         return 'break'
 
     def click(self, event):
-        self.focus_set()
+        self.focus_set(False)
 
     def focus_set(self, event=None):
+        if event != False and self.locked:
+            #we just tabbed in. We'd better not be locked
+            self.unlock()
         self.frame.focus_set()
 
 
