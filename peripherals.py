@@ -55,6 +55,8 @@ class Button(Tkinter.Button):
                                 state=state,
                                 )
         self.bind("<Tab>", self.tab)
+        self.bind("<Shift-Tab>", self.shift_tab)
+        self.bind("<Shift-ISO_Left_Tab>", self.shift_tab)
 
     def disable(self):
         self.enabled = False
@@ -66,16 +68,20 @@ class Button(Tkinter.Button):
         self.config(state=Tkinter.NORMAL)
         self.config(highlightbackground=self.unselected_border)
 
-    def focus_set(self):
+    def take_focus(self, direction=1):
         if self.enabled:
             Tkinter.Button.focus_set(self)
         else:
-            self.app.next_item(self).focus_set()
+            f = self.app.next_item if direction > 0 else self.app.prev_item
+            f(self).take_focus(direction)
 
     def tab(self, event):
-        self.app.next_item(self).focus_set()
+        self.app.next_item(self).take_focus(1)
         return 'break'
 
+    def shift_tab(self, event):
+        self.app.prev_item(self).take_focus(-1)
+        return 'break'
 
 class View(object):
     unselected_fg = 'lawn green'
@@ -91,11 +97,15 @@ class View(object):
         self.num_lines = self.widget.config()['height'][-1]
         self.num_cols  = self.widget.config()['width'][-1]
 
-    def focus_set(self):
-        self.frame.focus_set()
+    def take_focus(self, direction=1):
+        self.frame.take_focus(direction)
 
     def switch_from(self, event):
-        self.app.next_item(self).focus_set()
+        self.app.next_item(self).take_focus(1)
+        return 'break'
+
+    def switch_from_back(self, event):
+        self.app.prev_item(self).take_focus(-1)
         return 'break'
 
     def status_update(self, message):
@@ -123,6 +133,9 @@ class Frame(Tkinter.Frame):
                                highlightthickness=1,
                                relief=Tkinter.SOLID)
 
+    def take_focus(self, direction):
+        Frame.focus_set(self)
+
 class Check(Tkinter.Checkbutton):
     def __init__(self, parent, text, val, callback):
         self.parent = parent
@@ -146,11 +159,16 @@ class Check(Tkinter.Checkbutton):
                                      variable=self.var,
                                      command=callback)
         self.bind("<Tab>", self.handle_tab)
+        self.bind("<Shift-Tab>", self.handle_shift_tab)
+        self.bind("<Shift-ISO_Left_Tab>", self.handle_shift_tab)
 
     def handle_tab(self, event):
         #We want our parent to select the next checkbox
-        item = self.parent.next_item(self)
-        item.focus_set()
+        self.parent.next_item(self).take_focus(1)
+        return 'break'
+
+    def handle_shift_tab(self, event):
+        self.parent.prev_item(self).take_focus(-1)
         return 'break'
 
     def get(self):
@@ -212,7 +230,7 @@ class Scrollable(View):
         self.frame.bind("<g>", self.search)
         self.full_height = self.height + 2*self.buffer
 
-        self.frame.bind("<Button-1>", lambda x: self.frame.focus_set())
+        self.frame.bind("<Button-1>", lambda x: self.frame.take_focus())
         self.label_rows = []
         start_row = self.initial_decoration()
         for i in xrange(self.height):
@@ -220,7 +238,7 @@ class Scrollable(View):
             for j in xrange(self.labels_per_row):
                 widget = Label(self.frame, width = self.label_widths[j], text=' ', padx=1)
 
-                widget.bind("<Button-1>", lambda x,i=i: [self.click(i),self.frame.focus_set()])
+                widget.bind("<Button-1>", lambda x,i=i: [self.click(i),self.frame.take_focus()])
                 widget.bind("<MouseWheel>", self.mouse_wheel)
                 widget.bind("<Button-4>", self.mousewheel_up)
                 widget.bind("<Button-5>", self.mousewheel_down)
@@ -250,6 +268,8 @@ class Scrollable(View):
         frame.bind("<Button-4>", self.keyboard_up)
         frame.bind("<Button-5>", self.keyboard_down)
         frame.bind("<Tab>", self.switch_from)
+        frame.bind("<Shift-Tab>", self.switch_from_back)
+        frame.bind("<Shift-ISO_Left_Tab>", self.switch_from_back)
         frame.bind("<space>", self.handle_space)
         frame.bind("<Return>", self.handle_enter)
 
@@ -567,7 +587,7 @@ class SymbolsSearcher(Scrollable):
                          width=self.parent.width_pixels)
         self.app.master.update()
         self.separator.config(width=self.frame.winfo_width() - 30)
-        self.frame.focus_set()
+        self.frame.take_focus()
         self.text_entry.focus()
 
     def hide(self):
@@ -590,14 +610,14 @@ class Searchable(Scrollable):
                          y=self.frame_pos[1],
                          height=self.height_pixels,
                          width=self.width_pixels)
-        self.frame.focus_set()
+        self.frame.take_focus()
         self.hidden = False
 
-    def focus_set(self):
+    def take_focus(self, direction=1):
         if self.hidden:
-            self.symbols_searcher.focus_set()
+            self.symbols_searcher.take_focus(direction)
         else:
-            return super(Searchable,self).focus_set()
+            return super(Searchable,self).take_focus(direction)
 
     def hide(self):
         self.hidden = True
@@ -874,7 +894,9 @@ class Options(View):
                            width=self.width,
                            height=self.height)
         
-        #self.frame.bind("<Tab>", self.handle_tab)
+        self.frame.bind("<Tab>", self.switch_from)
+        self.frame.bind("<Shift-Tab>", self.switch_from_back)
+        self.frame.bind("<Shift-ISO_Left_Tab>", self.switch_from_back)
         #self.frame.pack(padx=5,pady=0,side=Tkinter.TOP,fill='x')
         #self.frame.grid(padx=5,sticky=Tkinter.N+Tkinter.S+Tkinter.E+Tkinter.W)
         self.place()
@@ -885,16 +907,25 @@ class Options(View):
         self.c.pack(side=Tkinter.LEFT)
         self.checks = [self.c]
         
-    def next_item(self, item):
+    def adjacent_item(self, item, dir):
         try:
             index = self.checks.index(item)
         except ValueError:
             return None
         try:
-            return self.checks[index + 1]
+            return self.checks[index + dir]
         except IndexError:
             #we're done
-            return self.app.next_item(self)
+            if dir > 0:
+                return self.app.next_item(self)
+            else:
+                return self.app.prev_item(self)
+
+    def next_item(self,item):
+        return self.adjacent_item(item, 1)
+
+    def prev_item(self,item):
+        return self.adjacent_item(item, -1)
         
 
     def cb(self):
@@ -916,6 +947,8 @@ class Registers(View):
                                    height=self.height)
 
         self.frame.bind("<Tab>", self.switch_from)
+        self.frame.bind("<Shift-Tab>", self.switch_from_back)
+        self.frame.bind("<Shift-ISO_Left_Tab>", self.switch_from_back)
         self.place()
         self.label_rows = []
         for i in xrange(self.num_entries):
@@ -934,8 +967,8 @@ class Registers(View):
         self.label_rows[17][0].set(('%5s : %08x' % ('PC',message.pc)))
         self.label_rows[18][0].set(('%5s : %s' % ('State','Waiting' if message.is_waiting else '')))
 
-    def focus_set(self):
-        self.frame.focus_set()
+    def take_focus(self, direction=1):
+        self.frame.take_focus(direction)
         return 'break'
 
     def register_name(self, i):
@@ -1042,7 +1075,7 @@ class Application(Tkinter.Frame):
         if self.emulator:
             self.emulator.restart()
 
-    def next_item(self, item):
+    def adjacent_item(self, item, direction, start):
         if item is self.disassembly.symbols_searcher:
             item = self.disassembly
         try:
@@ -1050,10 +1083,16 @@ class Application(Tkinter.Frame):
         except ValueError:
             return None
         try:
-            return self.tab_views[index + 1]
+            return self.tab_views[index + direction]
         except IndexError:
             #we go back to the emulator
-            return self.emulator_frame
+            return start
+
+    def next_item(self, item):
+        return self.adjacent_item(item, 1, self.emulator_frame)
+
+    def prev_item(self, item):
+        return self.adjacent_item(item, -1, self.tab_views[-1])
 
     def set_pc(self, pc):
         self.pc = pc
@@ -1190,6 +1229,8 @@ class EmulatorWrapper(object):
         self.embed.bind("<Button-1>", self.click)
         #filthy hack to get tab order working
         self.frame.bind("<Tab>", self.tab)
+        self.frame.bind("<Shift-Tab>", self.shift_tab)
+        self.frame.bind("<Shift-ISO_Left_Tab>", self.shift_tab)
         self.frame.bind("<Escape>", self.nolock_key)
         self.locked = False
 
@@ -1233,14 +1274,17 @@ class EmulatorWrapper(object):
             #pass the tab on
             self.emulator.key_down(event)
         else:
-            self.app.disassembly.focus_set()
+            self.app.disassembly.take_focus(1)
+        return 'break'
+
+    def shift_tab(self, event):
         return 'break'
 
     def click(self, event):
-        self.focus_set(False)
+        self.focus_set(from_click=True)
 
-    def focus_set(self, event=None):
-        if event != False and self.locked:
+    def take_focus(self, direction=1, from_click=False):
+        if not from_click and self.locked:
             #we just tabbed in. We'd better not be locked
             self.unlock()
         self.frame.focus_set()
@@ -1265,7 +1309,7 @@ def main():
             #app.mainloop()
             app.update()
             #os.environ['SDL_VIDEODRIVER'] = 'windib'
-            emulator_wrapper.focus_set()
+            emulator_wrapper.take_focus(1)
             emulate.init()
             emulator = emulate.Emulator()
             app.emulator = emulator
