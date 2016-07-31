@@ -9,4 +9,4 @@ Features
 
 Bugs
 ----
- - Holding down S causes disassembly to go blank
+ - Holding down S causes disassembly to go blank sometimes
