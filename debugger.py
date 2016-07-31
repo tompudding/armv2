@@ -212,6 +212,11 @@ class Debugger(object):
     def Step(self, explicit=False):
         return self.StepNumInternal(1, skip_breakpoint=explicit)
 
+    def Next(self):
+        #Continue until we reach the next instruction. We implement this by adding a secret breakpoint
+        #at the next instruction, then removing it the next time the machine stops
+        pass
+
     def Continue(self, explicit=False):
         result = None
         self.stopped = False
