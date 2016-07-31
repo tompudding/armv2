@@ -19,9 +19,11 @@ class Debugger(object):
     def __init__(self,machine):
         self.machine          = machine
         self.breakpoints      = {}
+        self.next_breakpoint  = None
         self.handlers = {messages.Types.RESUME      : self.handle_resume,
                          messages.Types.STOP        : self.handle_stop,
                          messages.Types.STEP        : self.handle_step,
+                         messages.Types.NEXT        : self.handle_next,
                          messages.Types.RESTART     : self.handle_restart,
                          messages.Types.SETBKPT     : self.handle_set_breakpoint,
                          messages.Types.UNSETBKPT   : self.handle_unset_breakpoint,
@@ -68,6 +70,9 @@ class Debugger(object):
 
     def handle_step(self,message):
         self.Step(explicit=True)
+
+    def handle_next(self,message):
+        self.Next(explicit=True)
 
     def handle_restart(self,message):
         print 'Got restart'
@@ -175,6 +180,7 @@ class Debugger(object):
 
     def new_machine(self, machine):
         self.machine = machine
+        self.next_instruction = None
         for bkpt in self.breakpoints:
             self.breakpoints[bkpt] = self.machine.memw[bkpt]
             self.machine.memw[bkpt] = self.BKPT
@@ -212,10 +218,28 @@ class Debugger(object):
     def Step(self, explicit=False):
         return self.StepNumInternal(1, skip_breakpoint=explicit)
 
-    def Next(self):
+    def Next(self, explicit=True):
         #Continue until we reach the next instruction. We implement this by adding a secret breakpoint
         #at the next instruction, then removing it the next time the machine stops
-        pass
+        if self.machine.pc in self.breakpoints:
+            word = self.breakpoints[self.machine.pc]
+        else:
+            word = self.machine.memw[self.machine.pc]
+        print hex(self.machine.pc),hex(word),disassemble.sets_lr(word)
+        if not disassemble.sets_lr(word):
+            #We can just step 1 instruction in this case
+            return self.Step(explicit)
+
+        next_instruction = self.machine.pc + 4
+        if next_instruction in self.breakpoints:
+            #In this case we just allow a continue since it'll stop anyway
+            print 'blarg'
+            return self.Continue(explicit)
+
+        #OK so we're going to actually put the breakpoint in
+        self.next_breakpoint = (next_instruction, self.machine.memw[next_instruction])
+        self.machine.memw[next_instruction] = self.BKPT
+        return self.Continue(explicit)
 
     def Continue(self, explicit=False):
         result = None
@@ -250,5 +274,11 @@ class Debugger(object):
 
     def Stop(self, send_message=True):
         self.stopped = True
+        if self.next_breakpoint is not None:
+            next_instruction, word = self.next_breakpoint
+            print 'replace at %08x with %08x pc=%08x' % (next_instruction, word, self.machine.pc)
+            #We always clear the next breakpoint when we stop
+            self.machine.memw[next_instruction] = word
+            self.next_breakpoint = None
         if send_message:
             self.connection.send(messages.Stop())

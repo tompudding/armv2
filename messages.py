@@ -31,6 +31,7 @@ class Types:
     TAPE_LOAD       = 17
     TAPE_UNLOAD     = 18
     SYMBOL_DATA     = 19
+    NEXT            = 20
 
 
 class DynamicObject(object):
@@ -325,6 +326,12 @@ class Step(Message):
     def from_binary(data):
         return Step()
 
+class Next(Message):
+    type = Types.NEXT
+
+    @staticmethod
+    def from_binary(data):
+        return Next()
 
 class TapeLoad(SetBreakpoint):
     type = Types.TAPE_LOAD
@@ -368,6 +375,7 @@ messages_by_type = {Types.CONNECT         : Handshake,
                     Types.TAPE_LOAD       : TapeLoad,
                     Types.TAPE_UNLOAD     : TapeUnload,
                     Types.SYMBOL_DATA     : Symbols,
+                    Types.NEXT            : Next,
 }
 
 def MessageFactory(data):

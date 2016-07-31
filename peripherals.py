@@ -217,7 +217,7 @@ class RadioGrid(View):
         self.selected = int(self.var.get())
         self.buttons[self.selected].config(fg=self.selected_fg)
         self.callback(self.selected)
-                                        
+
 
 class Label(Tkinter.Label):
     def __init__(self, parent, width, text, bg='black', fg='lawn green', anchor='w', padx=2):
@@ -272,6 +272,7 @@ class Scrollable(View):
         #self.frame.grid(padx=5)
         self.set_frame_bindings(self.frame)
         self.frame.bind("<s>", self.app.step)
+        self.frame.bind("<n>", self.app.next)
         self.frame.bind("<g>", self.search)
         self.full_height = self.height + 2*self.buffer
 
@@ -850,7 +851,7 @@ class Memory(Searchable):
     label_widths_initial = [0,8]
     printable = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
     modes = ('bytes','words','dwords')
-    
+
     def __init__(self, *args, **kwargs):
         super(Memory, self).__init__(*args, **kwargs)
         self.format_data = None
@@ -879,7 +880,7 @@ class Memory(Searchable):
         unknown = '?'*(width*2)
         for i in xrange(0,self.line_size,width):
             if i + width <= len(data):
-                item = format_string % struct.unpack(token,data[i:i+width])[0] 
+                item = format_string % struct.unpack(token,data[i:i+width])[0]
             else:
                 item = unknown
             out.append(item)
@@ -903,7 +904,7 @@ class Memory(Searchable):
             if len(data) < self.line_size:
                 data += '??'*(self.line_size-len(data))
             data_string = self.format_data(data)
-            
+
             ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
             self.lines[line_index] = '%07x : %23s  %s' % (addr, data_string, ascii_string)
 
@@ -981,7 +982,7 @@ class Options(View):
         self.frame = Frame(app.frame,
                            width=self.width,
                            height=self.height)
-        
+
         self.frame.bind("<Tab>", self.switch_from)
         self.frame.bind("<Shift-Tab>", self.switch_from_back)
         self.frame.bind("<Shift-ISO_Left_Tab>", self.switch_from_back)
@@ -994,7 +995,7 @@ class Options(View):
                        callback = self.cb)
         self.c.pack(side=Tkinter.LEFT)
         self.checks = [self.c]
-        
+
     def adjacent_item(self, item, dir):
         try:
             index = self.checks.index(item)
@@ -1014,7 +1015,7 @@ class Options(View):
 
     def prev_item(self,item):
         return self.adjacent_item(item, -1)
-        
+
 
     def cb(self):
         #The var presently stores 1 or 0, just map that to True or False
@@ -1194,6 +1195,10 @@ class Application(Tkinter.Frame):
         if self.stopped:
             self.send_message(messages.Step())
 
+    def next(self, event=None):
+        if self.stopped:
+            self.send_message(messages.Next())
+
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
@@ -1307,7 +1312,7 @@ class EmulatorWrapper(object):
                                    highlightbackground='#004000',
                                    highlightthickness=1)
 
-        self.embed = Tkinter.Frame(self.frame, 
+        self.embed = Tkinter.Frame(self.frame,
                                    width = 960,
                                    height = 720)
 

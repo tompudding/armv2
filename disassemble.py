@@ -49,6 +49,7 @@ class Instruction(object):
                   'GT','LE','','NV']
     mneumonic = 'UNK'
     args = []
+    sets_lr = False
     def __init__(self, addr, word, cpu):
         self.addr = addr
         self.word = word
@@ -190,18 +191,23 @@ class BranchInstruction(Instruction):
     def __init__(self, addr, word, cpu, symbols):
         super(BranchInstruction,self).__init__(addr,word,cpu)
         if (word>>24)&1:
+            self.sets_lr = True
             self.mneumonic = 'BL'
         else:
             self.mneumonic = 'B'
         offset = (word&0xffffff)<<2
         target = (addr + offset + 8) & 0xffffff
-        index = bisect.bisect_left(symbols.addrs, target)
-        try:
-            sym_addr, sym_name = symbols.by_index(index)
-        except IndexError:
-            #the target is past all the symbols
-            sym_addr = None
-            sym_name = None
+        if symbols is None:
+            sym_addr = sym_name = None
+            index = 0
+        else:
+            index = bisect.bisect_left(symbols.addrs, target)
+            try:
+                sym_addr, sym_name = symbols.by_index(index)
+            except IndexError:
+                #the target is past all the symbols
+                sym_addr = None
+                sym_name = None
 
         if target == sym_addr:
             arg = '0x%x(%s)' % (target,sym_name)
@@ -277,7 +283,7 @@ class CoprocessorRegisterTransferInstruction(CoprocessorInstruction):
 class CoprocessorDataOperationInstruction(CoprocessorInstruction):
     mneumonic = 'CDP'
 
-def InstructionFactory(addr, word, cpu, symbols):
+def InstructionFactory(addr, word, cpu=None, symbols=None):
     tag = (word>>26)&3
     handler = None
     if tag == 0:
@@ -316,3 +322,7 @@ def Disassemble(cpu, breakpoints, start, end, symbols):
             for byte in ((ord(cpu.mem[addr+i]) << ((3-i)*8)) for i in xrange(4)):
                 word |= byte
         yield InstructionFactory(addr, word, cpu, symbols)
+
+def sets_lr(word):
+    instruction = InstructionFactory(0, word)
+    return instruction.sets_lr
