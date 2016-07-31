@@ -595,7 +595,7 @@ class SymbolsSearcher(Scrollable):
         self.symbols = symbols
         self.substrings = {'' : symbols.items()}
         for addr,name in symbols.iteritems():
-            for substring_length in xrange(1,len(name)):
+            for substring_length in xrange(1,len(name)+1):
                 for start_pos in xrange(0,len(name) + 1 - substring_length):
                     substring = name[start_pos:start_pos + substring_length]
                     try:
