@@ -1383,7 +1383,7 @@ class EmulatorWrapper(object):
         return 'break'
 
     def click(self, event):
-        self.focus_set(from_click=True)
+        self.take_focus(from_click=True)
 
     def take_focus(self, direction=1, from_click=False):
         if not from_click and self.locked:
