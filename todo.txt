@@ -1,0 +1,13 @@
+Features
+--------
+ - go to register
+ - List of breakpoints
+ - skip over 
+ - stack view in memory
+ - run until return
+ - run until userspace
+ - tape playing?
+
+Bugs
+----
+ - Holding down S causes disassembly to go blank
