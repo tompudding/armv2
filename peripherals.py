@@ -506,8 +506,13 @@ class SymbolsSearcher(Scrollable):
     label_widths_initial = [9,0]
     def __init__(self, app, height, width):
         self.parent = None
+        self.app = app
         self.substrings = {}
         self.contents = []
+        self.register_translations = {'r12' : 'fp',
+                                      'r13' : 'sp',
+                                      'r14' : 'lr',
+                                      'r15' : 'pc'}
         super(SymbolsSearcher, self).__init__(app, height, width, invisible=True)
 
     def set_parent(self, parent):
@@ -618,10 +623,19 @@ class SymbolsSearcher(Scrollable):
     def get_first_entry(self):
         contents = self.text_entry.get()
         try:
-            addr = int(contents,16)&0xffffffff
+            return int(contents,16)&0xffffffff, 'Address %s' % contents
         except ValueError:
-            return None
-        return addr, 'Address %s' % contents
+            pass
+
+        try:
+            return self.get_register(contents), 'Register %s' % contents
+        except KeyError:
+            pass
+
+    def get_register(self, reg):
+        reg = reg.lower()
+        translated = self.register_translations.get(reg, reg)
+        return self.app.registers.registers[translated]
 
     def show(self):
         self.select(0)
@@ -1031,10 +1045,13 @@ class Registers(View):
             self.label_rows.append([widget])
         self.num_lines = self.height
         self.num_cols = self.width
+        self.registers = {}
 
     def receive(self, message):
         self.app.set_pc(message.pc)
+        self.registers['pc'] = message.pc
         for i,reg in enumerate(message.registers):
+            self.registers[self.register_name(i)] = reg
             self.label_rows[i][0].set( ('%3s : %08x' % (self.register_name(i),reg)).ljust(self.col_width) )
 
         self.label_rows[16][0].set(('%5s : %8s' % ('MODE',mode_names[message.mode]) ))

@@ -1,6 +1,5 @@
 Features
 --------
- - go to register
  - List of breakpoints
  - skip over 
  - stack view in memory
