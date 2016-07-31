@@ -653,6 +653,111 @@ class SymbolsSearcher(Scrollable):
     def hide(self):
         self.frame.place_forget()
 
+
+class BreakpointView(Scrollable):
+    line_size      = 1
+    buffer         = 0
+    view_min       = 0
+    view_max       = 1<<26
+    select_max     = view_max
+    message_class  = None
+    labels_per_row = 2
+    content_label  = 1
+    label_widths_initial = [9,0]
+    def __init__(self, app, height, width):
+        self.parent = None
+        self.app = app
+        self.substrings = {}
+        self.contents = []
+        super(BreakpointView, self).__init__(app, height, width, invisible=True)
+
+    def set_parent(self, parent):
+        self.parent = parent
+
+    def initial_decoration(self):
+        self.goto_label = Label(self.frame, width=12, text='Breakpoints:')
+        self.goto_label.grid(row=0,column=0,padx=0)
+        self.separator = Tkinter.Frame(self.frame, height=1, width=1, bg=self.unselected_fg)
+        self.separator.grid(pady=4,columnspan=2)
+        #return number of rows
+        return 2
+
+    def activate_item(self, event):
+        if self.selected is not None:
+            index = self.index_to_addr(self.selected)
+            addr = self.contents[index][0]
+            #Addr must always be aligned
+            addr = addr&(~3)
+            self.hide()
+            self.parent.show()
+            self.parent.centre(addr)
+            self.parent.select(addr)
+
+    def set_frame_bindings(self, frame):
+        super(BreakpointView, self).set_frame_bindings(frame)
+        #also allow an escape to send us back
+        frame.bind("<Escape>",self.stop_searching)
+
+    def stop_searching(self, event):
+        self.hide()
+        self.parent.show()
+        return 'break'
+
+    def search(self, event):
+        pass
+
+    def handle_space(self, event):
+        return 'break'
+
+    def redraw(self):
+        #Todo maintain a sorted list so this is cheaper
+        breakpoints = sorted(list(self.app.breakpoints))
+        label_index = 0
+
+        for i,row in enumerate(self.label_rows):
+            pos = self.view_start + i
+            try:
+                addr = breakpoints[pos]
+                row[0].set('%08x' % addr)
+                row[1].set('Breakpoint %d' % pos)
+            except IndexError:
+                row[0].set('')
+                row[1].set('')
+
+
+
+    def get_first_entry(self):
+        contents = self.text_entry.get()
+        try:
+            return int(contents,16)&0xffffffff, 'Address %s' % contents
+        except ValueError:
+            pass
+
+        try:
+            return self.get_register(contents), 'Register %s' % contents
+        except KeyError:
+            pass
+
+    def get_register(self, reg):
+        reg = reg.lower()
+        translated = self.register_translations.get(reg, reg)
+        return self.app.registers.registers[translated]
+
+    def show(self):
+        self.select(0)
+        self.frame.place(x=self.parent.frame_pos[0],
+                         y=self.parent.frame_pos[1],
+                         height=self.parent.height_pixels,
+                         width=self.parent.width_pixels)
+        self.app.master.update()
+        self.separator.config(width=self.frame.winfo_width() - 30)
+        self.frame.take_focus()
+        self.redraw()
+
+    def hide(self):
+        self.frame.place_forget()
+
+
 class Searchable(Scrollable):
     def __init__(self, app, symbols_searcher, height, width):
         self.symbols_searcher = symbols_searcher
@@ -704,14 +809,20 @@ class Disassembly(Searchable):
     content_label  = 2
     label_widths_initial = [1,1,0]
 
-    def __init__(self, app, symbols_searcher, height, width):
+    def __init__(self, app, symbols_searcher, breakpoint_view, height, width):
         self.pc = None
         self.last_message = None
         self.addr_lookups = {i:-self.buffer*self.line_size + (self.buffer + i)*self.line_size for i in xrange(height)}
         self.index_lookups = {value:key for key,value in self.addr_lookups.iteritems()}
         self.show_first_label = True
+        self.breakpoint_view = breakpoint_view
+        self.breakpoint_view.set_parent(self)
         super(Disassembly,self).__init__(app, symbols_searcher, height, width)
+        self.frame.bind("<b>", self.switch_to_breakpoints)
 
+    def switch_to_breakpoints(self, event):
+        self.hide()
+        self.breakpoint_view.show()
 
     def set_pc_label(self, pc, label):
         label_index = self.addr_to_index(pc)
@@ -1031,9 +1142,9 @@ class Registers(View):
         self.width  = width
         self.col_width = self.width/3
         self.app    = app
-        self.frame = Tkinter.Frame(app.frame,
-                                   width=self.width,
-                                   height=self.height)
+        self.frame = Frame(app.frame,
+                           width=self.width,
+                           height=self.height)
 
         self.frame.bind("<Tab>", self.switch_from)
         self.frame.bind("<Shift-Tab>", self.switch_from_back)
@@ -1041,7 +1152,7 @@ class Registers(View):
         self.place()
         self.label_rows = []
         for i in xrange(self.num_entries):
-            widget = Label(self.frame, width=self.col_width, padx=3, text='bobbins')
+            widget = Label(self.frame, width=self.col_width, padx=0, text='bobbins')
             widget.grid(row = i%self.height, column=i/self.height, padx=0)
             self.label_rows.append([widget])
         self.num_lines = self.height
@@ -1206,7 +1317,8 @@ class Application(Tkinter.Frame):
         self.frame.grid()
         self.frame.grid_propagate(0)
         symbols_searcher = SymbolsSearcher(self, width=51, height=12)
-        self.disassembly = Disassembly(self, symbols_searcher, width=51, height=14)
+        breakpoint_view = BreakpointView(self, width=51, height=12)
+        self.disassembly = Disassembly(self, symbols_searcher, breakpoint_view, width=51, height=14)
 
         self.registers = Registers(self, width=51, height=8)
         memory_searcher = SymbolsSearcher(self, width=51, height=11)
