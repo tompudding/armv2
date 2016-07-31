@@ -132,7 +132,7 @@ class Frame(Tkinter.Frame):
                                highlightthickness=1,
                                relief=Tkinter.SOLID)
 
-    def take_focus(self, direction):
+    def take_focus(self, direction=1):
         Frame.focus_set(self)
 
 class Check(Tkinter.Checkbutton):
@@ -174,17 +174,49 @@ class Check(Tkinter.Checkbutton):
         return self.var.get()
 
 class RadioGrid(View):
-    def __init__(self, parent, modes):
+    unselected_fg = '#56f82e'
+    unselected_border = '#2b9c17'
+    unselected_bg = 'black'
+    selected_fg = unselected_bg
+    selected_bg = unselected_fg
+    disabled_border = '#004000'
+    def __init__(self, parent, modes, callback):
         self.parent = parent
         self.buttons = []
         self.var = Tkinter.StringVar()
         self.var.set("0")
+        self.selected = None
+        self.buttons = []
+        self.callback = callback
         for i,name in enumerate(modes):
             radio = Tkinter.Radiobutton(self.parent.frame,
+                                        borderwidth=0,
+                                        pady=0,
+                                        padx=0,
+                                        font='TkFixedFont',
+                                        bg=self.unselected_bg,
+                                        fg=self.unselected_fg,
+                                        relief='flat',
+                                        highlightcolor=self.unselected_fg,
+                                        selectcolor='lawn green',
+                                        activeforeground=self.selected_fg,
+                                        activebackground=self.selected_bg,
+                                        indicatoron=False,
                                         text=name,
+                                        command=self.click,
                                         value = str(i),
                                         variable = self.var)
+            self.buttons.append(radio)
             radio.grid(row=i,column=1,sticky=Tkinter.W)
+        #update for the current contents
+        self.click()
+
+    def click(self):
+        if self.selected is not None:
+            self.buttons[self.selected].config(fg=self.unselected_fg)
+        self.selected = int(self.var.get())
+        self.buttons[self.selected].config(fg=self.selected_fg)
+        self.callback(self.selected)
                                         
 
 class Label(Tkinter.Label):
@@ -803,10 +835,16 @@ class Memory(Searchable):
     message_class = messages.MemdumpView
     label_widths_initial = [0,8]
     printable = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ '
-
+    modes = ('bytes','words','dwords')
+    
     def __init__(self, *args, **kwargs):
         super(Memory, self).__init__(*args, **kwargs)
-        self.mode_chooser = RadioGrid( self, ('bytes','words','dwords') )
+        self.format_data = None
+        self.data_formatters = (self.format_bytes,self.format_words,self.format_dwords)
+        self.mode_chooser = RadioGrid( self, self.modes, self.radio_callback )
+
+    def radio_callback(self, index):
+        self.format_data = self.data_formatters[index]
 
     def redraw(self):
         line_index = self.buffer
@@ -818,8 +856,29 @@ class Memory(Searchable):
             label_index += 1
             addr += self.line_size
 
+    def format_bytes(self, data):
+        return ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.line_size))
+
+    def format_any(self, data, width, token):
+        out = []
+        format_string = '%%0%dx' % (width*2)
+        unknown = '?'*(width*2)
+        for i in xrange(0,self.line_size,width):
+            if i + width <= len(data):
+                item = format_string % struct.unpack(token,data[i:i+width])[0] 
+            else:
+                item = unknown
+            out.append(item)
+        return (' '*width).join(out)+(' '*(width-1))
+
+    def format_words(self, data):
+        return self.format_any(data, 2, '<H')
+
+    def format_dwords(self, data):
+        return self.format_any(data, 4, '<I')
+
     def receive(self, message):
-        if message.start&7:
+        if message.start&7 or self.format_data is None:
             return
 
         for addr in xrange(message.start, message.start + message.size, 8):
@@ -829,9 +888,10 @@ class Memory(Searchable):
             data = message.data[addr - message.start:addr + self.line_size - message.start]
             if len(data) < self.line_size:
                 data += '??'*(self.line_size-len(data))
-            data_string = ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.line_size))
+            data_string = self.format_data(data)
+            
             ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
-            self.lines[line_index] = '%07x : %s   %s' % (addr, data_string, ascii_string)
+            self.lines[line_index] = '%07x : %23s  %s' % (addr, data_string, ascii_string)
 
     def activate_item(self, item):
         pass
