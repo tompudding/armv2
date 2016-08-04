@@ -201,19 +201,11 @@ class BranchInstruction(Instruction):
             sym_addr = sym_name = None
             index = 0
         else:
-            index = bisect.bisect_left(symbols.addrs, target)
-            try:
-                sym_addr, sym_name = symbols.by_index(index)
-            except IndexError:
-                #the target is past all the symbols
-                sym_addr = None
-                sym_name = None
+            sym_name,offset = symbols.get_symbol_and_offset(target)
 
-        if target == sym_addr:
+        if offset == 0:
             arg = '0x%x(%s)' % (target,sym_name)
-        elif index > 0:
-            sym_addr, sym_name = symbols.by_index(index - 1)
-            offset = target - sym_addr
+        elif sym_name and offset < 0x1000: #any more and it's probably not really in that symbol
             arg = '0x%x(%s + 0x%x)' % (target, sym_name, offset)
         else:
             arg = '#0x%x' % target

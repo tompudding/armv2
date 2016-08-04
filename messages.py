@@ -4,7 +4,7 @@ import SocketServer
 import time
 import select
 import struct
-
+import bisect
 
 class Error(Exception):
     pass
@@ -231,6 +231,25 @@ class Symbols(Message):
         for addr,name in self.symbols_list:
             data.append(struct.pack('>I', addr) + name + '\x00')
         return first + ''.join(data)
+
+    def get_symbol_and_offset(self, addr):
+        index = bisect.bisect_left(self.addrs, addr)
+        try:
+            sym_addr, sym_name = self.symbols_list[index]
+        except IndexError:
+            sym_addr, sym_name = self.symbols_list[-1]
+            return sym_name, addr-sym_addr
+
+        if addr == sym_addr:
+            return sym_name, 0
+        elif index > 0:
+            #We're pointing at the first symbol after the address we gave, and we want to say the one before that
+            sym_addr, sym_name = self.symbols_list[index - 1]
+            return sym_name, addr - sym_addr
+        else:
+            #We're before all the symbols
+            return None, addr
+
 
     def by_name(self, name):
         return self.names[name]
