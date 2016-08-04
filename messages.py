@@ -250,7 +250,6 @@ class Symbols(Message):
             #We're before all the symbols
             return None, addr
 
-
     def by_name(self, name):
         return self.names[name]
 

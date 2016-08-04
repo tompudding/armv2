@@ -722,7 +722,18 @@ class BreakpointView(Scrollable):
             try:
                 addr = self.breakpoints[pos]
                 row[0].set('%08x' % addr)
-                row[1].set('Breakpoint %d' % pos)
+                if self.app.disassembly.symbols:
+                    sym_name,offset = self.app.disassembly.symbols.get_symbol_and_offset(addr)
+                else:
+                    sym_name = None
+                if sym_name:
+                    if 0 == offset:
+                        name = sym_name
+                    else:
+                        name = '%s + 0x%x' % (sym_name, offset)
+                else:
+                    name = '0x%x' % addr
+                row[1].set('%d: %s' % (pos,name))
             except IndexError:
                 row[0].set('')
                 row[1].set('')
