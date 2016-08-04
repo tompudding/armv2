@@ -685,7 +685,7 @@ class BreakpointView(Scrollable):
     def activate_item(self, event):
         if self.selected is not None:
             index = self.index_to_addr(self.selected)
-            addr = self.contents[index][0]
+            addr = self.breakpoints[index]
             #Addr must always be aligned
             addr = addr&(~3)
             self.hide()
@@ -711,20 +711,20 @@ class BreakpointView(Scrollable):
 
     def redraw(self):
         #Todo maintain a sorted list so this is cheaper
-        breakpoints = sorted(list(self.app.breakpoints))
+        self.breakpoints = sorted(list(self.app.breakpoints))
+        self.select_max = len(self.breakpoints)
+        self.view_max = max(self.select_max - self.height,0)
         label_index = 0
 
         for i,row in enumerate(self.label_rows):
             pos = self.view_start + i
             try:
-                addr = breakpoints[pos]
+                addr = self.breakpoints[pos]
                 row[0].set('%08x' % addr)
                 row[1].set('Breakpoint %d' % pos)
             except IndexError:
                 row[0].set('')
                 row[1].set('')
-
-
 
     def get_first_entry(self):
         contents = self.text_entry.get()
