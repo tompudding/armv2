@@ -670,13 +670,14 @@ class BreakpointView(Scrollable):
         self.substrings = {}
         self.contents = []
         super(BreakpointView, self).__init__(app, height, width, invisible=True)
+        print 'breakpoints:',self.label_widths
 
     def set_parent(self, parent):
         self.parent = parent
 
     def initial_decoration(self):
-        self.goto_label = Label(self.frame, width=12, text='Breakpoints:')
-        self.goto_label.grid(row=0,column=0,padx=0)
+        self.goto_label = Label(self.frame, width=12, text='Breakpoints')
+        self.goto_label.grid(row=0,column=0,padx=0,columnspan=2)
         self.separator = Tkinter.Frame(self.frame, height=1, width=1, bg=self.unselected_fg)
         self.separator.grid(pady=4,columnspan=2)
         #return number of rows
