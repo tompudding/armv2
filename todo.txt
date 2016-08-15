@@ -1,7 +1,6 @@
 Features
 --------
- - List of breakpoints
- - skip over 
+ - strings
  - stack view in memory
  - run until return
  - run until userspace
