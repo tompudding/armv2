@@ -14,6 +14,15 @@ uint8_t                       *symbols_load_area   = (void*)0x30000;
 volatile uint32_t             *rng                 = (void*)0x01001000 + WIDTH*HEIGHT*2;
 void                         **crash_handler_word  = (void*)0x20000;
 
+#define BACKGROUND BLACK
+#define FOREGROUND GREEN
+uint32_t os_normal   = PALETTE(BACKGROUND,FOREGROUND);
+uint32_t os_inverted = PALETTE(FOREGROUND,BACKGROUND);
+size_t os_border_size = 2;
+size_t os_cursor_pos = 0;
+
+int main(void);
+
 uint64_t wait_for_interrupt() {
     asm("push {r7}");
     asm("mov r7,#0");
@@ -26,6 +35,13 @@ void set_alarm(int milliseconds) {
     asm("mov r7,#3");
     asm("swi #0");
     asm("pop {r7}");
+}
+
+void set_screen_data(uint32_t normal, uint32_t inverted, size_t border_size) {
+    os_normal   = normal;
+    os_inverted = inverted;
+    os_border_size = border_size;
+    os_cursor_pos = INITIAL_CURSOR_POS;
 }
 
 void toggle_pos(size_t pos, uint32_t normal, uint32_t inverted) {
@@ -66,6 +82,10 @@ void clear_screen_with_border(enum colours background, enum colours foreground, 
 
     //memset(palette_data, palette_byte, WIDTH*HEIGHT);
     memset(letter_data, 0, WIDTH*HEIGHT);
+}
+
+void clear_screen_default() {
+    clear_screen_with_border(os_normal, os_inverted, os_border_size);
 }
 
 void dump_hex(uint32_t value, size_t cursor_pos) {
@@ -156,6 +176,63 @@ void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
     cursor_pos = dump_text("mode: ", WIDTH*22 + 10);
     (void) dump_text(mode, cursor_pos);
 
+    while(1) {
+        wait_for_interrupt();
+    }
+}
+
+void newline(int reset_square) {
+    if(reset_square) {
+        *(palette_data + os_cursor_pos) = os_normal;
+    }
+    os_cursor_pos = ((os_cursor_pos / WIDTH) + 1) * WIDTH + os_border_size;
+    if(os_cursor_pos >= FINAL_CURSOR_POS) {
+        //move all rows up one
+        memmove(letter_data+os_border_size*WIDTH, letter_data + (os_border_size+1)*WIDTH, (WIDTH*(HEIGHT-os_border_size*2-1)));
+        memset(letter_data + (WIDTH*(HEIGHT-os_border_size-1)), 0, WIDTH);
+        os_cursor_pos = ((os_cursor_pos/WIDTH)*WIDTH) + os_border_size - WIDTH;
+        //os_cursor_pos = INITIAL_OS_CURSOR_POS;
+    }
+}
+
+void process_string(char *s) {
+    while(*s) {
+        process_char(*s++);
+    }
+}
+
+void process_char(uint8_t c) {
+    if(isprint(c)) {
+        size_t line_pos;
+        *(palette_data+os_cursor_pos) = os_normal;
+        letter_data[os_cursor_pos++] = c;
+        line_pos = os_cursor_pos%WIDTH;
+        if(line_pos >= WIDTH-os_border_size) {
+            newline(0);
+        }
+    }
+    else {
+        if(c == '\r') {
+            newline(1);
+        }
+        else if(c == 8) {
+            //backspace
+            *(palette_data+os_cursor_pos) = os_normal;
+            if((os_cursor_pos%WIDTH) > os_border_size) {
+                os_cursor_pos--;
+                letter_data[os_cursor_pos] = ' ';
+            }
+        }
+    }
+}
+
+
+int _start(void) {
+    crash_handler_word[0] = crash_handler;
+    return main();
+}
+
+void _exit(int status) {
     while(1) {
         wait_for_interrupt();
     }

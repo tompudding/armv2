@@ -766,8 +766,7 @@ void reset() {
     }
 }
 
-int _start(void) {
-    crash_handler_word[0] = crash_handler;
+int main(void) {
     int i;
     reset();
 

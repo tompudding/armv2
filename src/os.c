@@ -13,10 +13,8 @@ char *banner_lines[] = {
     "\r"
 };
 
-#define INITIAL_CURSOR_POS ((WIDTH+1)*border_size)
-#define FINAL_CURSOR_POS   (WIDTH*HEIGHT - border_size*(WIDTH+1))
+
 size_t border_size = 2;
-size_t cursor_pos = 0;
 size_t processing = 0;
 char command[WIDTH+1] = {0};
 size_t command_size = 0;
@@ -27,76 +25,22 @@ uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
 void set_command() {
-    size_t row_start = (cursor_pos/WIDTH)*WIDTH + border_size + 1;
-    command_size = (cursor_pos - row_start);
+    size_t row_start = (os_cursor_pos/WIDTH)*WIDTH + border_size + 1;
+    command_size = (os_cursor_pos - row_start);
     memcpy(command,letter_data + row_start, command_size);
     //should be null terminated due to size
 }
 
-void process_char(uint8_t c);
-
-void newline(int reset_square) {
-    if(processing) {
-        //handle the command
-        set_command();
-    }
-    if(reset_square) {
-        *(palette_data+cursor_pos) = normal;
-    }
-    cursor_pos = ((cursor_pos/WIDTH)+1)*WIDTH + border_size;
-    if(cursor_pos >= FINAL_CURSOR_POS) {
-        //move all rows up one
-        memmove(letter_data+border_size*WIDTH, letter_data + (border_size+1)*WIDTH, (WIDTH*(HEIGHT-border_size*2-1)));
-        memset(letter_data + (WIDTH*(HEIGHT-border_size-1)), 0, WIDTH);
-        cursor_pos = ((cursor_pos/WIDTH)*WIDTH) + border_size - WIDTH;
-        //cursor_pos = INITIAL_CURSOR_POS;
-    }
-    if(processing && command_size == 0) {
-        process_char('>');
-    }
-}
-
-void process_char(uint8_t c) {
-    if(isprint(c)) {
-        size_t line_pos;
-        *(palette_data+cursor_pos) = normal;
-        letter_data[cursor_pos++] = c;
-        line_pos = cursor_pos%WIDTH;
-        if(line_pos >= WIDTH-border_size) {
-            newline(0);
-        }
-    }
-    else {
-        if(c == '\r') {
-            newline(1);
-        }
-        else if(c == 8) {
-            //backspace
-            *(palette_data+cursor_pos) = normal;
-            if((cursor_pos%WIDTH) > border_size+1) { //1 for the prompt
-                cursor_pos--;
-                letter_data[cursor_pos] = ' ';
-            }
-        }
-    }
-}
-
-void process_string(char *s) {
-    while(*s) {
-        process_char(*s++);
-    }
-}
-
 int tape_next_byte(uint8_t *out) {
     int tape_status = tape_control->read;
-    
+
     tape_control->write = NEXT_BYTE;
 
     while(tape_status == NOT_READY) {
         wait_for_interrupt();
         tape_status = tape_control->read;
     }
-    
+
     if(tape_status == READY) {
         *out = tape_control->data;
     }
@@ -107,7 +51,7 @@ int tape_next_byte(uint8_t *out) {
 int tape_next_word(uint32_t *out) {
     uint32_t working = 0;
     int result = NOT_READY;
-    
+
     for(size_t i = 0; i < sizeof(working); i++) {
         uint8_t working_byte = 0;
         result = tape_next_byte( &working_byte );
@@ -176,20 +120,20 @@ enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
         return ERROR;
     }
 
-    //Now we've just read the 
+    //Now we've just read the
 
     //Now we can load symbols from the tape in
     return load_tape_data( symbol_entry_pos );
 }
-    
+
 enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area, void **entry_point_out) {
     //Tapes are comprised of 2 sections, the data and (optionally) the symbols. Just load the first for now
     uint32_t entry_point = 0;
     enum tape_codes result = tape_next_word( &entry_point );
-    
+
     if( READY != result ) {
         return result;
-    }   
+    }
 
     result = load_tape_data( tape_area );
     if( READY != result ) {
@@ -203,7 +147,7 @@ enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area, void **entr
 
     //Now we're done, but let the tape drive know that we won't be needing it for a while
     tape_control->write = READY;
-    
+
     *entry_point_out = (void *)entry_point;
     return READY;
 }
@@ -249,7 +193,7 @@ void process_text() {
         while(last_pos == (new_pos = *ringbuffer_pos)) {
             uint64_t int_info = wait_for_interrupt();
             if(INT_ID(int_info) == CLOCK_ID) {
-                toggle_pos(cursor_pos, normal, inverted);
+                toggle_pos(os_cursor_pos, normal, inverted);
             }
         }
         while(last_pos != new_pos) {
@@ -269,12 +213,10 @@ void banner() {
     }
 }
 
-int _start(void) {
-    crash_handler_word[0] = crash_handler;
-    cursor_pos = INITIAL_CURSOR_POS;
-    clear_screen_with_border(BLUE, LIGHT_BLUE, border_size);
+int main(void) {
+    set_screen_data(BLUE, LIGHT_BLUE, border_size);
+    clear_screen_default();
     banner();
     processing = 1;
     process_text();
-    return 0;
 }

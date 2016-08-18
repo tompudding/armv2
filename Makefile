@@ -34,16 +34,19 @@ build/tape_loader.bin: src/tape_loader.S | build
 	${AS} -march=armv2a -mapcs-26 -o tape_loader.o $<
 	${COPY} -O binary tape_loader.o $@
 
-build/os: src/os.c src/common.c src/synapse.h | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c src/common.c
+build/os: src/os.c build/synapse.o src/synapse.h | build
+	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o
+
+build/synapse.o: src/synapse.c src/synapse.h
+	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $<
 
 ${TAPES_DIR}/%.tape: build/tape_loader.bin build/% | build ${TAPES_DIR}
 	python create.py -o $@ $^
 
 build/%: src/tapes/%.c | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -I.. -o $@ $< src/common.c
+	arm-none-eabi-gcc ${ARMCFLAGS} -I.. -o $@ $< build/synapse.o
 
-build: 
+build:
 	mkdir -p $@
 
 ${TAPES_DIR}:

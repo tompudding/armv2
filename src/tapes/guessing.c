@@ -142,8 +142,7 @@ uint32_t getrand() {
     return rng[0];
 }
 
-int _start(void) {
-    crash_handler_word[0] = crash_handler;
+int main(void) {
     int max = 1000;
     cursor_pos = INITIAL_CURSOR_POS;
     clear_screen_with_border(BACKGROUND, FOREGROUND, border_size);
