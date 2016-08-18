@@ -74,7 +74,7 @@ void process_string(char *s);
 void newline(int reset_square);
 
 void clear_screen(enum colours background, enum colours foreground);
-void clear_screen_with_border(enum colours background, enum colours foreground, size_t border_size);
+void clear_screen_with_border(uint32_t normal, uint32_t inverted, size_t border_size);
 void clear_screen_default();
 void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr);
 uint32_t ntohl( uint32_t );

@@ -214,7 +214,7 @@ void banner() {
 }
 
 int main(void) {
-    set_screen_data(BLUE, LIGHT_BLUE, border_size);
+    set_screen_data(normal, inverted, border_size);
     clear_screen_default();
     banner();
     processing = 1;
