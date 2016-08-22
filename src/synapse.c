@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "synapse.h"
 
 uint8_t                       *palette_data        = (void*)0x01001000;
@@ -224,6 +226,43 @@ void process_char(uint8_t c) {
     }
 }
 
+int (*bob)(int, void *arg1, void *arg2, void *arg3) = 0x41414141;
+
+//int _open_r(const char *file, int flags, int mode) {
+//}
+int _close(int fd) {
+    return bob(5, (void*)fd, 0, 0);
+}
+
+off_t _lseek(int fd, off_t pos, int whence) {
+    return (off_t) bob(4, (void*)fd, (void*) pos, (void*)whence);
+}
+long _read(int fd, void *buf, size_t cnt) {
+    return (long) bob(3, (void*)fd, buf, (void*)cnt);
+}
+long _write(int fd, void *buf, size_t cnt) {
+    return (long)bob(2, (void*)fd, buf, (void*)cnt);
+}
+//int _fork_r(void *reent) {
+//}
+//int _wait_r( int *status) {
+//}
+//int _stat_r( const char *file, struct stat *pstat) {
+//}
+int _fstat(int fd, struct stat *pstat) {
+    return (int)bob(1, (void*)fd, pstat, 0);
+}
+//int _link_r(const char *old, const char *new) {
+//}
+//int _unlink_r( const char *file) {
+//}
+char *_sbrk(size_t incr) {
+    return (char*)bob(0,(void*)incr,0,0);
+}
+
+int _isatty(int fd) {
+    return bob(-1,(void*)fd,0,0);
+}
 
 int _start(void) {
     crash_handler_word[0] = crash_handler;

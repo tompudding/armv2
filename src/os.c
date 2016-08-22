@@ -188,6 +188,7 @@ void handle_command() {
 void process_text() {
     uint8_t last_pos = *ringbuffer_pos;
     process_char('>');
+    puts("bob");
     while(1) {
         uint8_t new_pos;
         while(last_pos == (new_pos = *ringbuffer_pos)) {
