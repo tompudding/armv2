@@ -67,9 +67,10 @@ def create_binary(header, elf, boot=False):
             v_addr = segment['p_vaddr']
             filesz = segment['p_filesz']
             memsz  = segment['p_memsz']
+            flags  = segment['p_flags']
             if segment['p_type'] != 'PT_LOAD':
                 continue
-            print offset,v_addr,filesz,memsz
+            print offset,v_addr,filesz,memsz,flags
             data.append(elf_data[offset:offset + filesz] + '\x00'*(memsz-filesz))
         data = ''.join(data)
 
@@ -84,7 +85,10 @@ def create_binary(header, elf, boot=False):
     symbols.sort( lambda x,y: cmp(x[0], y[0]) )
             
     #get rid of any "bx lr"s
-    data = data.replace(struct.pack('<I',0xe12fff1e),struct.pack('<I',0xe1a0f00e))
+    #for cond in xrange(16):
+    #    for reg in xrange(15):
+    #        data = data.replace(struct.pack('<I',(cond << 28) +  0x12fff10 + reg),struct.pack('<I',(cond << 28) + 0x1a0f000 + reg))
+    data = data.replace(struct.pack('<I', 0xe12fff1e), struct.pack('<I', 0xe1a0f00e))
     #We'll stick the symbols on the end
     symbols = ''.join(struct.pack('>I',value) + name + '\00' for (value,name) in symbols)
 

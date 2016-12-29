@@ -1525,6 +1525,7 @@ def main():
     import pygame
     import emulate
     root = Tkinter.Tk()
+    root.wm_title('Rebellion')
     root.resizable(0,0)
     root.tk_setPalette(background='black',
                        highlightbackground='lawn green')

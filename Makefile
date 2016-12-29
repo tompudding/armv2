@@ -7,7 +7,7 @@ TAPES_DIR  = tapes
 BUILD_DIR  = build
 TAPE_NAMES = guessing adventure trivia one_letter_werewolf
 TAPES_BIN  = $(patsubst %, ${TAPES_DIR}/%.tape, ${TAPE_NAMES})
-ARMCFLAGS  =-std=gnu99 -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc
+ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc
 .PRECIOUS: build/% #Don't delete our intermediate object files, they're useful for debugging
 
 all: armv2.so build/boot.rom ${TAPES_BIN}
@@ -34,11 +34,17 @@ build/tape_loader.bin: src/tape_loader.S | build
 	${AS} -march=armv2a -mapcs-26 -o tape_loader.o $<
 	${COPY} -O binary tape_loader.o $@
 
-build/os: src/os.c build/synapse.o src/synapse.h | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o
+build/os: src/os.c build/synapse.o build/libc.o src/synapse.h | build
+	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o build/libc.o
 
 build/synapse.o: src/synapse.c src/synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $<
+
+LIBC_SRC := src/libc/*.c
+LIBC_INCLUDE := src/libc/*.h
+
+build/libc.o: ${LIBC_SRC} ${LIBC_INCLUDE}
+	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ ${LIBC_SRC}
 
 ${TAPES_DIR}/%.tape: build/tape_loader.bin build/% | build ${TAPES_DIR}
 	python create.py -o $@ $^

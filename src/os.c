@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
 #include "synapse.h"
 
 char *banner_lines[] = {
