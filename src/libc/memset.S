@@ -19,6 +19,6 @@ last_part:
         beq done
         str r1, [r3]!
         subs r2, #1
-        ble last_part
+        b last_part
 done:
         pop {r4,pc}
