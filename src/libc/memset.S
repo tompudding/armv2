@@ -10,13 +10,15 @@ memset:
         blt last_part
         /* While r2 is greater than 4, this is easy */
 word_loop:
-        str r4, [r0]!
+        str r4, [r3]!
         subs r2, #4
         cmp r2,#4
         ble word_loop
 last_part:
-        str r1, [r0]!
+        cmp r2, #0
+        beq done
+        str r1, [r3]!
         subs r2, #1
         ble last_part
-        mov r0, r3
+done:
         pop {r4,pc}
