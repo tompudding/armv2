@@ -12,10 +12,10 @@ build/libc.a: ${C_TARGETS} ${S_TARGETS} | build
 	arm-none-eabi-ranlib $@
 
 ${C_TARGETS}: ${C_SOURCE} | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $<
+	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $(patsubst build/%.o, %.c, $@)
 
 ${S_TARGETS}: ${S_SOURCE} | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $<
+	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $(patsubst build/%.o, %.S, $@)
 
 build:
 	mkdir -p $@

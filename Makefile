@@ -40,7 +40,7 @@ build/os: src/os.c build/synapse.o build/libc.a src/synapse.h | build
 build/synapse.o: src/synapse.c src/synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $<
 
-build/libc.a: 
+build/libc.a: src/libc/*.c src/libc/*.S
 	make -C src/libc
 	cp src/libc/build/libc.a build/libc.a
 
