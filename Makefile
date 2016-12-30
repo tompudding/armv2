@@ -34,17 +34,15 @@ build/tape_loader.bin: src/tape_loader.S | build
 	${AS} -march=armv2a -mapcs-26 -o tape_loader.o $<
 	${COPY} -O binary tape_loader.o $@
 
-build/os: src/os.c build/synapse.o build/libc.o src/synapse.h | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o build/libc.o
+build/os: src/os.c build/synapse.o build/libc.a src/synapse.h | build
+	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o build/libc.a
 
 build/synapse.o: src/synapse.c src/synapse.h
 	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $<
 
-LIBC_SRC := src/libc/*.c
-LIBC_INCLUDE := src/libc/*.h
-
-build/libc.o: ${LIBC_SRC} ${LIBC_INCLUDE}
-	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ ${LIBC_SRC}
+build/libc.a: 
+	make -C src/libc
+	cp src/libc/build/libc.a build/libc.a
 
 ${TAPES_DIR}/%.tape: build/tape_loader.bin build/% | build ${TAPES_DIR}
 	python create.py -o $@ $^
@@ -60,6 +58,7 @@ ${TAPES_DIR}:
 
 clean:
 	rm -f armv2 ${TAPES_DIR}/*.tape boot.rom armtest step.o instructions.o init.o armv2.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
+	make -C src/libc clean
 	rm -rf build/temp*
 	rm -f build/*
 	rm -df build
