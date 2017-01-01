@@ -2,9 +2,21 @@
 
 memset:
         /* void *memset(void *s, int c, size_t n) */
-        ldr r3,=0x01010101
-        mul r1, r3, r1
-        mov r3, r0 /* we'll need to return this so back it up */
+        push {r4-r6,lr}
+        mov r3, r0 /* back this up as we'll need to return it */
+alignment_loop: 
+        and r4, r3, #0x3
+        /*first a little loop to get it aligned*/
+        cmp r4, #0
+        beq aligned
+        strb r1,[r3],#1
+        sub r2,#1
+        cmp r2,#0
+        beq done
+        b alignment_loop
+aligned:        
+        ldr r5,=0x01010101
+        mul r1, r5, r1
         cmp r2, #4
         blo last_part
         /* While r2 is greater than 4, this is easy */
@@ -22,4 +34,4 @@ last_part_loop:
         sub r2, #1
         b last_part_loop
 done:
-        mov pc, lr
+        pop {r4-r6, pc}
