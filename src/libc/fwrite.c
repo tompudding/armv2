@@ -53,7 +53,7 @@ size_t _stdio_write(register FILE *stream,
             buf += rv;
         } 
         else {
-            __STDIO_STREAM_SET_ERROR(stream);
+            //__STDIO_STREAM_SET_ERROR(stream);
 
             /* We buffer data on "transient" errors, but discard it
              * on "hard" ones. Example of a hard error:

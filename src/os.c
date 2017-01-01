@@ -27,8 +27,10 @@ uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
 void set_command() {
     size_t row_start = (os_cursor_pos/WIDTH)*WIDTH + border_size + 1;
-    command_size = (os_cursor_pos - row_start);
-    memcpy(command,letter_data + row_start, command_size);
+    if( os_cursor_pos > row_start ) {
+        command_size = (os_cursor_pos - row_start);
+        memcpy(command,letter_data + row_start, command_size);
+    }
     //should be null terminated due to size
 }
 
