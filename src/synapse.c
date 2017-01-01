@@ -109,7 +109,8 @@ void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
     char *p;
     uint32_t *registers = (void*)(crash_handler_word + 1);
     int i;
-    clear_screen_with_border(BLACK, RED, 1);
+    set_screen_data(PALETTE(BLACK,RED), PALETTE(RED,BLACK), 1);
+    clear_screen_default();
     switch(type) {
     case 0:
         p = "ILLEGAL INSTRUCTION";
