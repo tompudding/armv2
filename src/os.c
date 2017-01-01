@@ -215,7 +215,10 @@ void banner() {
     }
 }
 
+extern int libc_init(void);
+
 int main(void) {
+    libc_init();
     set_screen_data(normal, inverted, border_size);
     clear_screen_default();
     banner();
