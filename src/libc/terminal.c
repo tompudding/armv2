@@ -94,7 +94,7 @@ void process_char(uint8_t c)
         }
     }
     else {
-        if(c == '\r') {
+        if(c == '\n') {
             newline(1);
         }
         else if(c == 8) {
@@ -110,5 +110,9 @@ void process_char(uint8_t c)
 
 int tty_write(const char *s, size_t cnt) 
 {
-    
+    for(size_t i = 0; i < cnt; i++) {
+        process_char(s[i]);
+    }
+
+    return (int)cnt;
 }

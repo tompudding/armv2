@@ -1,18 +1,19 @@
+#include "synapse.h"
+
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
-#include "synapse.h"
 #include <terminal.h>
 
 char *banner_lines[] = {
-    "\r",
+    "\n",
     "** TETRALIMBIC SYSTEMS Synapse V2 **",
-    "\r",
+    "\n",
     "    2048K RAM SYSTEM 2021K FREE     ",
-    "\r",
-    "READY. Type load to access the tape\r",
-    "\r"
+    "\n",
+    "READY. Type load to access the tape\n",
+    "\n"
 };
 
 
@@ -160,7 +161,7 @@ void handle_command() {
     if(command_size) {
         if(0 == strcasecmp(command,"load")) {
             void *entry_point = NULL;
-            process_string("Loading...\r");
+            puts("Loading...");
             int result = load_tape(tape_load_area, symbols_load_area, &entry_point);
             switch(result) {
             case READY:
@@ -173,16 +174,16 @@ void handle_command() {
                 break;
             }
             case DRIVE_EMPTY:
-                process_string("Tape drive empty\r>");
+                printf("Tape drive empty\n>");
                 break;
             default:
-                process_string("Tape drive error\r>");
+                printf("Tape drive error\n>");
                 break;
             }
 
         }
         else {
-            process_string("Unknown command\r>");
+            puts("Unknown command\n>");
         }
         command_size = 0;
         memset(command,0,sizeof(command));
@@ -191,8 +192,7 @@ void handle_command() {
 
 void process_text() {
     uint8_t last_pos = *ringbuffer_pos;
-    process_char('>');
-    puts("bob");
+    putchar('>');
     while(1) {
         uint8_t new_pos;
         while(last_pos == (new_pos = *ringbuffer_pos)) {
@@ -204,7 +204,7 @@ void process_text() {
         while(last_pos != new_pos) {
             uint8_t c;
             c = keyboard_ringbuffer[last_pos];
-            process_char(c);
+            putchar(c);
             last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
         }
         handle_command();
@@ -214,7 +214,7 @@ void process_text() {
 void banner() {
     size_t i;
     for(i=0; i< sizeof(banner_lines)/sizeof(banner_lines[0]); i++) {
-        process_string(banner_lines[i]);
+        puts(banner_lines[i]);
     }
 }
 

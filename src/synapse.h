@@ -1,3 +1,7 @@
+#include <stdio.h>
+#undef putc
+#undef getc
+#include <stdint.h>
 
 struct tape_control {
     uint8_t read;

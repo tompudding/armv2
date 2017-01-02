@@ -58,6 +58,8 @@ class Emulator(object):
             key = ord(event.char)
         except TypeError:
             return
+        if key == ord('\r'):
+            key = ord('\n')
         self.dbg.machine.keyboard.KeyDown(key)
 
     def key_down(self, event):
@@ -67,6 +69,8 @@ class Emulator(object):
             key = ord(event.char)
         except TypeError:
             return
+        if key == ord('\r'):
+            key = ord('\n')
         self.dbg.machine.keyboard.KeyUp(key)
 
     def restart(self):
