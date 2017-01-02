@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include "synapse.h"
+#include <terminal.h>
 
 char *banner_lines[] = {
     "\r",

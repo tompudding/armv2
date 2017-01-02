@@ -14,25 +14,6 @@ enum tape_codes {
     ERROR       = 5,
 };
 
-enum colours    {
-    BLACK       = 0,
-    WHITE       = 1,
-    RED         = 2,
-    CYAN        = 3,
-    VIOLET      = 4,
-    GREEN       = 5,
-    BLUE        = 6,
-    YELLOW      = 7,
-    ORANGE      = 8,
-    BROWN       = 9,
-    LIGHT_RED   = 10,
-    DARK_GREY   = 11,
-    MED_GREY    = 12,
-    LIGHT_GREEN = 13,
-    LIGHT_BLUE  = 14,
-    LIGHT_GREY  = 15,
-};
-
 enum letter_codes {
     LEFT  = 250,
     RIGHT = 251,
@@ -40,19 +21,11 @@ enum letter_codes {
     DOWN  = 253
 };
 
-
-#define WIDTH  40
-#define HEIGHT 30
 #define RINGBUFFER_SIZE 128
 #define MAX_SYMBOLS_SIZE 0x10000
-#define PALETTE(background,foreground) ((background<<4)|foreground)
 #define INT_ID(info) ((info)&0xffffffff)
 #define CLOCK_ID 0x92d177b0
-#define INITIAL_CURSOR_POS ((WIDTH+1)*os_border_size)
-#define FINAL_CURSOR_POS   (WIDTH*HEIGHT - os_border_size*(WIDTH+1))
 
-extern uint8_t                       *palette_data;
-extern uint8_t                       *letter_data;
 extern volatile uint32_t             *keyboard_bitmask;
 extern volatile uint8_t              *keyboard_ringbuffer;
 extern volatile uint8_t              *ringbuffer_pos;
@@ -61,20 +34,9 @@ extern uint8_t                       *tape_load_area;
 extern uint8_t                       *symbols_load_area;
 extern volatile uint32_t             *rng;
 extern void                         **crash_handler_word;
-extern size_t os_cursor_pos;
 
 uint64_t wait_for_interrupt();
 void set_alarm(int milliseconds);
 
-void set_screen_data(uint32_t normal, uint32_t inverted, size_t border_size);
-void toggle_pos(size_t pos, uint32_t normal, uint32_t inverted);
-
-void process_char(uint8_t c);
-void process_string(char *s);
-void newline(int reset_square);
-
-void clear_screen(enum colours background, enum colours foreground);
-void clear_screen_with_border(uint32_t normal, uint32_t inverted, size_t border_size);
-void clear_screen_default();
 void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr);
 uint32_t ntohl( uint32_t );

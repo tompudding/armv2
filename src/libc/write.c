@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <errno.h>
+#include "terminal.h"
 
 int (*bob)(int, void *arg1, void *arg2, void *arg3) = 0x41414141;
 
@@ -15,7 +17,13 @@ long read(int fd, void *buf, size_t cnt) {
     return (long) bob(3, (void*)fd, buf, (void*)cnt);
 }
 long write(int fd, void *buf, size_t cnt) {
-    return (long)bob(2, (void*)fd, buf, (void*)cnt);
+    if(fd == fileno(stdout)) {
+        return tty_write(buf, cnt);
+    }
+    else {
+        errno = EBADF;
+        return -1;
+    }
 }
 //int _fork_r(void *reent) {
 //}
