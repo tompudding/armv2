@@ -3,7 +3,11 @@
 struct _reent global_reent = {0};
 struct _reent *_impure_ptr = &global_reent;
 
-int __errno = 0;
+int _errno = 0;
+
+int *__errno() {
+    return &_errno;
+}
 
 int fileno(FILE *s) {
     return s->_file;

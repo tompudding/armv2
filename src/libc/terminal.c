@@ -1,4 +1,5 @@
 #include "terminal.h"
+#include <string.h>
 
 uint8_t *palette_data = (void*)0x01001000;
 uint8_t *letter_data  = (void*)0x01001000 + WIDTH*HEIGHT;

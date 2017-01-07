@@ -44,3 +44,6 @@ void set_alarm(int milliseconds);
 
 void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr);
 uint32_t ntohl( uint32_t );
+
+#include <xprintf.h>
+#define printf xprintf

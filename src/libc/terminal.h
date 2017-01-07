@@ -41,3 +41,4 @@ void newline(int reset_square);
 void clear_screen(enum colours background, enum colours foreground);
 void clear_screen_with_border(uint32_t normal, uint32_t inverted, size_t border_size);
 void clear_screen_default();
+int tty_write(const char *s, size_t cnt);

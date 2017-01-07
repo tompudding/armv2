@@ -214,7 +214,7 @@ void process_text() {
 void banner() {
     size_t i;
     for(i=0; i< sizeof(banner_lines)/sizeof(banner_lines[0]); i++) {
-        puts(banner_lines[i]);
+        printf(banner_lines[i]);
     }
 }
 

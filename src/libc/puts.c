@@ -1,5 +1,6 @@
 #include <stdio.h>
 #undef putc
+#undef putchar
 #include <unistd.h>
 
 int puts(const char *s) 
@@ -26,7 +27,7 @@ int fputs(const char * s, FILE *stream)
 }
 
 
-int putc(int c, FILE *stream) 
+int fputc(int c, FILE *stream) 
 {
     if(1 == write(fileno(stream), (const char *)&c, 1)) {
         return (int)c;
@@ -35,7 +36,12 @@ int putc(int c, FILE *stream)
     return EOF;
 }
 
-int printf(const char *format, ...)
+int putc(int c, FILE *stream)
 {
-    return puts(format);
+    return fputc(c, stream);
+}
+
+int putchar(int c) 
+{
+    return fputc(c, stdout);
 }
