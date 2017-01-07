@@ -1,7 +1,10 @@
 #include <stdio.h>
 #undef putc
 #undef putchar
+#undef getc
+#undef getchar
 #include <unistd.h>
+#include "xprintf.h"
 
 int puts(const char *s) 
 {
@@ -44,4 +47,40 @@ int putc(int c, FILE *stream)
 int putchar(int c) 
 {
     return fputc(c, stdout);
+}
+
+int fgetc(FILE *stream) 
+{
+    char c = 0;
+
+    if(1 == read(fileno(stream), &c, 1)) {
+        return (int)c;
+    }
+
+    return EOF;
+}
+
+int getchar(void) 
+{
+    return fgetc(stdin);
+}
+
+static unsigned char getchar_cb(void) 
+{
+    return (unsigned char)fgetc(stdin);
+}
+
+char *fgets(char *s, int size, FILE *stream)
+{
+    return xfgets(getchar_cb, s, size);
+}
+
+int getc(FILE *stream)
+{
+    return fgetc(stream);
+}
+
+char *gets(char *s)
+{
+    return fgets(s, 0xffffffff, stdin);
 }
