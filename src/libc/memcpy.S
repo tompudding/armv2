@@ -1,7 +1,7 @@
 .globl memcpy
 
 memcpy:
-        push {r4, lr}
+        push {r4-r6, lr}
         and r3, r0, #3
         and r5, r1, #3
         cmp r3, r5
@@ -39,6 +39,6 @@ last_part:
         sub r2, #1
         b last_part
 done:
-        pop {r4, pc}
+        pop {r4-r6, pc}
 
         
