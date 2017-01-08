@@ -82,5 +82,5 @@ int getc(FILE *stream)
 
 char *gets(char *s)
 {
-    return fgets(s, 0xffffffff, stdin);
+    return fgets(s, 0x7fffffff, stdin);
 }

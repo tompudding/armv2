@@ -1,4 +1,4 @@
-ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc
+ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -I.. -I. -Os
 .PRECIOUS: build/%.o #Don't delete our intermediate object files, they're useful for debugging
 
 C_SOURCE  = $(wildcard *.c)

@@ -13,9 +13,17 @@ int close(int fd) {
 off_t lseek(int fd, off_t pos, int whence) {
     return (off_t) bob(4, (void*)fd, (void*) pos, (void*)whence);
 }
+
 long read(int fd, void *buf, size_t cnt) {
-    return (long) bob(3, (void*)fd, buf, (void*)cnt);
+    if(fd == fileno(stdin)) {
+        return tty_read(buf, cnt);
+    }
+    else {
+        errno = EBADF;
+        return -1;
+    }
 }
+
 long write(int fd, void *buf, size_t cnt) {
     if(fd == fileno(stdout)) {
         return tty_write(buf, cnt);
@@ -25,6 +33,7 @@ long write(int fd, void *buf, size_t cnt) {
         return -1;
     }
 }
+
 //int _fork_r(void *reent) {
 //}
 //int _wait_r( int *status) {

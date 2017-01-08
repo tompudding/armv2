@@ -19,22 +19,12 @@ char *banner_lines[] = {
 
 size_t border_size = 2;
 size_t processing = 0;
-char command[WIDTH+1] = {0};
-size_t command_size = 0;
 
 #define BACKGROUND BLUE
 #define FOREGROUND LIGHT_BLUE
+#define PROMPT ">"
 uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
-
-void set_command() {
-    size_t row_start = (os_cursor_pos/WIDTH)*WIDTH + border_size + 1;
-    if( os_cursor_pos > row_start ) {
-        command_size = (os_cursor_pos - row_start);
-        memcpy(command,letter_data + row_start, command_size);
-    }
-    //should be null terminated due to size
-}
 
 int tape_next_byte(uint8_t *out) {
     int tape_status = tape_control->read;
@@ -157,57 +147,32 @@ enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area, void **entr
     return READY;
 }
 
-void handle_command() {
-    if(command_size) {
-        if(0 == strcasecmp(command,"load")) {
-            void *entry_point = NULL;
-            puts("Loading...");
-            int result = load_tape(tape_load_area, symbols_load_area, &entry_point);
-            switch(result) {
-            case READY:
-            case END_OF_TAPE:
-            {
-                //The tape is loaded so let's clear the screen and jump to the tape
-                void (*fn)(void) = entry_point;
-                clear_screen(BLACK,BLACK);
-                fn();
-                break;
-            }
-            case DRIVE_EMPTY:
-                printf("Tape drive empty\n>");
-                break;
-            default:
-                printf("Tape drive error\n>");
-                break;
-            }
+void handle_command(char *command) {
+    if(0 == strcasecmp(command,"load")) {
+        void *entry_point = NULL;
+        puts("Loading...");
+        int result = load_tape(tape_load_area, symbols_load_area, &entry_point);
+        switch(result) {
+        case READY:
+        case END_OF_TAPE:
+        {
+            //The tape is loaded so let's clear the screen and jump to the tape
+            void (*fn)(void) = entry_point;
+            clear_screen(BLACK,BLACK);
+            fn();
+            break;
+        }
+        case DRIVE_EMPTY:
+            printf("Tape drive empty\n");
+            break;
+        default:
+            printf("Tape drive error\n");
+            break;
+        }
 
-        }
-        else {
-            puts("Unknown command\n>");
-        }
-        command_size = 0;
-        memset(command,0,sizeof(command));
     }
-}
-
-void process_text() {
-    uint8_t last_pos = *ringbuffer_pos;
-    putchar('>');
-    while(1) {
-        uint8_t new_pos;
-        while(last_pos == (new_pos = *ringbuffer_pos)) {
-            uint64_t int_info = wait_for_interrupt();
-            if(INT_ID(int_info) == CLOCK_ID) {
-                toggle_pos(os_cursor_pos, normal, inverted);
-            }
-        }
-        while(last_pos != new_pos) {
-            uint8_t c;
-            c = keyboard_ringbuffer[last_pos];
-            putchar(c);
-            last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
-        }
-        handle_command();
+    else {
+        printf("Unknown command\n");
     }
 }
 
@@ -221,10 +186,19 @@ void banner() {
 extern int libc_init(void);
 
 int main(void) {
+    char command[WIDTH+1] = {0};
+
     libc_init();
     set_screen_data(normal, inverted, border_size);
     clear_screen_default();
     banner();
     processing = 1;
-    process_text();
+
+    while(1) {        
+        printf(PROMPT);
+        int command_size = gets(command);
+        if(command_size > 0) {
+            handle_command(command);
+        }
+    }
 }

@@ -30,9 +30,6 @@ enum letter_codes {
 #define INT_ID(info) ((info)&0xffffffff)
 #define CLOCK_ID 0x92d177b0
 
-extern volatile uint32_t             *keyboard_bitmask;
-extern volatile uint8_t              *keyboard_ringbuffer;
-extern volatile uint8_t              *ringbuffer_pos;
 extern volatile struct tape_control  *tape_control;
 extern uint8_t                       *tape_load_area;
 extern uint8_t                       *symbols_load_area;

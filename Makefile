@@ -7,7 +7,7 @@ TAPES_DIR  = tapes
 BUILD_DIR  = build
 TAPE_NAMES = guessing adventure trivia one_letter_werewolf
 TAPES_BIN  = $(patsubst %, ${TAPES_DIR}/%.tape, ${TAPE_NAMES})
-ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc
+ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc -Os 
 .PRECIOUS: build/% #Don't delete our intermediate object files, they're useful for debugging
 
 all: armv2.so build/boot.rom ${TAPES_BIN}

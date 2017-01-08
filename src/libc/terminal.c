@@ -1,8 +1,12 @@
 #include "terminal.h"
 #include <string.h>
+#include <synapse.h>
 
-uint8_t *palette_data = (void*)0x01001000;
-uint8_t *letter_data  = (void*)0x01001000 + WIDTH*HEIGHT;
+volatile uint32_t *keyboard_bitmask    = (void*)0x01000000;
+volatile uint8_t  *keyboard_ringbuffer = (void*)0x01000020;
+volatile uint8_t  *ringbuffer_pos      = (void*)0x010000a0;
+uint8_t           *palette_data        = (void*)0x01001000;
+uint8_t           *letter_data         = (void*)0x01001000 + WIDTH*HEIGHT;
 
 #define BACKGROUND BLACK
 #define FOREGROUND GREEN
@@ -19,14 +23,10 @@ void set_screen_data(uint32_t normal, uint32_t inverted, size_t border_size)
     os_cursor_pos = INITIAL_CURSOR_POS;
 }
 
-void toggle_pos(size_t pos, uint32_t normal, uint32_t inverted)
+void toggle_pos(size_t pos)
 {
-     if(*(palette_data+pos) == normal) {
-         *(palette_data+pos) = inverted;
-     }
-     else {
-         *(palette_data+pos) = normal;
-     }
+    uint8_t *p = palette_data + pos;
+    *p = ((*p & 0xf0) >> 4) | ((*p & 0x0f) << 4);
 }
 
 void clear_screen(enum colours background, enum colours foreground) 
@@ -116,4 +116,31 @@ int tty_write(const char *s, size_t cnt)
     }
 
     return (int)cnt;
+}
+
+int tty_read(char *s, size_t cnt) 
+{
+    size_t num_read = 0;
+    uint8_t last_pos = *ringbuffer_pos;
+
+    while(num_read < cnt) {
+        uint8_t new_pos;
+        while(last_pos == (new_pos = *ringbuffer_pos)) {
+            uint64_t int_info = wait_for_interrupt();
+            if(INT_ID(int_info) == CLOCK_ID) {
+                toggle_pos(os_cursor_pos);
+            }
+        }
+        while(last_pos != new_pos) {
+            uint8_t c;
+            c = keyboard_ringbuffer[last_pos];
+            last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
+            s[num_read++] = c;
+            if(num_read >= cnt) {
+                break;
+            }
+        }
+    }
+
+    return num_read;
 }

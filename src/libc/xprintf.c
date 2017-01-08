@@ -277,7 +277,7 @@ int xgets (		/* 0:End of stream, 1:A line arrived */
 	for (;;) {
 		c = xfunc_in();				/* Get a char from the incoming stream */
 		if (!c) return 0;			/* End of stream? */
-		if (c == '\r') break;		/* End of line? */
+		if (c == '\n') break;		/* End of line? */
 		if (c == '\b' && i) {		/* Back space? */
 			i--;
 			if (_LINE_ECHO) xputc(c);

@@ -27,12 +27,15 @@ enum colours    {
 #define INITIAL_CURSOR_POS             ((WIDTH+1)*os_border_size)
 #define FINAL_CURSOR_POS               (WIDTH*HEIGHT - os_border_size*(WIDTH+1))
 
-extern uint8_t *palette_data;
-extern uint8_t *letter_data;
-extern size_t   os_cursor_pos;
+extern volatile uint32_t *keyboard_bitmask;
+extern volatile uint8_t  *keyboard_ringbuffer;
+extern volatile uint8_t  *ringbuffer_pos;
+extern uint8_t           *palette_data;
+extern uint8_t           *letter_data;
+extern size_t             os_cursor_pos;
 
 void set_screen_data(uint32_t normal, uint32_t inverted, size_t border_size);
-void toggle_pos(size_t pos, uint32_t normal, uint32_t inverted);
+void toggle_pos(size_t pos);
 
 void process_char(uint8_t c);
 void process_string(char *s);
