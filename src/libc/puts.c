@@ -72,7 +72,11 @@ static unsigned char getchar_cb(void)
 
 char *fgets(char *s, int size, FILE *stream)
 {
-    return xfgets(getchar_cb, s, size);
+    int num = xfgets(getchar_cb, s, size);
+    if(num > 0) {
+        return s;
+    }
+    return NULL;
 }
 
 int getc(FILE *stream)

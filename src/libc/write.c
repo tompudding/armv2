@@ -54,3 +54,15 @@ char *sbrk(size_t incr) {
 int isatty(int fd) {
     return bob(-1,(void*)fd,0,0);
 }
+
+int atoi(char *s) 
+{
+    long out;
+    char *s_t = s;
+    if(xatoi(&s_t, &out)) {
+        return (int)out;
+    }
+
+    errno = EINVAL;
+    return -1;
+}

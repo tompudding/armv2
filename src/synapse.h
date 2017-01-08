@@ -4,9 +4,9 @@
 #include <stdint.h>
 
 struct tape_control {
-    uint8_t read;
-    uint8_t write;
-    uint8_t data;
+    volatile uint8_t read;
+    volatile uint8_t write;
+    volatile uint8_t data;
 };
 
 enum tape_codes {
