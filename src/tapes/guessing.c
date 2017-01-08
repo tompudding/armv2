@@ -1,11 +1,11 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include "synapse.h"
 #include <terminal.h>
 
 size_t border_size = 1;
-size_t cursor_pos = 0;
 
 char *banner_lines[] = {
     "\n",
@@ -30,13 +30,6 @@ void banner() {
     }
 }
 
-uint32_t getrand() {
-    //The display has a secret RNG
-    return rng[0];
-}
-
-extern int libc_init(void);
-
 int main(void) {
     int max = 1000;
 
@@ -45,7 +38,7 @@ int main(void) {
     clear_screen_default();
     banner();
 
-    uint32_t number = (getrand()%max)+1;
+    uint32_t number = (rand() % max) + 1;
     int remaining = 10;
 
     while(1) {
@@ -73,7 +66,7 @@ int main(void) {
         remaining -= 1;
 
         if(remaining <= 0) {
-            number = (getrand() % max) + 1;
+            number = (rand() % max) + 1;
             remaining = 10;
             printf("You ran out, I picked a new number\n");
         }

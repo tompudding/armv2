@@ -301,6 +301,9 @@ class Display(armv2.Device):
 
     def writeCallback(self,addr,value):
         armv2.DebugLog('display write word %x %x\n' % (addr,value))
+        if addr == self.letter_end:
+            random.seed(value)
+            return 0
         for i in xrange(4):
             byte = value&0xff
             self.writeByteCallback(addr,byte)

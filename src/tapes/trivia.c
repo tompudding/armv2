@@ -1,30 +1,24 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include "synapse.h"
+#include <terminal.h>
 
-//Loads of copy pasta here due to a severe lack of time, got to write 5 games in the next 5 hours :(
-
-#define INITIAL_CURSOR_POS ((WIDTH+1)*border_size)
-#define FINAL_CURSOR_POS   (WIDTH*HEIGHT - border_size*(WIDTH+1))
 size_t border_size = 1;
-size_t cursor_pos = 0;
-size_t processing = 0;
 
 #define BACKGROUND WHITE
 #define FOREGROUND BLACK
 uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
-
 char *banner_lines[] = {
-    "      Buffy Trivia\r",
-    "      ------------\r",
-    "\r",
-    "  Do you have what it takes?\r",
-    "\r",
+    "      Buffy Trivia\n",
+    "      ------------\n",
+    "\n",
+    "  Do you have what it takes?\n",
+    "\n",
 };
-
 
 char *episodes[7][22] = { {"Welcome to the Hellmouth",
                            "The Harvest",
@@ -181,106 +175,11 @@ char *episodes[7][22] = { {"Welcome to the Hellmouth",
                            "End of Days",
                            "Chosen"} };
 
-char input[64] = {0};
-size_t input_size = 0;
-
-void set_input() {
-    size_t row_start = (cursor_pos/WIDTH)*WIDTH + border_size + 1;
-    input_size = (cursor_pos - row_start);
-    memcpy(input,letter_data + row_start, input_size);
-    //should be null terminated due to size
-}
-
-void newline(int reset_square) {
-    if(reset_square) {
-        *(palette_data+cursor_pos) = normal;
-    }
-    cursor_pos = ((cursor_pos/WIDTH)+1)*WIDTH + border_size;
-    if(cursor_pos >= FINAL_CURSOR_POS) {
-        //move all rows up one
-        memmove(letter_data+border_size*WIDTH, letter_data + (border_size+1)*WIDTH, (WIDTH*(HEIGHT-border_size*2-1)));
-        memset(letter_data + (WIDTH*(HEIGHT-border_size-1)), 0, WIDTH);
-        cursor_pos = ((cursor_pos/WIDTH)*WIDTH) + border_size - WIDTH;
-        //cursor_pos = INITIAL_CURSOR_POS;
-    }
-}
-
-void process_char(uint8_t c, int is_input) {
-    if(c == '\r') {
-        newline(1);
-    }
-    else if(c == 8) {
-        //backspace
-        *(palette_data+cursor_pos) = normal;
-        if((cursor_pos%WIDTH) > border_size+1) { //1 for the prompt
-            cursor_pos--;
-            letter_data[cursor_pos] = ' ';
-        }
-        if(is_input && input_size > 0) {
-            input_size--;
-            input[input_size] = 0;
-        }
-    }
-    else {
-        size_t line_pos;
-        *(palette_data+cursor_pos) = normal;
-        letter_data[cursor_pos++] = c;
-        if(is_input) {
-            input[input_size++] = c;
-        }
-        line_pos = cursor_pos%WIDTH;
-        if(line_pos >= WIDTH-border_size) {
-            newline(0);
-        }
-    }
-}
-
-void process_string(char *s) {
-    while(*s) {
-        process_char(*s++,0);
-    }
-}
-
-void process_text(char *in_buffer) {
-    uint8_t last_pos = *ringbuffer_pos;
-    char buffer[64] = {0};
-
-    while(1) {
-        uint8_t new_pos;
-        while(last_pos == (new_pos = *ringbuffer_pos)) {
-            uint64_t info = wait_for_interrupt();
-            if(INT_ID(info) == CLOCK_ID) {
-                toggle_pos(cursor_pos, normal, inverted);
-            }
-        }
-        while(last_pos != new_pos) {
-            uint8_t c;
-            c = keyboard_ringbuffer[last_pos];
-            process_char(c,1);
-            last_pos = ((last_pos + 1) % RINGBUFFER_SIZE);
-            if(c == '\r') {
-                strcpy(in_buffer, input);
-                process_char('\r',0);
-                input_size = 0;
-                memset(input,0,sizeof(input));
-                goto done;
-            }
-        }
-    }
-done:
-    return;
-}
-
 void banner() {
     size_t i;
     for(i=0; i< sizeof(banner_lines)/sizeof(banner_lines[0]); i++) {
-        process_string(banner_lines[i]);
+        printf(banner_lines[i]);
     }
-}
-
-uint32_t getrand() {
-    //The display has a secret RNG
-    return rng[0];
 }
 
 void print_secret() {
@@ -295,68 +194,48 @@ void print_secret() {
     process_string(obfs);
 }
 
-void print_number(int n) {
-    char buffer[10];
-    int size=0,i;
-    while(n > 0) {
-        buffer[size++] = n%10;
-        n/=10;
-    }
-    for(i=size-1;i>=0;i--) {
-        process_char('0' + buffer[i],0);
-    }
-}
-
 char question[] = "What is the title of episode 00 of season 0 of Buffy the Vampire Slayer?\r\r>";
 
 int main(void) {
     int max = 1000;
-    cursor_pos = INITIAL_CURSOR_POS;
-    clear_screen_with_border(BACKGROUND, FOREGROUND, border_size);
+
+    libc_init();
+    set_screen_data(normal, inverted, border_size);
+    clear_screen_default();
     banner();
-    uint32_t number = (getrand()%max)+1;
+
+    uint32_t number = (rand() % max) + 1;
     int remaining = 1337;
 
     while(1) {
-        char buffer[32] = {0};
-        char *episode_name = NULL;
-        int season = getrand()%7;;
-        int episode_number;
-        if(season == 0) {
-            episode_number = getrand()%12;
-        }
-        else {
-            episode_number = getrand()%22;
-        }
+        char buffer[32]      = {0};
+        char *episode_name   = NULL;
+        int   season         = rand() % 7;
+        int   episode_number = rand() % ( season == 0 ? 12 : 22 );
+
         episode_name = episodes[season][episode_number];
-        episode_number++;
-        season++;
-        //format the question
-        question[29] = (episode_number >= 10) ? ('0' + (episode_number/10)) : ' ';
-        question[30] = '0' + (episode_number%10);
-        question[42] = '0' + season;
-
+        
         //ask the question
-        process_string(question);
+        printf("What is the title of episode %d of season %d of Buffy the Vampire Slayer?\n\n", 
+               episode_number + 1,
+               season + 1);
 
-        process_text(buffer);
+        gets(buffer);
+
         if(0 == strcasecmp(buffer,episode_name)) {
             if(remaining == 0) {
                 print_secret();
                 break;
             }
             else {
-                process_string("Correct! get ");
-                print_number(remaining--);
-                process_string(" more correct to learn the password\r\r");
+                printf("Correct! get %d more correct to learn the password\n\n", remaining--);
             }
         }
         else {
-            process_string("Wrong! The answer is \"");
-            process_string(episode_name);
-            process_string("\"\r\r");
+            printf("Wrong! The answer is \"%s\"\n\n", episode_name);
         }
     }
+
     //infinite loop
     while(1) {
         wait_for_interrupt();

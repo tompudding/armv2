@@ -5,7 +5,7 @@ AS=arm-none-eabi-as
 COPY=arm-none-eabi-objcopy
 TAPES_DIR  = tapes
 BUILD_DIR  = build
-TAPE_NAMES = guessing adventure trivia one_letter_werewolf
+TAPE_NAMES = guessing trivia one_letter_werewolf adventure
 TAPES_BIN  = $(patsubst %, ${TAPES_DIR}/%.tape, ${TAPE_NAMES})
 ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc -Os 
 .PRECIOUS: build/% #Don't delete our intermediate object files, they're useful for debugging
