@@ -27,13 +27,16 @@ static char *outptr;
 /* /\* Put a null-terminated string                 *\/ */
 /* /\*----------------------------------------------*\/ */
 
-/* void xputs (					/\* Put a string to the default device *\/ */
-/* 	const char* str				/\* Pointer to the string *\/ */
-/* ) */
-/* { */
-/* 	while (*str) */
-/* 		xputc(*str++); */
-/* } */
+#define xputc putchar
+#define xfputs fputs
+
+void xputs (					/* Put a string to the default device */
+	const char* str				/* Pointer to the string */
+)
+{
+    while (*str)
+        xputc(*str++);
+}
 
 
 /* void xfputs (					/\* Put a string to the specified device *\/ */
@@ -50,10 +53,6 @@ static char *outptr;
 /* 		xputc(*str++); */
 /* 	xfunc_out = pf;		/\* Restore output device *\/ */
 /* } */
-
-#define xputc putchar
-#define xputs puts
-#define xfputs fputs
 
 
 /*----------------------------------------------*/

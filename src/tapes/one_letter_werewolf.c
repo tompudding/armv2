@@ -2,37 +2,34 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "synapse.h"
+#include <terminal.h>
 
-//Loads of copy pasta here due to a severe lack of time, got to write 5 games in the next 5 hours :(
 
-#define INITIAL_CURSOR_POS ((WIDTH+1)*border_size)
-#define FINAL_CURSOR_POS   (WIDTH*HEIGHT - border_size*(WIDTH+1))
 size_t border_size = 1;
-size_t cursor_pos = 0;
-size_t processing = 0;
 
 #define BACKGROUND BLUE
 #define FOREGROUND LIGHT_BLUE
-uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
-uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
-bool is_day = true;
-bool level_banner = false;
-int current_blips = 0;
+uint32_t normal        = PALETTE(BACKGROUND,FOREGROUND);
+uint32_t inverted      = PALETTE(FOREGROUND,BACKGROUND);
+bool     is_day        = true;
+bool     level_banner  = false;
+int      current_blips = 0;
 
-#define MAX_HEIGHT (HEIGHT-2)
-#define MIN_HEIGHT 2
-#define DAY_TICKS 0x40
-#define BAR_CHAR '='
-#define VILLAGER_CHAR 'n'
-#define VILLAGER_ARMED 'a'
-#define VILLAGER_ARMED_SUSPICIOUS 'A'
-#define VILLAGER_SCARED 's'
+#define MAX_HEIGHT                 (HEIGHT-2)
+#define MIN_HEIGHT                 2
+#define DAY_TICKS                  0x40
+#define BAR_CHAR                   '='
+#define VILLAGER_CHAR              'n'
+#define VILLAGER_ARMED             'a'
+#define VILLAGER_ARMED_SUSPICIOUS  'A'
+#define VILLAGER_SCARED            's'
 #define VILLAGER_SCARED_SUSPICIOUS 'S'
-#define VILLAGER_SUSPICIOUS 'N'
-#define PLAYER_CHAR 'x'
-#define DEAD_CHAR '\x7f'
-#define WEREWOLF_CHAR 'W'
+#define VILLAGER_SUSPICIOUS        'N'
+#define PLAYER_CHAR                'x'
+#define DEAD_CHAR                  '\x7f'
+#define WEREWOLF_CHAR              'W'
 #define MAX(a,b) ((a) < (b) ? (b) : (a))
 
 int colours[] = {PALETTE(BLUE, LIGHT_BLUE),
@@ -105,6 +102,10 @@ struct character {
     struct position destination;
 };
 
+void end_game(char *, bool);
+void lose_game();
+void win_game();
+
 struct position cabinet_pos = {.x = 7, .y = 21};
 struct position doors[4] = {{7,18},{7,24},{4,21},{10,21}};
 
@@ -115,11 +116,6 @@ struct character villagers[MAX_NUM_VILLAGERS];
 int time_of_day = 0x30; //0 - 10
 int num_villagers = 1;
 int current_villagers = 1;
-
-volatile uint32_t getrand() {
-    //The display has a secret RNG
-    return rng[0];
-}
 
 int set_letter(char c, int x, int y) {
     letter_data[WIDTH*(HEIGHT-1-y) + x] = c;
@@ -152,6 +148,40 @@ bool is_villager(uint8_t item) {
 
 bool is_player(uint8_t item) {
     return item == PLAYER_CHAR || item == WEREWOLF_CHAR;
+}
+
+void update_health() {
+    letter_data[19] = '0' + player.health/100;
+    letter_data[20] = '0' + (player.health/10)%10;
+    letter_data[21] = '0' + player.health%10;
+}
+
+void next_level() {
+    char level_text[] = "LEVEL 00";
+    level++;
+    num_villagers += 5;
+    current_villagers = num_villagers;
+    memset(villagers, 0, sizeof(villagers));
+    level_text[6] += level/10;
+    level_text[7] += level%10;
+    end_game(level_text,false);
+}
+
+void update_num_villagers() {
+    letter_data[WIDTH+19] = '0' + current_villagers/10;
+    letter_data[WIDTH+20] = '0' + current_villagers%10;
+    if(current_villagers == 0) {
+        next_level();
+    }
+}
+
+void hurt_player() {
+    player.health -= player.size == 2 ? 20 : 50;
+    update_health();
+    if(player.health <= 0) {
+        lose_game();
+    }
+    rng[0] = 1;
 }
 
 void update_werewolf_pos(struct position *new_pos, struct character *character) {
@@ -397,8 +427,8 @@ bool proceed_to_point(struct character *villager, struct position *pos) {
 
 void rand_pos(struct position *pos) {
     do {
-        pos->x = getrand() % WIDTH;
-        pos->y = MIN_HEIGHT + (getrand() % (MAX_HEIGHT-MIN_HEIGHT));
+        pos->x = rand() % WIDTH;
+        pos->y = MIN_HEIGHT + (rand() % (MAX_HEIGHT-MIN_HEIGHT));
     }
     while (get_item(pos->x, pos->y) != ' ');
 }
@@ -555,8 +585,8 @@ void update_villager(struct character *villager) {
         else {
             //pick a point on the screen and walk towards it
             if(!villager->walking_to_point) {
-                villager->destination.x = getrand()%WIDTH;
-                villager->destination.y = MIN_HEIGHT + getrand()%(MAX_HEIGHT-MIN_HEIGHT);
+                villager->destination.x = rand()%WIDTH;
+                villager->destination.y = MIN_HEIGHT + rand() % (MAX_HEIGHT - MIN_HEIGHT);
                 villager->walking_to_point = true;
             }
             villager->walking_to_point = proceed_to_point(villager, &villager->destination);
@@ -671,40 +701,6 @@ void tick_simulation() {
     }
 }
 
-void next_level() {
-    char level_text[] = "LEVEL 00";
-    level++;
-    num_villagers += 5;
-    current_villagers = num_villagers;
-    memset(villagers, 0, sizeof(villagers));
-    level_text[6] += level/10;
-    level_text[7] += level%10;
-    end_game(level_text,false);
-}
-
-void update_num_villagers() {
-    letter_data[WIDTH+19] = '0' + current_villagers/10;
-    letter_data[WIDTH+20] = '0' + current_villagers%10;
-    if(current_villagers == 0) {
-        next_level();
-    }
-}
-
-void update_health() {
-    letter_data[19] = '0' + player.health/100;
-    letter_data[20] = '0' + (player.health/10)%10;
-    letter_data[21] = '0' + player.health%10;
-}
-
-hurt_player() {
-    player.health -= player.size == 2 ? 20 : 50;
-    update_health();
-    if(player.health <= 0) {
-        lose_game();
-    }
-    rng[0] = 1;
-}
-
 void kill_villagers() {
     int i;
     bool killed = false;
@@ -737,8 +733,7 @@ void reset() {
     current_palette = -1;
     current_blips = 0;
     time_of_day = 0x30;
-    cursor_pos = INITIAL_CURSOR_POS;
-    clear_screen_with_border(BACKGROUND, FOREGROUND, 0);
+    clear_screen_default();
     memset(&player, 0, sizeof(player));
     player.pos.x = 20;
     player.pos.y = 15;
@@ -768,6 +763,8 @@ void reset() {
 
 int main(void) {
     int i;
+    libc_init();
+    set_screen_data(BACKGROUND, FOREGROUND, 0);
     reset();
 
     start_game("CAPS=suspicious a=armed s=scared","n=normal w=weapons x=you!");
