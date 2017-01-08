@@ -48,7 +48,7 @@ ${TAPES_DIR}/%.tape: build/tape_loader.bin build/% | build ${TAPES_DIR}
 	python create.py -o $@ $^
 
 build/%: src/tapes/%.c | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -I.. -o $@ $< build/synapse.o
+	arm-none-eabi-gcc ${ARMCFLAGS} -I.. -o $@ $< build/synapse.o build/libc.a
 
 build:
 	mkdir -p $@

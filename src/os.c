@@ -196,9 +196,6 @@ int main(void) {
 
     while(1) {        
         printf(PROMPT);
-        int command_size = gets(command);
-        if(command_size > 0) {
-            handle_command(command);
-        }
+        handle_command(gets(command));
     }
 }
