@@ -787,7 +787,7 @@ int main(void) {
             uint8_t c;
             c = keyboard_ringbuffer[last_pos];
             if(level_banner) {
-                if(c == '\r') {
+                if(c == '\n') {
                     level_banner = false;
                     reset();
                     break;
