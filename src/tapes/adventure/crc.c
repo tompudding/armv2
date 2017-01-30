@@ -36,6 +36,8 @@
  * SUCH DAMAGE.
  */
 
+#include <synapse.h>
+
 #ifndef lint
 #if 0
 static char sccsid[] = "@(#)crc.c	8.1 (Berkeley) 5/31/93";

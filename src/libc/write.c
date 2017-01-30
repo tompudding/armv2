@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
+#include <time.h>
 #include "terminal.h"
 
 int (*bob)(int, void *arg1, void *arg2, void *arg3) = 0x41414141;
@@ -55,6 +56,14 @@ int isatty(int fd) {
     return bob(-1,(void*)fd,0,0);
 }
 
+void *malloc(size_t size) {
+    return bob(6, (void*)size, 0, 0);
+}
+
+void free(void *ptr) {
+    bob(7, ptr, 0, 0);
+}
+
 int atoi(char *s) 
 {
     long out;
@@ -65,4 +74,8 @@ int atoi(char *s)
 
     errno = EINVAL;
     return -1;
+}
+
+struct tm *localtime(const time_t *timep) {
+    return (void*)bob(8, timep, 0, 0);
 }

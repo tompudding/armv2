@@ -5,13 +5,13 @@ PROG=	adventure
 SRCS=	main.c init.c done.c subr.c vocab.c wizard.c io.c data.c crc.c #save.c
 MAN=	adventure.6
 ARMCC=arm-none-eabi-gcc
-ARMCFLAGS  =-std=gnu99 -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc
+ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -I../.. -I../../libc
 
 HIDEGAME=hidegame
 CLEANFILES+=setup data.c adventure
 
 adventure: ${SRCS}
-	${ARMCC} -o $@ -fno-stack-protector ${ARMCFLAGS} $^ ../../../build/synapse.o
+	${ARMCC} -o $@ -fno-stack-protector ${ARMCFLAGS} $^ ../../../build/synapse.o ../../../build/libc.a
 
 data.c: glorkz setup
 	./setup glorkz > data.c
