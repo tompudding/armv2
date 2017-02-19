@@ -56,14 +56,6 @@ int isatty(int fd) {
     return bob(-1,(void*)fd,0,0);
 }
 
-void *malloc(size_t size) {
-    return bob(6, (void*)size, 0, 0);
-}
-
-void free(void *ptr) {
-    bob(7, ptr, 0, 0);
-}
-
 int atoi(char *s) 
 {
     long out;

@@ -250,7 +250,7 @@ handle_error:
            so divide by 8 */
         
         LSR R0,#3
-        LDR R4,=0x20004
+        LDR R4,=0x3fffc
         ADD R5, R4, #13*4
 /* copy the saved registers into place */
 restore_regs_loop:      
@@ -264,7 +264,7 @@ restore_regs_loop:
 handle_error_usr:
         MOV R2,SP
         MOV R3,LR
-        LDR R4,=0x20000
+        LDR R4,=0x3fff8
         LDR R4,[R4]
         MOV PC,R4
 

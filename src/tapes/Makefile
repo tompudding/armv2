@@ -12,6 +12,12 @@ build/adventure: | build
 	make -C adventure
 	cp adventure/adventure $@
 
+tapes/%: build/%
+	python ../../create.py -o $@ $^
+
+tapes:
+	mkdir -p $@
+
 build:
 	mkdir -p $@
 
