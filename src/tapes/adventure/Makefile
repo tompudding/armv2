@@ -8,13 +8,16 @@ ARMCC=arm-none-eabi-gcc
 ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -I../.. -I../../libc
 
 HIDEGAME=hidegame
-CLEANFILES+=setup data.c adventure
+CLEANFILES+=setup data.c adventure data.pre
 
 adventure: ${SRCS}
 	${ARMCC} -o $@ -fno-stack-protector ${ARMCFLAGS} $^ ../../../build/synapse.o ../../../build/libc.a
 
-data.c: glorkz setup
-	./setup glorkz > data.c
+data.c: data.pre
+	python create_data.py $@ $< 
+
+data.pre: glorkz setup
+	./setup glorkz > data.pre
 
 setup: setup.c hdr.h
 	${CC} -o setup setup.c

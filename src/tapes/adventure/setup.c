@@ -76,6 +76,13 @@ void fatal();
 
 #define LINE 10         /* How many values do we get on a line? */
 
+int seed_random(int seed) {
+}
+
+int get_random() {
+    return 0;
+}
+
 main(argc, argv)
 int argc;
 char *argv[];
@@ -92,7 +99,7 @@ char *argv[];
 	puts(SIG2);
 	puts(" */");
 	printf("\n\nchar data_file[] =\n{");
-	srandom(SEED);
+	seed_random(SEED);
 	count = 0;
 	linestart = YES;
 
@@ -100,7 +107,7 @@ char *argv[];
 	{
 		if (linestart && c == ' ') /* Convert first spaces to tab */
 		{
-                    printf("0x%02lx,", ('\t' ^ random()) & 0xFF);
+                    printf("0x%02lx,", ('\t' ^ get_random()) & 0xFF);
                     while ((c = getc(infile)) == ' ' && c != EOF);
                     /* Drop the non-whitespace character through */
                     linestart = NO;
@@ -116,7 +123,7 @@ char *argv[];
 		}
 		if (count++ % LINE == 0)   /* Finished a line? */
 			printf("\n\t");
-		printf("0x%02lx,", (c ^ random()) & 0xFF);
+		printf("0x%02lx,", (c ^ get_random()) & 0xFF);
 	}
 	puts("\n\t0\n};");
 	fclose(infile);
