@@ -199,7 +199,6 @@ char question[] = "What is the title of episode 00 of season 0 of Buffy the Vamp
 int main(void) {
     int max = 1000;
 
-    libc_init();
     set_screen_data(normal, inverted, border_size);
     clear_screen_default();
     banner();

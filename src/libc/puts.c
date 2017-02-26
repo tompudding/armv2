@@ -54,6 +54,10 @@ int fgetc(FILE *stream)
     char c = 0;
 
     if(1 == read(fileno(stream), &c, 1)) {
+        //echo to out
+        if(stream == stdin) {
+            write(fileno(stdout), &c, 1);
+        }
         return (int)c;
     }
 
@@ -62,7 +66,7 @@ int fgetc(FILE *stream)
 
 int getchar(void) 
 {
-    return fgetc(stdin);
+    fgetc(stdin);
 }
 
 static unsigned char getchar_cb(void) 

@@ -14,6 +14,7 @@ char *banner_lines[] = {
     "\n",
     "READY. Type load to access the tape\n",
     "\n"
+"This is a super test line that is rather too long to display on the screen without breaking\n"
 };
 
 
@@ -179,7 +180,7 @@ void handle_command(char *command) {
 void banner() {
     size_t i;
     for(i=0; i< sizeof(banner_lines)/sizeof(banner_lines[0]); i++) {
-        printf(banner_lines[i]);
+        printf("%s", banner_lines[i]);
     }
 }
 

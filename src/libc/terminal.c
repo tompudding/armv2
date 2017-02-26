@@ -144,3 +144,11 @@ int tty_read(char *s, size_t cnt)
 
     return num_read;
 }
+
+void terminal_init() {
+    uint32_t normal   = PALETTE(BLACK,GREEN);
+    uint32_t inverted = PALETTE(GREEN,BLACK);
+
+    set_screen_data(normal, inverted, 1);
+    clear_screen_default();
+}

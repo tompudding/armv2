@@ -763,7 +763,7 @@ void reset() {
 
 int main(void) {
     int i;
-    libc_init();
+
     set_screen_data(BACKGROUND, FOREGROUND, 0);
     reset();
 

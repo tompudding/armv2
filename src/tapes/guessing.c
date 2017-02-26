@@ -33,7 +33,6 @@ void banner() {
 int main(void) {
     int max = 1000;
 
-    libc_init();
     set_screen_data(normal, inverted, border_size);
     clear_screen_default();
     banner();

@@ -22,4 +22,6 @@ int libc_init(void) {
     stdin->_file  = 0;
     stdout->_file = 1;
     stderr->_file = 2;
+
+    terminal_init();
 }
