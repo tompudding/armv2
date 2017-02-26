@@ -293,6 +293,8 @@ class Display(armv2.Device):
         #The display has a secret RNG, did you know that?
         if addr == self.letter_end:
             return int(random.getrandbits(32))
+        if addr == self.letter_end + 4:
+            return int(time.time())
         bytes = [self.readByteCallback(addr + i, 0) for i in xrange(4)]
         return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
 

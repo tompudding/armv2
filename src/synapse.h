@@ -34,6 +34,7 @@ extern volatile struct tape_control  *tape_control;
 extern uint8_t                       *tape_load_area;
 extern uint8_t                       *symbols_load_area;
 extern volatile uint32_t             *rng;
+extern volatile uint32_t             *clock_word;
 extern void                         **crash_handler_word;
 
 uint64_t wait_for_interrupt();
