@@ -90,7 +90,7 @@ fle __malloc_freelist;
    aligned to an ALIGN boundary.  ALIGN must be a power of 2.  */
 #define M_ALIGN_SUB(x, align) ((size_t)(x) & ((align) - 1))
 
-#define _MALLOC_START (void*)0x100000;
+#define _MALLOC_START (void*)0x80000;
 void *__malloc_start = _MALLOC_START;
 
 /* This is the minimum gap allowed between __malloc_end and the top of
