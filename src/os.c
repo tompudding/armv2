@@ -14,7 +14,6 @@ char *banner_lines[] = {
     "\n",
     "READY. Type load to access the tape\n",
     "\n"
-"This is a super test line that is rather too long to display on the screen without breaking\n"
 };
 
 

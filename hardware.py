@@ -153,16 +153,23 @@ class TapeDrive(armv2.Device):
         self.tape       = None
         self.tape_sound = None
         self.running    = True
-        #self.cv        = threading.Condition(threading.Lock())
-        #self.thread    = threading.Thread(target = self.threadMain)
-        #self.byte_required = False
-        #self.thread.start()
+        self.playing    = False
         self.loading   = False
         self.end_callback = None
 
+    def start_playing(self):
+        if not self.tape_sound:
+            return
+        self.tape_sound.play()
+        self.playing = True
+
+    def stop_playing(self):
+        if not self.tape_sound:
+            return
+        self.tape_sound.stop()
+        self.playing = False
+
     def loadTape(self, filename):
-        #read the whole tape in first for use as sound
-        #with open(filename,'rb') as f:
         self.unloadTape()
         self.tape = open(filename, 'rb')
         self.tape_name = filename
@@ -180,35 +187,18 @@ class TapeDrive(armv2.Device):
         set_length = int(tone_length*2)
         total_samples = 2*(set_bits*set_length + clr_bits*clr_length)
         samples = numpy.zeros(shape=total_samples, dtype='float64')
-        print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(total_samples)/freq)
-
+        #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(total_samples)/freq)
         popcnt.create_samples(data, samples, clr_length, set_length)
-        print 'a',len(samples)
+        #bandpass filter it to make it less harsh
         samples = butter_bandpass_filter(samples, 500, 2700, freq).astype('int16')
-        print 'b',len(samples),samples.dtype
+
         if num_channels != 1:
-            print 'reshape!'
+            #Duplicate it into the required number of channels
             samples = samples.repeat(num_channels).reshape(total_samples, num_channels)
 
-        print 'make sound'
         self.tape_sound = pygame.sndarray.make_sound(samples)
-
-        sfile = wave.open('jim.wav', 'w')
-
-        # set the parameters
-        sfile.setframerate(freq)
-        sfile.setnchannels(num_channels)
-        sfile.setsampwidth(2)
-
-        # write raw PyGame sound buffer to wave file
-        sfile.writeframesraw(self.tape_sound.get_buffer().raw)
-
-        # close file
-        sfile.close()
+        #rewind the tape so we can load from it correctly
         self.tape.seek(0)
-
-        #print 'playing'
-        #self.tape_sound.play()
 
     def registerCallback(self, callback):
         self.end_callback = callback
@@ -219,34 +209,13 @@ class TapeDrive(armv2.Device):
             self.tape = None
             self.tape_name = None
         if self.tape_sound:
-            self.tape_sound.stop()
+            self.stop_playing()
             self.tape_sound = None
-
-    # def threadMain(self):
-    #     with self.cv:
-    #         while self.running:
-    #             while self.running and not self.byte_required:
-    #                 self.cv.wait(0.01)
-    #             if not self.running:
-    #                 break
-    #             self.byte_required = False
-    #             #time.sleep(0.001)
-    #             c = self.tape.read(1)
-    #             if c:
-    #                 self.data_byte = ord(c)
-    #                 self.status = self.Codes.READY
-    #                 self.cpu.cpu.Interrupt(self.id, self.status)
-    #             else:
-    #                 self.data_byte = 0
-    #                 self.status = self.Codes.END_OF_TAPE
-    #                 self.loading = False
-    #                 if self.end_callback:
-    #                     self.end_callback()
-    #                 self.cpu.cpu.Interrupt(self.id, self.status)
 
     def power_down(self):
         #We don't actually need to do any powering down, but alert any potential debugger that they can update
         #their symbols
+        self.stop_playing()
         self.end_callback()
 
     def readByteCallback(self,addr,value):
@@ -267,11 +236,12 @@ class TapeDrive(armv2.Device):
             if value == self.Codes.NEXT_BYTE:
                 #They want the next byte, are we ready for them?
                 #self.loading = pygame.time.get_ticks()
+                if not self.playing:
+                    self.start_playing()
+
                 if self.tape:
-                    # self.status = self.Codes.NOT_READY
-                    # with self.cv:
-                    #     self.byte_required = True
-                    #     self.cv.notify()
+                    #Have we progressed enough to give the next byte?
+                    
                     c = self.tape.read(1)
                     if c:
                         self.data_byte = ord(c)
@@ -282,6 +252,7 @@ class TapeDrive(armv2.Device):
                         self.data_byte = 0
                         self.status = self.Codes.END_OF_TAPE
                         self.loading = False
+                        self.stop_playing()
                         self.cpu.cpu.Interrupt(self.id, self.status)
 
                 else:
@@ -298,13 +269,6 @@ class TapeDrive(armv2.Device):
 
     def Delete(self):
         return
-        with self.cv:
-            self.running = False
-            self.cv.notify()
-        armv2.DebugLog('joining tape drivethread')
-        self.thread.join()
-        armv2.DebugLog('joined tape drivethread')
-
 
 class Display(armv2.Device):
     """
