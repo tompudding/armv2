@@ -10,6 +10,7 @@ import os
 import numpy
 import popcnt
 import wave
+import globals
 from globals.types import Point
 
 class Keyboard(armv2.Device):
@@ -156,12 +157,14 @@ class TapeDrive(armv2.Device):
         self.playing    = False
         self.loading   = False
         self.end_callback = None
+        self.lock = threading.Lock()
 
     def start_playing(self):
         if not self.tape_sound:
             return
         self.tape_sound.play()
         self.playing = True
+        self.start_time = globals.t
 
     def stop_playing(self):
         if not self.tape_sound:
@@ -188,7 +191,9 @@ class TapeDrive(armv2.Device):
         total_samples = 2*(set_bits*set_length + clr_bits*clr_length)
         samples = numpy.zeros(shape=total_samples, dtype='float64')
         #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(total_samples)/freq)
-        popcnt.create_samples(data, samples, clr_length, set_length)
+        #The position in samples that each byte starts
+        self.byte_samples = numpy.zeros(shape=len(data)*4, dtype='uint32')
+        popcnt.create_samples(data, samples, self.byte_samples, clr_length, set_length)
         #bandpass filter it to make it less harsh
         samples = butter_bandpass_filter(samples, 500, 2700, freq).astype('int16')
 
@@ -199,6 +204,7 @@ class TapeDrive(armv2.Device):
         self.tape_sound = pygame.sndarray.make_sound(samples)
         #rewind the tape so we can load from it correctly
         self.tape.seek(0)
+        self.sample_rate = float(freq)/1000
 
     def registerCallback(self, callback):
         self.end_callback = callback
@@ -228,40 +234,71 @@ class TapeDrive(armv2.Device):
         elif addr == 2:
             return self.data_byte
 
+    def is_byte_ready(self):
+        elapsed = globals.t - self.start_time
+        current_byte = self.tape.tell()
+        if current_byte >= len(self.byte_samples):
+            return True
+
+        #return True
+        return elapsed * self.sample_rate > self.byte_samples[current_byte]
+
+    def feed_byte(self):
+        c = self.tape.read(1)
+        if c:
+            self.data_byte = ord(c)
+            self.status = self.Codes.READY
+            #time.sleep(0.001)
+            self.cpu.cpu.Interrupt(self.id, self.status)
+        else:
+            self.data_byte = 0
+            self.status = self.Codes.END_OF_TAPE
+            self.loading = False
+            self.stop_playing()
+            self.cpu.cpu.Interrupt(self.id, self.status)
+
+    def update(self):
+        if 1:
+            if self.status != self.Codes.NOT_READY or not self.playing:
+                #don't care
+                return
+
+            #Otherwise we're waiting, so check if it's time for the next byte
+            if self.is_byte_ready():
+                self.feed_byte()
+
     def writeByteCallback(self,addr,value):
         if addr == 0:
             #Trying to write to the read register. :(
             pass
         elif addr == 1:
-            if value == self.Codes.NEXT_BYTE:
-                #They want the next byte, are we ready for them?
-                #self.loading = pygame.time.get_ticks()
-                if not self.playing:
-                    self.start_playing()
+            if 1:
+                if value == self.Codes.NEXT_BYTE:
+                    #They want the next byte, are we ready for them?
+                    #self.loading = pygame.time.get_ticks()
 
-                if self.tape:
-                    #Have we progressed enough to give the next byte?
-                    
-                    c = self.tape.read(1)
-                    if c:
-                        self.data_byte = ord(c)
-                        self.status = self.Codes.READY
-                        #time.sleep(0.001)
-                        self.cpu.cpu.Interrupt(self.id, self.status)
+                    if self.tape:
+                        #Have we progressed enough to give the next byte?
+                        if not self.playing:
+                            self.start_playing()
+
+                        if self.is_byte_ready():
+                            #Great you can have a byte
+                            self.feed_byte()
+                        else:
+                            #Not ready for one yet
+                            self.data_byte = 0
+                            self.status = self.Codes.NOT_READY
+                            self.cpu.cpu.Interrupt(self.id, self.status)
+                            #
+
                     else:
                         self.data_byte = 0
-                        self.status = self.Codes.END_OF_TAPE
-                        self.loading = False
-                        self.stop_playing()
+                        self.status = self.Codes.DRIVE_EMPTY
                         self.cpu.cpu.Interrupt(self.id, self.status)
-
-                else:
-                    self.data_byte = 0
-                    self.status = self.Codes.DRIVE_EMPTY
-                    self.cpu.cpu.Interrupt(self.id, self.status)
-            elif value == self.Codes.READY:
-                #power down
-                self.power_down()
+                elif value == self.Codes.READY:
+                    #power down
+                    self.power_down()
         elif addr == 2:
             #Can't write to the data byte
             pass

@@ -117,6 +117,7 @@ class Emulator(object):
         #if 1 and elapsed > 20:
         drawing.NewFrame()
         self.dbg.machine.display.Update()
+        self.dbg.machine.tape_drive.update()
         drawing.EndFrame()
         pygame.display.flip()
             #self.last = globals.t

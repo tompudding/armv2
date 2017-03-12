@@ -27,9 +27,9 @@ uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
 int tape_next_byte(uint8_t *out) {
-    int tape_status = tape_control->read;
-
     tape_control->write = NEXT_BYTE;
+
+    int tape_status = tape_control->read;
 
     while(tape_status == NOT_READY) {
         wait_for_interrupt();

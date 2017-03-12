@@ -23,25 +23,28 @@ cdef uint32_t _inplace_popcount_32_2d(uint32_t[:] arr) nogil:
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef void _create_samples(uint32_t[:] data, double[:] samples, int clr_length, int set_length) nogil:
+cdef void _create_samples(uint32_t[:] data, double[:] samples, uint32_t[:] byte_samples, int clr_length, int set_length) nogil:
     cdef int i
     cdef int j
     cdef int k
+    cdef int l
     cdef int p = 0
     cdef int steps
     
     for i in xrange(data.shape[0]):
-        for j in xrange(32):
-            steps = set_length if ((data[i] >> j) & 1) else clr_length
+        for j in xrange(4):
+            for k in xrange(8):
+                steps = set_length if ((data[i] >> (j*8 + k)) & 1) else clr_length
 
-            for k in xrange(steps):
-                samples[p + k] = -10000
-                samples[p + steps + k] = 10000
+                for l in xrange(steps):
+                    samples[p + l] = -10000
+                    samples[p + steps + l] = 10000
 
-            p += 2*steps
+                p += 2*steps
+            byte_samples[i*4 + j] = p
 
 def count_array(arr):
     return _inplace_popcount_32_2d(arr)
 
-def create_samples(data, samples, clr_length, set_length):
-    _create_samples(data, samples, clr_length, set_length)
+def create_samples(data, samples, byte_samples, clr_length, set_length):
+    _create_samples(data, samples, byte_samples, clr_length, set_length)
