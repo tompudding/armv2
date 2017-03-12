@@ -183,8 +183,8 @@ class TapeDrive(armv2.Device):
         data = numpy.fromfile(self.tape, dtype='uint32')
         set_bits = popcnt.count_array(data)
         clr_bits = (len(data) * 32) - set_bits
-        #The sigmals we're using are either 10 (5 on 5 off) or 20 samples at 22050 Hz, which is 
-        #either 880 or 1760 Hz
+        #The sigmals we're using are either 8 (4 on 4 off) or 16 samples at 22050 Hz, which is 
+        #either 1378 or 2756 Hz
         tone_length = 4*float(freq)/22050
         clr_length = int(tone_length)
         set_length = int(tone_length*2)
@@ -289,8 +289,6 @@ class TapeDrive(armv2.Device):
                             #Not ready for one yet
                             self.data_byte = 0
                             self.status = self.Codes.NOT_READY
-                            self.cpu.cpu.Interrupt(self.id, self.status)
-                            #
 
                     else:
                         self.data_byte = 0
