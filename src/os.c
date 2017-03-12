@@ -74,11 +74,6 @@ int load_tape_data( uint8_t *tape_area ) {
         if(READY == result) {
             section_length--;
             *tape_area++ = byte;
-            if((((uint32_t)tape_area)&7) == 0) {
-                processing = 0;
-                process_char('.');
-                processing = 1;
-            }
         }
     }
     return result;
