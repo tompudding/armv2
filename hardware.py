@@ -161,6 +161,7 @@ class TapeDrive(armv2.Device):
         self.loading   = False
         self.end_callback = None
         self.lock = threading.Lock()
+        self.tape_data = []
 
         screen_width = self.cpu.display.pixel_width()
         screen_height = self.cpu.display.pixel_height()
@@ -259,6 +260,7 @@ class TapeDrive(armv2.Device):
             self.tape.close()
             self.tape = None
             self.tape_name = None
+            self.tape_data = []
         if self.tape_sound:
             self.stop_playing()
             self.tape_sound = None
@@ -292,9 +294,24 @@ class TapeDrive(armv2.Device):
         c = self.tape.read(1)
         if c:
             self.data_byte = ord(c)
+            self.tape_data.append(self.data_byte)
             self.status = self.Codes.READY
             #time.sleep(0.001)
             self.cpu.cpu.Interrupt(self.id, self.status)
+
+            #Update the stripes
+            self.tape_data = data = self.tape_data[-len(self.stripes)/16:]
+
+            for i,byte in enumerate(data):
+                for j in xrange(8):
+                    colour = Display.Colours.YELLOW if ((byte>>j)&1) else Display.Colours.BLUE
+                    other  = Display.Colours.BLUE if ((byte>>j)&1) else Display.Colours.YELLOW
+                    if i*16 + j*2 +1 >= len(self.stripes):
+                        break
+                    for q in self.stripes[i*16 + j*2]:
+                        q.SetColour(colour)
+                    for q in self.stripes[i*16 + j*2 + 1]:
+                        q.SetColour(other)
         else:
             self.data_byte = 0
             self.status = self.Codes.END_OF_TAPE
