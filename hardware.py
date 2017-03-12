@@ -139,6 +139,9 @@ class TapeDrive(armv2.Device):
     """
     id=0x2730eb6c
 
+    stripe_height = 2
+    border_pixels = 16
+
     class Codes:
         NEXT_BYTE   = 0
         NOT_READY   = 1
@@ -158,6 +161,48 @@ class TapeDrive(armv2.Device):
         self.loading   = False
         self.end_callback = None
         self.lock = threading.Lock()
+
+        screen_width = self.cpu.display.pixel_width()
+        screen_height = self.cpu.display.pixel_height()
+
+        num_t_stripes = self.border_pixels / self.stripe_height
+        num_l_stripes = (screen_height - (self.border_pixels * 2)) / self.stripe_height
+        num_stripes = 2*(num_t_stripes + num_l_stripes)
+
+        print num_stripes
+        self.quad_buffer = drawing.QuadBuffer( num_stripes )
+        #Add the stripes as a tuple for each row. The first few will have just one in (for the top rows that
+        #go all the way across), then the middle lot will have 2, then the final sets will be one again
+        self.stripes = []
+        #First the bottom
+        for i in xrange(num_t_stripes):
+            q = drawing.Quad(self.quad_buffer)
+            bl = Point(0, i*self.stripe_height)
+            tr = Point(screen_width, (i+1) * self.stripe_height)
+            q.SetVertices(bl, tr, 5)
+            self.stripes.append([q])
+
+        for i in xrange(num_t_stripes, num_t_stripes + num_l_stripes):
+            row = []
+            for j in xrange(2):
+                q = drawing.Quad(self.quad_buffer)
+                bl = Point(j*(screen_width - self.border_pixels), i*self.stripe_height)
+                tr = Point(bl.x + self.border_pixels, (i+1) * self.stripe_height)
+                q.SetVertices(bl, tr, 5)
+                row.append(q)
+            self.stripes.append(row)
+
+        for i in xrange(num_t_stripes):
+            row = num_t_stripes + num_l_stripes + i
+            q = drawing.Quad(self.quad_buffer)
+            bl = Point(0, row*self.stripe_height)
+            tr = Point(screen_width, (row+1) * self.stripe_height)
+            q.SetVertices(bl, tr, 5)
+            self.stripes.append([q])
+
+        for i,row in enumerate(self.stripes):
+            for stripe in row:
+                stripe.SetColour(Display.Colours.YELLOW if i&1 else Display.Colours.BLUE)
 
     def start_playing(self):
         if not self.tape_sound:
@@ -258,14 +303,17 @@ class TapeDrive(armv2.Device):
             self.cpu.cpu.Interrupt(self.id, self.status)
 
     def update(self):
-        if 1:
-            if self.status != self.Codes.NOT_READY or not self.playing:
-                #don't care
-                return
+        
+        if not self.playing:
+            return
 
-            #Otherwise we're waiting, so check if it's time for the next byte
+        if self.status == self.Codes.NOT_READY:
+            #We're waiting, so check if it's time for the next byte
             if self.is_byte_ready():
                 self.feed_byte()
+
+        drawing.DrawNoTexture(self.quad_buffer)
+        
 
     def writeByteCallback(self,addr,value):
         if addr == 0:
@@ -316,6 +364,31 @@ class Display(armv2.Device):
     0x4b0 - 0x960 : Same as above, but each byte represents the ascii code for the character displayed
 
     """
+                    
+    class Colours:
+        BLACK       = (0, 0, 0, 255)
+        WHITE       = (255, 255, 255, 255)
+        RED         = (136, 0, 0, 255)
+        CYAN        = (170, 255, 238, 255)
+        VIOLET      = (204, 68, 204, 255)
+        GREEN       = (0, 204, 85, 255)
+        BLUE        = (0, 0, 170, 255)
+        YELLOW      = (238, 238, 119, 255)
+        ORANGE      = (221, 136, 85, 255)
+        BROWN       = (102, 68, 0, 255)
+        LIGHT_RED   = (255, 119, 119, 255)
+        DARK_GREY   = (51, 51, 51, 255)
+        MED_GREY    = (119, 119, 119, 255)
+        LIGHT_GREEN = (170, 255, 102, 255)
+        LIGHT_BLUE  = (0, 136, 255, 255)
+        LIGHT_GREY  = (187, 187, 187, 255)
+
+        palette = [ BLACK   , WHITE      , RED       , CYAN, 
+                    VIOLET  , GREEN      , BLUE      , YELLOW, 
+                    ORANGE  , BROWN      , LIGHT_RED , DARK_GREY,
+                    MED_GREY, LIGHT_GREEN, LIGHT_BLUE, LIGHT_GREY ]
+
+
     id = 0x9d99389e
     width  = 40
     height = 30
@@ -343,23 +416,6 @@ class Display(armv2.Device):
                 tr = bl + Point(self.cell_size, self.cell_size)
                 quad.SetVertices(bl, tr, z)
 
-        self.palette = [ (0, 0, 0, 255),
-                         (255, 255, 255, 255),
-                         (136, 0, 0, 255),
-                         (170, 255, 238, 255),
-                         (204, 68, 204, 255),
-                         (0, 204, 85, 255),
-                         (0, 0, 170, 255),
-                         (238, 238, 119, 255),
-                         (221, 136, 85, 255),
-                         (102, 68, 0, 255),
-                         (255, 119, 119, 255),
-                         (51, 51, 51, 255),
-                         (119, 119, 119, 255),
-                         (170, 255, 102, 255),
-                         (0, 136, 255, 255),
-                         (187, 187, 187, 255), ]
-
         self.font_data = [0 for i in xrange(256)]
         self.letter_data = [0 for i in xrange(self.width*self.height)]
         self.palette_data = [0 for i in xrange(self.width*self.height)]
@@ -378,7 +434,10 @@ class Display(armv2.Device):
         return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
 
     def pixel_width(self):
-        return self.width*self.cell_size*self.scale_factor
+        return self.width * self.cell_size * self.scale_factor
+
+    def pixel_height(self):
+        return self.height * self.cell_size * self.scale_factor
 
     def writeCallback(self,addr,value):
         armv2.DebugLog('display write word %x %x\n' % (addr,value))
@@ -422,8 +481,8 @@ class Display(armv2.Device):
     def redraw(self,pos):
         letter = self.letter_data[pos]
         palette = self.palette_data[pos]
-        back_colour = self.palette[(palette>>4)&0xf]
-        fore_colour = self.palette[(palette)&0xf]
+        back_colour = self.Colours.palette[(palette>>4)&0xf]
+        fore_colour = self.Colours.palette[(palette)&0xf]
         self.back_quads[pos].SetColour(back_colour)
         self.fore_quads[pos].SetColour(fore_colour)
         tc = self.atlas.TextureCoords(chr(letter))
