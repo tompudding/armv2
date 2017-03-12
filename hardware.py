@@ -294,24 +294,11 @@ class TapeDrive(armv2.Device):
         c = self.tape.read(1)
         if c:
             self.data_byte = ord(c)
-            self.tape_data.append(self.data_byte)
+            self.tape_data = self.tape_data[-((len(self.stripes)/16)):] + [self.data_byte]
             self.status = self.Codes.READY
             #time.sleep(0.001)
             self.cpu.cpu.Interrupt(self.id, self.status)
 
-            #Update the stripes
-            self.tape_data = data = self.tape_data[-len(self.stripes)/16:]
-
-            for i,byte in enumerate(data):
-                for j in xrange(8):
-                    colour = Display.Colours.YELLOW if ((byte>>j)&1) else Display.Colours.BLUE
-                    other  = Display.Colours.BLUE if ((byte>>j)&1) else Display.Colours.YELLOW
-                    if i*16 + j*2 +1 >= len(self.stripes):
-                        break
-                    for q in self.stripes[i*16 + j*2]:
-                        q.SetColour(colour)
-                    for q in self.stripes[i*16 + j*2 + 1]:
-                        q.SetColour(other)
         else:
             self.data_byte = 0
             self.status = self.Codes.END_OF_TAPE
@@ -328,6 +315,19 @@ class TapeDrive(armv2.Device):
             #We're waiting, so check if it's time for the next byte
             if self.is_byte_ready():
                 self.feed_byte()
+
+        #Update the stripes
+
+        for i,byte in enumerate(self.tape_data):
+            for j in xrange(8):
+                colour = Display.Colours.YELLOW if ((byte>>j)&1) else Display.Colours.BLUE
+                other  = Display.Colours.BLUE if ((byte>>j)&1) else Display.Colours.YELLOW
+                if i*16 + j*2 +1 >= len(self.stripes):
+                    break
+                for q in self.stripes[i*16 + j*2]:
+                    q.SetColour(colour)
+                for q in self.stripes[i*16 + j*2 + 1]:
+                    q.SetColour(other)
 
         drawing.DrawNoTexture(self.quad_buffer)
         
