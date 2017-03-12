@@ -7,6 +7,9 @@ import time
 import random
 import drawing
 import os
+import numpy
+import popcnt
+import wave
 from globals.types import Point
 
 class Keyboard(armv2.Device):
@@ -90,6 +93,33 @@ def SetPixels(pixels,word):
         #the next line is so obvious it doesn't need a comment
         pixels[j/8][j%8] = ((word>>j)&1)
 
+from scipy.signal import butter, lfilter
+
+
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    nyq  = 0.5 * fs
+    low  = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = lfilter(b, a, data)
+    return y
+
+
+def butter_lowpass(cutoff, fs, order=5):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype='low', analog=True)
+    return b, a
+
+def butter_lowpass_filter(data, cutoff, fs, order=5):
+    b, a = butter_lowpass(cutoff, fs, order=order)
+    y = lfilter(b, a, data)
+    return y
+
 class TapeDrive(armv2.Device):
     """A Tape Drive
 
@@ -117,21 +147,68 @@ class TapeDrive(armv2.Device):
 
     def __init__(self, cpu):
         super(TapeDrive,self).__init__(cpu)
-        self.status    = self.Codes.NOT_READY
-        self.data_byte = 0
-        self.tape_name = None
-        self.tape      = None
-        self.running   = True
-        self.cv        = threading.Condition(threading.Lock())
+        self.status     = self.Codes.NOT_READY
+        self.data_byte  = 0
+        self.tape_name  = None
+        self.tape       = None
+        self.tape_sound = None
+        self.running    = True
+        #self.cv        = threading.Condition(threading.Lock())
         #self.thread    = threading.Thread(target = self.threadMain)
-        self.byte_required = False
+        #self.byte_required = False
         #self.thread.start()
         self.loading   = False
         self.end_callback = None
 
     def loadTape(self, filename):
-        self.tape = open(filename,'rb')
+        #read the whole tape in first for use as sound
+        #with open(filename,'rb') as f:
+        self.unloadTape()
+        self.tape = open(filename, 'rb')
         self.tape_name = filename
+        self.make_sound()
+
+    def make_sound(self):
+        freq, sample_size, num_channels = pygame.mixer.get_init()
+        data = numpy.fromfile(self.tape, dtype='uint32')
+        set_bits = popcnt.count_array(data)
+        clr_bits = (len(data) * 32) - set_bits
+        #The sigmals we're using are either 10 (5 on 5 off) or 20 samples at 22050 Hz, which is 
+        #either 880 or 1760 Hz
+        tone_length = 4*float(freq)/22050
+        clr_length = int(tone_length)
+        set_length = int(tone_length*2)
+        total_samples = 2*(set_bits*set_length + clr_bits*clr_length)
+        samples = numpy.zeros(shape=total_samples, dtype='float64')
+        print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(total_samples)/freq)
+
+        popcnt.create_samples(data, samples, clr_length, set_length)
+        print 'a',len(samples)
+        samples = butter_bandpass_filter(samples, 500, 2700, freq).astype('int16')
+        print 'b',len(samples),samples.dtype
+        if num_channels != 1:
+            print 'reshape!'
+            samples = samples.repeat(num_channels).reshape(total_samples, num_channels)
+
+        print 'make sound'
+        self.tape_sound = pygame.sndarray.make_sound(samples)
+
+        sfile = wave.open('jim.wav', 'w')
+
+        # set the parameters
+        sfile.setframerate(freq)
+        sfile.setnchannels(num_channels)
+        sfile.setsampwidth(2)
+
+        # write raw PyGame sound buffer to wave file
+        sfile.writeframesraw(self.tape_sound.get_buffer().raw)
+
+        # close file
+        sfile.close()
+        self.tape.seek(0)
+
+        #print 'playing'
+        #self.tape_sound.play()
 
     def registerCallback(self, callback):
         self.end_callback = callback
@@ -141,28 +218,31 @@ class TapeDrive(armv2.Device):
             self.tape.close()
             self.tape = None
             self.tape_name = None
+        if self.tape_sound:
+            self.tape_sound.stop()
+            self.tape_sound = None
 
-    def threadMain(self):
-        with self.cv:
-            while self.running:
-                while self.running and not self.byte_required:
-                    self.cv.wait(0.01)
-                if not self.running:
-                    break
-                self.byte_required = False
-                #time.sleep(0.001)
-                c = self.tape.read(1)
-                if c:
-                    self.data_byte = ord(c)
-                    self.status = self.Codes.READY
-                    self.cpu.cpu.Interrupt(self.id, self.status)
-                else:
-                    self.data_byte = 0
-                    self.status = self.Codes.END_OF_TAPE
-                    self.loading = False
-                    if self.end_callback:
-                        self.end_callback()
-                    self.cpu.cpu.Interrupt(self.id, self.status)
+    # def threadMain(self):
+    #     with self.cv:
+    #         while self.running:
+    #             while self.running and not self.byte_required:
+    #                 self.cv.wait(0.01)
+    #             if not self.running:
+    #                 break
+    #             self.byte_required = False
+    #             #time.sleep(0.001)
+    #             c = self.tape.read(1)
+    #             if c:
+    #                 self.data_byte = ord(c)
+    #                 self.status = self.Codes.READY
+    #                 self.cpu.cpu.Interrupt(self.id, self.status)
+    #             else:
+    #                 self.data_byte = 0
+    #                 self.status = self.Codes.END_OF_TAPE
+    #                 self.loading = False
+    #                 if self.end_callback:
+    #                     self.end_callback()
+    #                 self.cpu.cpu.Interrupt(self.id, self.status)
 
     def power_down(self):
         #We don't actually need to do any powering down, but alert any potential debugger that they can update

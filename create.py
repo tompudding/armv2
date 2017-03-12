@@ -111,6 +111,9 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--output", help="output filename", required=True)
     args = parser.parse_args()
     binary = create_binary(args.header, args.binary, boot=args.boot)
+    left = len(binary)&3
+    if left:
+        binary += (4 - left)*'\x00'
 
     with open(args.output,'wb') as f:
         f.write(binary)

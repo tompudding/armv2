@@ -28,7 +28,7 @@ def new_machine():
 
 class Emulator(object):
     def __init__(self,callback=None):
-
+        self.last = 0
         self.machine = new_machine()
 
         try:
@@ -113,10 +113,14 @@ class Emulator(object):
                     pass
                 if key < 256:
                     self.dbg.machine.keyboard.KeyUp(key)
+        #elapsed = globals.t - self.last
+        #if 1 and elapsed > 20:
         drawing.NewFrame()
         self.dbg.machine.display.Update()
         drawing.EndFrame()
         pygame.display.flip()
+            #self.last = globals.t
+            
         if callback:
             try:
                 callback()
@@ -142,14 +146,18 @@ def init():
     drawing.InitDrawing()
 
 if __name__ == '__main__':
-    from multiprocessing import Process
-    import peripherals,time
+    #from multiprocessing import Process
+    #import peripherals,time
 
-    p = Process(target=peripherals.run)
-    p.start()
-    init()
-    emulator = Emulator()
-    emulator.run()
-    pygame.display.quit()
-    p.join()
+    #p = Process(target=peripherals.run)
+    #p.start()
+    def main():
+        init()
+        emulator = Emulator()
+        emulator.run()
+
+    import cProfile
+    cProfile.run('main()','runstats')
+    #pygame.display.quit()
+    #p.join()
 
