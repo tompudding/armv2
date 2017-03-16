@@ -9,7 +9,7 @@ TAPE_SRC := $(wildcard src/*.cpp)
 OBJ_FILES := $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
 TAPE_NAMES := guessing trivia one_letter_werewolf adventure
 TAPES_BIN  = $(patsubst %, ${TAPES_DIR}/%.tape, ${TAPE_NAMES})
-ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc -Os 
+ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc -Os 
 .PRECIOUS: build/% #Don't delete our intermediate object files, they're useful for debugging
 
 all: armv2.so build/boot.rom src/tapes/build ${TAPES_BIN}
@@ -36,11 +36,14 @@ build/tape_loader.bin: src/tape_loader.S | build
 	${AS} -march=armv2a -mapcs-26 -o tape_loader.o $<
 	${COPY} -O binary tape_loader.o $@
 
+build/os.so: src/os.c src/synapse.c src/synapse.h | build
+	arm-none-eabi-gcc -shared ${ARMCFLAGS} -nostartfiles -o $@ src/os.c src/synapse.c 
+
 build/os: src/os.c build/synapse.o build/libc.a src/synapse.h | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o build/libc.a
+	arm-none-eabi-gcc -static ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o build/libc.a
 
 build/synapse.o: src/synapse.c src/synapse.h | build
-	arm-none-eabi-gcc ${ARMCFLAGS} -c -o $@ $<
+	arm-none-eabi-gcc -static ${ARMCFLAGS} -c -o $@ $<
 
 build/libc.a: src/libc/*.c src/libc/*.S | build
 	make -C src/libc
@@ -49,7 +52,7 @@ build/libc.a: src/libc/*.c src/libc/*.S | build
 ${TAPES_DIR}/%.tape: build/tape_loader.bin src/tapes/build/% | ${TAPES_DIR} 
 	python create.py -o $@ $^
 
-src/tapes/build: build/synapse.o build/libc.a
+src/tapes/build: | build/synapse.o build/libc.a build/os.so
 	make -C src/tapes
 
 build:

@@ -5,13 +5,18 @@ PROG=	adventure
 SRCS=	main.c init.c done.c subr.c vocab.c wizard.c io.c data.c crc.c #save.c
 MAN=	adventure.6
 ARMCC=arm-none-eabi-gcc
-ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -static -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -I../.. -I../../libc
+ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -I../.. -I../../libc
 
 HIDEGAME=hidegame
 CLEANFILES+=setup data.c adventure data.pre
 
+all: adventure.so adventure
+
+adventure.so: ${SRCS}
+	${ARMCC} -o $@ -fno-stack-protector -shared ${ARMCFLAGS} $^
+
 adventure: ${SRCS}
-	${ARMCC} -o $@ -fno-stack-protector ${ARMCFLAGS} $^ ../../../build/synapse.o ../../../build/libc.a
+	${ARMCC} -o $@ -fno-stack-protector -static ${ARMCFLAGS} $^ ../../../build/synapse.o ../../../build/libc.a
 
 data.c: data.pre
 	python create_data.py $@ $< 
