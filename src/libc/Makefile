@@ -7,14 +7,11 @@ C_TARGETS = $(patsubst %.c,build/%.o,${C_SOURCE})
 S_SOURCE  = $(wildcard *.S)
 S_TARGETS = $(patsubst %.S,build/%.o,${S_SOURCE})
 
-all: build/libc.a build/libc.so
+all: build/libc.a 
 
 build/libc.a: ${C_TARGETS} ${S_TARGETS} | build
 	arm-none-eabi-ar ar rcs $@ $^
 	arm-none-eabi-ranlib $@
-
-build/libc.so: ${C_SOURCE} ${S_SOURCE} | build
-	arm-none-eabi-gcc -shared ${ARMCFLAGS} -o $@ $^
 
 ${C_TARGETS}: ${C_SOURCE} | build
 	arm-none-eabi-gcc -static ${ARMCFLAGS} -c -o $@ $(patsubst build/%.o, %.c, $@)

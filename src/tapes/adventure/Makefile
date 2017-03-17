@@ -13,7 +13,7 @@ CLEANFILES+=setup data.c adventure data.pre
 all: adventure.so adventure
 
 adventure.so: ${SRCS}
-	${ARMCC} -o $@ -fno-stack-protector -shared ${ARMCFLAGS} $^
+	${ARMCC} -o $@ -fno-stack-protector -shared ${ARMCFLAGS} -T ../linking.txt $^
 
 adventure: ${SRCS}
 	${ARMCC} -o $@ -fno-stack-protector -static ${ARMCFLAGS} $^ ../../../build/synapse.o ../../../build/libc.a
