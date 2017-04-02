@@ -4,6 +4,10 @@ import struct
 from elftools.elf.sections import SymbolTableSection
 from elftools.elf.elffile import ELFFile
 
+class RelTypes:
+    R_ARM_ABS32 = 2
+    R_ARM_JUMP_SLOT = 0x16
+
 def load(filename):
     with open(filename,'rb') as f:
         return f.read()
@@ -35,11 +39,75 @@ def get_symbols(elf):
         #         version = self._symbol_version(nsym)
         #         if (version['name'] != symbol.name and
 
+def get_full_symbols(elf):
+    out = []
+    for section in elf.iter_sections():
+        if not isinstance(section, SymbolTableSection):
+            continue
+
+        if section['sh_entsize'] == 0:
+            continue
+
+        for nsym, symbol in enumerate(section.iter_symbols()):
+            out.append((symbol['st_value'],symbol.name))
+    return out
+
 def pad(data, alignment):
     target = ((len(data) + (alignment - 1)) / alignment) * alignment
     if target > len(data):
         data += '\00'*(target-len(data))
     return data
+
+def addr_to_offset(elf, addr):
+    for segment in elf.iter_segments():
+        offset = segment['p_offset']
+        v_addr = segment['p_vaddr']
+        filesz = segment['p_filesz']
+        memsz  = segment['p_memsz']
+        if segment['p_type'] != 'PT_LOAD':
+            continue
+        if addr >= v_addr and addr < v_addr + filesz:
+            return offset + (addr - v_addr)
+
+def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
+    start = section['sh_offset']
+    end = start + section['sh_size']
+    rel_data = data[start : end]
+
+    for pos in xrange(0, end - start, 8):
+        offset, info = struct.unpack('<II', ''.join(rel_data[pos:pos+8]))
+        #switch for info
+        sym = info >> 8
+        info = info & 0xff
+        offset = addr_to_offset(elf,offset)
+        
+        if info == RelTypes.R_ARM_ABS32:
+            
+            print 'abs symbols %x %x %d %s' % (offset, info, sym, symbols[sym])
+            
+            data[offset:offset + 4] = list(struct.pack('<I',symbols[sym][0]))
+            
+        elif info == RelTypes.R_ARM_JUMP_SLOT:
+            if symbols[sym][1] in os_lookup:
+                val = os_lookup[symbols[sym][1]]
+            else:
+                val = symbol_lookup[symbols[sym][1]]
+
+            print 'B %x %x %d %s %s' % (offset, info, sym, symbols[sym], val)
+            data[offset:offset + 4] = list(struct.pack('<I', val))
+
+
+def pre_link(data, elf, os_symbols):
+    symbols = get_full_symbols(elf)
+    os_lookup = { name : value for (value, name) in os_symbols }
+    symbol_lookup = { name : value for (value, name) in symbols }
+    data = list(data)
+    for section in elf.iter_sections():
+        if section['sh_type'] == 'SHT_REL':
+            process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup)
+
+    return ''.join(data), symbol_lookup['main']
+
 
 def to_synapse_format(data, symbols, entry_point):
     """
@@ -61,6 +129,15 @@ def create_binary(header, elf, boot=False):
     elf_data = load(elf)
     with open(elf,'rb') as f:
         elffile = ELFFile(f)
+        #before we grab the load segment we want to do our weird pre_linking
+        symbols = [c for c in get_symbols(elffile)]
+        if not boot:
+            #we'll also need symbols for the os
+            with open('build/os','rb') as os_f:
+                os_elf = ELFFile(os_f)
+                os_symbols = get_full_symbols(os_elf)
+
+            elf_data,entry_point = pre_link(elf_data, elffile, os_symbols)
         data = []
         for segment in elffile.iter_segments():
             offset = segment['p_offset']
@@ -72,10 +149,14 @@ def create_binary(header, elf, boot=False):
                 continue
             print offset,v_addr,filesz,memsz,flags
             data.append(elf_data[offset:offset + filesz] + '\x00'*(memsz-filesz))
+            if not boot:
+                #we only take the first segment
+                break
         data = ''.join(data)
+        
+        if boot:
+            entry_point = elffile.header['e_entry']
 
-        entry_point = elffile.header['e_entry']
-        symbols = [c for c in get_symbols(elffile)]
     if boot:
         with open('build/boot.o','rb') as f:
             elf = ELFFile(f)
@@ -83,6 +164,7 @@ def create_binary(header, elf, boot=False):
             symbols = boot_symbols + symbols
 
     symbols.sort( lambda x,y: cmp(x[0], y[0]) )
+    print 'entry %x' % entry_point
             
     #get rid of any "bx lr"s
     #for cond in xrange(16):

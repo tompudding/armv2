@@ -175,14 +175,14 @@ char *episodes[7][22] = { {"Welcome to the Hellmouth",
                            "End of Days",
                            "Chosen"} };
 
-void banner() {
+static void banner() {
     size_t i;
     for(i=0; i< sizeof(banner_lines)/sizeof(banner_lines[0]); i++) {
         printf(banner_lines[i]);
     }
 }
 
-void print_secret() {
+static void print_secret() {
     uint8_t obfs[] = {191, 165, 190, 229, 165, 161, 241, 190, 166, 176, 241, 170, 184, 162, 179, 231, 225, 162, 227, 224, 220, 186, 177, 241, 186, 190, 234, 185, 164, 243, 169, 164, 165, 162, 166, 227, 182, 187, 171, 165, 165, 181, 219, 219, 233, 140, 171, 160, 165, 165, 190, 179, 169, 237, 190, 241, 231, 185, 171, 187, 198, 214};
     char *password = "You're not friends. You'll never be friends. Love isn't brains, children, it's blood. Blood screaming inside you to work its will. I may be love's bitch, but at least I'm man enough to admit it.";
     int i;

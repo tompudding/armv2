@@ -37,7 +37,7 @@ build/tape_loader.bin: src/tape_loader.S | build
 	${COPY} -O binary tape_loader.o $@
 
 build/os: src/os.c build/synapse.o build/libc.a src/synapse.h | build
-	arm-none-eabi-gcc -static ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o build/libc.a
+	arm-none-eabi-gcc -static ${ARMCFLAGS} -Wl,-Ttext=0x1000 -nostartfiles -o $@ src/os.c build/synapse.o -Wl,--whole-archive build/libc.a
 
 build/synapse.o: src/synapse.c src/synapse.h | build
 	arm-none-eabi-gcc -static ${ARMCFLAGS} -c -o $@ $<
@@ -46,7 +46,7 @@ build/libc.a: src/libc/*.c src/libc/*.S | build
 	make -C src/libc
 	cp src/libc/build/libc.a build/libc.a
 
-${TAPES_DIR}/%.tape: build/tape_loader.bin src/tapes/build/% | ${TAPES_DIR} 
+${TAPES_DIR}/%.tape: build/tape_loader.bin src/tapes/build/%.so | ${TAPES_DIR} 
 	python create.py -o $@ $^
 
 src/tapes/build: | build/synapse.o build/libc.a 

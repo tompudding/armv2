@@ -90,6 +90,8 @@ SECTIONS
     KEEP (*(.dtors))
   }
   .jcr            : { KEEP (*(.jcr)) }
+  .plt            : { *(.plt) }
+  .got            : { *(.got.plt) *(.got) }
   .data.rel.ro : { *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*) *(.data.rel.ro* .gnu.linkonce.d.rel.ro.*) }
   .data           :
   {
@@ -158,9 +160,9 @@ SECTIONS
   {
     KEEP (*(.init))
   } =0
-  .plt            : { *(.plt) }
+  
   .dynamic        : { *(.dynamic) }
-  .got            : { *(.got.plt) *(.got) }
+ 
 
   /* Stabs debugging sections.  */
   .stab          0 : { *(.stab) }

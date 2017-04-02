@@ -102,9 +102,9 @@ struct character {
     struct position destination;
 };
 
-void end_game(char *, bool);
-void lose_game();
-void win_game();
+static void end_game(char *, bool);
+static void lose_game();
+static void win_game();
 
 struct position cabinet_pos = {.x = 7, .y = 21};
 struct position doors[4] = {{7,18},{7,24},{4,21},{10,21}};
@@ -117,46 +117,46 @@ int time_of_day = 0x30; //0 - 10
 int num_villagers = 1;
 int current_villagers = 1;
 
-int set_letter(char c, int x, int y) {
+static int set_letter(char c, int x, int y) {
     letter_data[WIDTH*(HEIGHT-1-y) + x] = c;
 }
 
-int distance(struct position *a, struct position *b) {
+static int distance(struct position *a, struct position *b) {
     int x = a->x - b->x;
     int y = a->y - b->y;
     return x*x + y*y;
 }
 
-bool line_of_sight(struct position *a, struct position *b) {
+static bool line_of_sight(struct position *a, struct position *b) {
     return true;
 }
 
-int set_palette(int c, int x, int y) {
+static int set_palette(int c, int x, int y) {
     if(c == -1) {
         c = current_palette;
     }
     palette_data[WIDTH*(HEIGHT-1-y) + x] = c;
 }
 
-uint8_t get_item(int x, int y) {
+static uint8_t get_item(int x, int y) {
     return letter_data[WIDTH*(HEIGHT-1-y) + x];
 }
 
-bool is_villager(uint8_t item) {
+static bool is_villager(uint8_t item) {
     return strchr(villager_types, item);
 }
 
-bool is_player(uint8_t item) {
+static bool is_player(uint8_t item) {
     return item == PLAYER_CHAR || item == WEREWOLF_CHAR;
 }
 
-void update_health() {
+static void update_health() {
     letter_data[19] = '0' + player.health/100;
     letter_data[20] = '0' + (player.health/10)%10;
     letter_data[21] = '0' + player.health%10;
 }
 
-void next_level() {
+static void next_level() {
     char level_text[] = "LEVEL 00";
     level++;
     num_villagers += 5;
@@ -167,7 +167,7 @@ void next_level() {
     end_game(level_text,false);
 }
 
-void update_num_villagers() {
+static void update_num_villagers() {
     letter_data[WIDTH+19] = '0' + current_villagers/10;
     letter_data[WIDTH+20] = '0' + current_villagers%10;
     if(current_villagers == 0) {
@@ -175,7 +175,7 @@ void update_num_villagers() {
     }
 }
 
-void hurt_player() {
+static void hurt_player() {
     player.health -= player.size == 2 ? 20 : 50;
     update_health();
     if(player.health <= 0) {
@@ -184,10 +184,10 @@ void hurt_player() {
     rng[0] = 1;
 }
 
-void update_werewolf_pos(struct position *new_pos, struct character *character) {
+static void update_werewolf_pos(struct position *new_pos, struct character *character) {
 }
 
-bool update_char_pos(struct position *new_pos, struct character *character) {
+static bool update_char_pos(struct position *new_pos, struct character *character) {
     uint8_t current = get_item(new_pos->x, new_pos->y);
     if(current != ' ' && !is_villager(current) && !is_player(current)) {
         //if(current != ' ') {
@@ -209,7 +209,7 @@ bool update_char_pos(struct position *new_pos, struct character *character) {
     return true;
 }
 
-void update_player_pos(struct position *new_pos, struct character *character) {
+static void update_player_pos(struct position *new_pos, struct character *character) {
     int i,j;
 
     for(i = 0; i < character->size; i++) {
@@ -247,8 +247,7 @@ void update_player_pos(struct position *new_pos, struct character *character) {
     }
 }
 
-
-bool update_player_form(struct character *character, bool new_form) {
+static bool update_player_form(struct character *character, bool new_form) {
     //firstly lets get the things where we're going into
     int i,j;
     int num_others = 0;
@@ -294,7 +293,7 @@ bool update_player_form(struct character *character, bool new_form) {
     }
 }
 
-void update_symbol(struct character *character) {
+static void update_symbol(struct character *character) {
     if(character->armed) {
         character->symbol = character->suspicious ? VILLAGER_ARMED_SUSPICIOUS : VILLAGER_ARMED;
     }
@@ -306,7 +305,7 @@ void update_symbol(struct character *character) {
     }
 }
 
-void set_banner_row(char *banner, uint8_t *row) {
+static void set_banner_row(char *banner, uint8_t *row) {
     int n = strlen(banner);
     int padding;
     if(n > WIDTH) {
@@ -319,11 +318,11 @@ void set_banner_row(char *banner, uint8_t *row) {
     memset(row + padding + n, ' ', padding);
 }
 
-void set_banner(char *banner) {
+static void set_banner(char *banner) {
     return set_banner_row(banner, banner_row);
 }
 
-void cap_pos(struct position *new_pos, int size) {
+static void cap_pos(struct position *new_pos, int size) {
     if(new_pos->x < 0) {
         new_pos->x = 0;
     }
@@ -338,7 +337,7 @@ void cap_pos(struct position *new_pos, int size) {
     }
 }
 
-void process_input(uint8_t c, struct character *character) {
+static void process_input(uint8_t c, struct character *character) {
     struct position new_pos = character->pos;
     switch(tolower(c)) {
     case 'a':
@@ -363,11 +362,11 @@ void process_input(uint8_t c, struct character *character) {
     update_player_pos(&new_pos, character);
 }
 
-bool in_room(struct position *pos) {
+static bool in_room(struct position *pos) {
     return ((pos->x > 4) && (pos->x < 10) && (pos->y > 18) && (pos->y < 24));
 }
 
-struct position *nearest_door(struct position *pos) {
+static struct position *nearest_door(struct position *pos) {
     struct position *out = doors;
     int min = 0x7fffffff;
     int i;
@@ -381,7 +380,7 @@ struct position *nearest_door(struct position *pos) {
     return out;
 }
 
-bool proceed_to_point(struct character *villager, struct position *pos) {
+static bool proceed_to_point(struct character *villager, struct position *pos) {
     struct position *chosen;
     if(in_room(pos) != in_room(&villager->pos)) {
         //move to the nearest door
@@ -425,7 +424,7 @@ bool proceed_to_point(struct character *villager, struct position *pos) {
     return true;
 }
 
-void rand_pos(struct position *pos) {
+static void rand_pos(struct position *pos) {
     do {
         pos->x = rand() % WIDTH;
         pos->y = MIN_HEIGHT + (rand() % (MAX_HEIGHT-MIN_HEIGHT));
@@ -434,7 +433,7 @@ void rand_pos(struct position *pos) {
 }
 
 
-void end_game(char *message, bool end_game) {
+static void end_game(char *message, bool end_game) {
     uint8_t *row = letter_data + WIDTH*HEIGHT/2;
     set_banner_row(message,letter_data + WIDTH*HEIGHT/2);
     memset(palette_data + WIDTH*HEIGHT/2, PALETTE(DARK_GREY, WHITE), WIDTH*2);
@@ -452,7 +451,7 @@ void end_game(char *message, bool end_game) {
     }
 }
 
-void start_game(char *message, char *m2) {
+static void start_game(char *message, char *m2) {
     uint8_t *row = letter_data + WIDTH*HEIGHT/2;
     set_banner_row(message,letter_data + WIDTH*HEIGHT/2);
     set_banner_row(m2,letter_data + (WIDTH*HEIGHT/2) + WIDTH);
@@ -461,16 +460,16 @@ void start_game(char *message, char *m2) {
     level_banner = true;
 }
 
-void win_game() {
+static void win_game() {
     end_game("YOU WIN", true);
 }
 
-void lose_game() {
+static void lose_game() {
     end_game("YOU LOSE", true);
 }
 
 
-void create_villagers(int num) {
+static void create_villagers(int num) {
     int i;
     for(i = 0; i < num_villagers; i++) {
         rand_pos(&villagers[i].pos);
@@ -480,7 +479,7 @@ void create_villagers(int num) {
     }
 }
 
-bool is_night(int t) {
+static bool is_night(int t) {
     if(t >= DAY_TICKS) {
         return true;
     }
@@ -489,7 +488,7 @@ bool is_night(int t) {
     }
 }
 
-void set_phase(int t, bool daytime) {
+static void set_phase(int t, bool daytime) {
     int required_blips = (t - (daytime ? 0 : DAY_TICKS))>>2;
     int i;
     strcpy(letter_data + 24, daytime ? "Day  " : "Night");
@@ -515,7 +514,7 @@ void set_phase(int t, bool daytime) {
 }
 
 
-bool transform(struct character *ch) {
+static bool transform(struct character *ch) {
     int i,j;
     if(ch->size == 1) {
         for(i = 0; i < 2; i++) {
@@ -561,7 +560,7 @@ bool transform(struct character *ch) {
     return true;
 }
 
-void update_villager(struct character *villager) {
+static void update_villager(struct character *villager) {
     if(villager->suspicious) {
         int i;
         for(i = 0; i < num_villagers; i++) {
@@ -613,11 +612,11 @@ void update_villager(struct character *villager) {
 
 }
 
-void set_observed(bool observed) {
+static void set_observed(bool observed) {
     memcpy(letter_data + 3, observed ? "OBSERVED" : "HIDDEN  ", 8 );
 }
 
-void tick_simulation() {
+static void tick_simulation() {
     int i;
     static char *dirs = "wsad";
     time_of_day = (time_of_day + 1)&0x7f;
@@ -701,7 +700,7 @@ void tick_simulation() {
     }
 }
 
-void kill_villagers() {
+static void kill_villagers() {
     int i;
     bool killed = false;
     for(i = 0; i < num_villagers; i++) {
