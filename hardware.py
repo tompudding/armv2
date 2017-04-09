@@ -161,7 +161,7 @@ class TapeDrive(armv2.Device):
         self.loading   = False
         self.end_callback = None
         self.lock = threading.Lock()
-        self.tape_data = []
+        self.current_bit = 0
 
         screen_width = self.cpu.display.pixel_width()
         screen_height = self.cpu.display.pixel_height()
@@ -239,7 +239,10 @@ class TapeDrive(armv2.Device):
         #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(total_samples)/freq)
         #The position in samples that each byte starts
         self.byte_samples = numpy.zeros(shape=len(data)*4, dtype='uint32')
-        popcnt.create_samples(data, samples, self.byte_samples, clr_length, set_length)
+        #The number of milliseconds that each bit should
+        self.bit_times = numpy.zeros(shape=len(data)*4*8, dtype='uint32')
+        self.bits = numpy.zeros(shape=len(data)*4*9, dtype='uint8')
+        popcnt.create_samples(data, samples, self.byte_samples, self.bit_times, self.bits, clr_length, set_length, float(1000)/22050)
         #bandpass filter it to make it less harsh
         samples = butter_bandpass_filter(samples, 500, 2700, freq).astype('int16')
 
@@ -260,7 +263,6 @@ class TapeDrive(armv2.Device):
             self.tape.close()
             self.tape = None
             self.tape_name = None
-            self.tape_data = []
         if self.tape_sound:
             self.stop_playing()
             self.tape_sound = None
@@ -294,7 +296,18 @@ class TapeDrive(armv2.Device):
         c = self.tape.read(1)
         if c:
             self.data_byte = ord(c)
-            self.tape_data = self.tape_data[-((len(self.stripes)/16)):] + [self.data_byte]
+            #self.tape_data = self.tape_data[-((len(self.stripes)/8)):] + [self.data_byte]
+            #self.tape_data.extend( [((self.data_byte >> i) & 1) for i in xrange(8)] )
+            # #How quickly should we show those bytes? Pretend that they arrived in even intervals
+            # if self.last_byte_time is None:
+            #     self.last_byte_time = globals.t
+            #     #Just put these on straight away
+            #     self.tape_times.extend( [globals.t]*8 )
+            # else:
+            #     elapsed = globals.t - self.last_byte_time
+            #     print 'elapsed',elapsed
+            #     self.tape_times.extend( [globals.t + int(i*float(elapsed)/8) for i in xrange(8)] )
+            #     self.last_byte_time = globals.t
             self.status = self.Codes.READY
             #time.sleep(0.001)
             self.cpu.cpu.Interrupt(self.id, self.status)
@@ -316,18 +329,49 @@ class TapeDrive(armv2.Device):
             if self.is_byte_ready():
                 self.feed_byte()
 
-        #Update the stripes
+        elapsed = globals.t - self.start_time
 
-        for i,byte in enumerate(self.tape_data):
-            for j in xrange(8):
-                colour = Display.Colours.YELLOW if ((byte>>j)&1) else Display.Colours.BLUE
-                other  = Display.Colours.BLUE if ((byte>>j)&1) else Display.Colours.YELLOW
-                if i*16 + j*2 +1 >= len(self.stripes):
-                    break
-                for q in self.stripes[i*16 + j*2]:
-                    q.SetColour(colour)
-                for q in self.stripes[i*16 + j*2 + 1]:
-                    q.SetColour(other)
+        #The stripes should be all the ones up to that position. If we don't have anything
+        #Use zeroes
+        
+        if self.current_bit >= len(self.bit_times) or self.bit_times[self.current_bit] > elapsed:
+            return
+
+        #We've got some to show, how many
+        try:
+            while self.bit_times[self.current_bit] <= elapsed:
+                self.current_bit += 1
+        except IndexError:
+            self.current_bit = len(self.bit_times)
+
+        stripe_pos = 0
+        bit_pos = 0
+        while stripe_pos < len(self.stripes):
+            try:
+                bit = self.bits[self.current_bit + bit_pos]
+            except IndexError:
+                bit = 0
+
+            #steps = 2 if bit else 1
+            colour = [Display.Colours.BLUE, Display.Colours.YELLOW][bit]
+            steps = 1
+
+            for q in self.stripes[stripe_pos]:
+                q.SetColour(colour)
+
+            # try:
+            #     for i in xrange(steps):
+            #         for q in self.stripes[stripe_pos + i]:
+            #             q.SetColour(Display.Colours.BLUE)
+            #         for q in self.stripes[stripe_pos + steps + i]:
+            #             q.SetColour(Display.Colours.YELLOW)
+            # except IndexError:
+            #     #print 'ie',stripe_pos
+            #     break
+
+            bit_pos += 1
+            #stripe_pos += steps*2
+            stripe_pos += 1
 
         drawing.DrawNoTexture(self.quad_buffer)
         

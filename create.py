@@ -83,7 +83,7 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
         
         if info == RelTypes.R_ARM_ABS32:
             
-            print 'abs symbols %x %x %d %s' % (offset, info, sym, symbols[sym])
+            #print 'abs symbols %x %x %d %s' % (offset, info, sym, symbols[sym])
             
             data[offset:offset + 4] = list(struct.pack('<I',symbols[sym][0]))
             
@@ -93,7 +93,7 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
             else:
                 val = symbol_lookup[symbols[sym][1]]
 
-            print 'B %x %x %d %s %s' % (offset, info, sym, symbols[sym], val)
+            #print 'B %x %x %d %s %s' % (offset, info, sym, symbols[sym], val)
             data[offset:offset + 4] = list(struct.pack('<I', val))
 
 
@@ -120,6 +120,7 @@ We have a very simple format for the synapse binaries:
       4 + len + 4 |   symbols
 """
     data = pad(data, 4)
+    print 'Data %d bytes, symbols %d bytes' % (len(data), len(symbols))
     out = struct.pack('>I', len(data)) + data + struct.pack('>I', len(symbols)) + symbols
     if entry_point != None:
         out = struct.pack('>I', entry_point) + out
