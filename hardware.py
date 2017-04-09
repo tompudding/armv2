@@ -141,6 +141,7 @@ class TapeDrive(armv2.Device):
 
     stripe_height = 2
     border_pixels = 16
+    pilot_length = 2
 
     class Codes:
         NEXT_BYTE   = 0
@@ -243,12 +244,19 @@ class TapeDrive(armv2.Device):
         self.bit_times = numpy.zeros(shape=len(data)*4*8, dtype='uint32')
         self.bits = numpy.zeros(shape=len(data)*4*9, dtype='uint8')
         popcnt.create_samples(data, samples, self.byte_samples, self.bit_times, self.bits, clr_length, set_length, float(1000)/22050)
+
+        #Now lets do the same for a pilot signal. We want it to last for 2 seconds
+        num_pilot_samples = 22050*self.pilot_length
+        pilot_samples = numpy.zeros(shape=num_pilot_samples, dtype='float64')
+        popcnt.create_tone(pilot_samples, set_length)
+
+        samples = numpy.concatenate((pilot_samples,samples))
         #bandpass filter it to make it less harsh
         samples = butter_bandpass_filter(samples, 500, 2700, freq).astype('int16')
 
         if num_channels != 1:
             #Duplicate it into the required number of channels
-            samples = samples.repeat(num_channels).reshape(total_samples, num_channels)
+            samples = samples.repeat(num_channels).reshape(total_samples + num_pilot_samples, num_channels)
 
         self.tape_sound = pygame.sndarray.make_sound(samples)
         #rewind the tape so we can load from it correctly
@@ -331,47 +339,59 @@ class TapeDrive(armv2.Device):
 
         elapsed = globals.t - self.start_time
 
-        #The stripes should be all the ones up to that position. If we don't have anything
-        #Use zeroes
-        
-        if self.current_bit >= len(self.bit_times) or self.bit_times[self.current_bit] > elapsed:
-            return
+        if elapsed < self.pilot_length * 1000:
+            #In this phase we do rolling bars of grey and red
+            pos = float(elapsed) / 20
+            for i,stripes in enumerate(self.stripes):
+                if ((i + 8 - pos) % 12) >= 4:
+                    colour = Display.Colours.MED_GREY
+                else:
+                    colour = Display.Colours.RED
+                for q in stripes:
+                    q.SetColour(colour)
 
-        #We've got some to show, how many
-        try:
-            while self.bit_times[self.current_bit] <= elapsed:
-                self.current_bit += 1
-        except IndexError:
-            self.current_bit = len(self.bit_times)
+        else:
+            #The stripes should be all the ones up to that position. If we don't have anything
+            #Use zeroes
 
-        stripe_pos = 0
-        bit_pos = 0
-        while stripe_pos < len(self.stripes):
+            if self.current_bit >= len(self.bit_times) or self.bit_times[self.current_bit] > elapsed:
+                return
+
+            #We've got some to show, how many
             try:
-                bit = self.bits[self.current_bit + bit_pos]
+                while self.bit_times[self.current_bit] <= elapsed:
+                    self.current_bit += 1
             except IndexError:
-                bit = 0
+                self.current_bit = len(self.bit_times)
 
-            #steps = 2 if bit else 1
-            colour = [Display.Colours.BLUE, Display.Colours.YELLOW][bit]
-            steps = 1
+            stripe_pos = 0
+            bit_pos = 0
+            while stripe_pos < len(self.stripes):
+                try:
+                    bit = self.bits[self.current_bit + bit_pos]
+                except IndexError:
+                    bit = 0
 
-            for q in self.stripes[stripe_pos]:
-                q.SetColour(colour)
+                #steps = 2 if bit else 1
+                colour = [Display.Colours.BLUE, Display.Colours.YELLOW][bit]
+                steps = 1
 
-            # try:
-            #     for i in xrange(steps):
-            #         for q in self.stripes[stripe_pos + i]:
-            #             q.SetColour(Display.Colours.BLUE)
-            #         for q in self.stripes[stripe_pos + steps + i]:
-            #             q.SetColour(Display.Colours.YELLOW)
-            # except IndexError:
-            #     #print 'ie',stripe_pos
-            #     break
+                for q in self.stripes[stripe_pos]:
+                    q.SetColour(colour)
 
-            bit_pos += 1
-            #stripe_pos += steps*2
-            stripe_pos += 1
+                # try:
+                #     for i in xrange(steps):
+                #         for q in self.stripes[stripe_pos + i]:
+                #             q.SetColour(Display.Colours.BLUE)
+                #         for q in self.stripes[stripe_pos + steps + i]:
+                #             q.SetColour(Display.Colours.YELLOW)
+                # except IndexError:
+                #     #print 'ie',stripe_pos
+                #     break
+
+                bit_pos += 1
+                #stripe_pos += steps*2
+                stripe_pos += 1
 
         drawing.DrawNoTexture(self.quad_buffer)
         

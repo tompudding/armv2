@@ -47,8 +47,22 @@ cdef void _create_samples(uint32_t[:] data, double[:] samples, uint32_t[:] byte_
                 
             byte_samples[i*4 + j] = p
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef void _create_tone(double[:] samples, int length) nogil:
+    cdef int i
+    cdef int j
+
+    for i in xrange(samples.shape[0]/(length*2)):
+        for j in xrange(length):
+            samples[i*length*2 + j]     = -10000
+            samples[i*length*2 + length + j] = 10000
+
 def count_array(arr):
     return _inplace_popcount_32_2d(arr)
 
 def create_samples(data, samples, byte_samples, bit_times, bits, clr_length, set_length, sample_len):
     _create_samples(data, samples, byte_samples, bit_times, bits, clr_length, set_length, sample_len)
+
+def create_tone(samples, length):
+    _create_tone(samples, length)
