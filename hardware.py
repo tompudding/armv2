@@ -292,7 +292,7 @@ class TapeDrive(armv2.Device):
             return self.data_byte
 
     def is_byte_ready(self):
-        elapsed = globals.t - self.start_time
+        elapsed = globals.t - (self.start_time + self.pilot_length * 1000)
         current_byte = self.tape.tell()
         if current_byte >= len(self.byte_samples):
             return True
@@ -337,9 +337,9 @@ class TapeDrive(armv2.Device):
             if self.is_byte_ready():
                 self.feed_byte()
 
-        elapsed = globals.t - self.start_time
+        elapsed = globals.t - self.start_time - self.pilot_length * 1000
 
-        if elapsed < self.pilot_length * 1000:
+        if elapsed < 0:
             #In this phase we do rolling bars of grey and red
             pos = float(elapsed) / 20
             for i,stripes in enumerate(self.stripes):

@@ -109,7 +109,7 @@ def pre_link(data, elf, os_symbols):
     return ''.join(data), symbol_lookup['main']
 
 
-def to_synapse_format(data, symbols, entry_point):
+def to_synapse_format(data, symbols, name, entry_point):
     """
 We have a very simple format for the synapse binaries:
          Offset   |   Contents
@@ -123,10 +123,10 @@ We have a very simple format for the synapse binaries:
     print 'Data %d bytes, symbols %d bytes' % (len(data), len(symbols))
     out = struct.pack('>I', len(data)) + data + struct.pack('>I', len(symbols)) + symbols
     if entry_point != None:
-        out = struct.pack('>I', entry_point) + out
+        out = struct.pack('>I', entry_point) + name + out
     return out
 
-def create_binary(header, elf, boot=False):
+def create_binary(header, elf, name, boot=False):
     elf_data = load(elf)
     with open(elf,'rb') as f:
         elffile = ELFFile(f)
@@ -183,7 +183,7 @@ def create_binary(header, elf, boot=False):
         entry_point = None
     else:
         header = ''
-    return to_synapse_format(header+data, symbols, entry_point)
+    return to_synapse_format(header+data, symbols, name, entry_point)
 
 if __name__ == '__main__':
     import argparse
@@ -192,8 +192,18 @@ if __name__ == '__main__':
     parser.add_argument("binary")
     parser.add_argument("--boot", "-b", help="prepare boot rom", action="store_true")
     parser.add_argument("-o", "--output", help="output filename", required=True)
+    parser.add_argument("-n", "--name", help="tape name", default=None)
     args = parser.parse_args()
-    binary = create_binary(args.header, args.binary, boot=args.boot)
+
+    if args.name is None:
+        args.name = os.path.basename(args.output)
+        args.name = os.path.splitext(args.name)[0]
+
+    args.name = args.name[:15]
+
+    #Pad the name out to 16 bytes
+    args.name = args.name + ('\x00'*(16 - len(args.name)))
+    binary = create_binary(args.header, args.binary, args.name, boot=args.boot)
     left = len(binary)&3
     if left:
         binary += (4 - left)*'\x00'

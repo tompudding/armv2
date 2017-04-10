@@ -25,10 +25,11 @@ enum letter_codes {
     DOWN  = 253
 };
 
-#define RINGBUFFER_SIZE 128
+#define RINGBUFFER_SIZE  128
 #define MAX_SYMBOLS_SIZE 0x10000
-#define INT_ID(info) ((info)&0xffffffff)
-#define CLOCK_ID 0x92d177b0
+#define INT_ID(info)     ((info)&0xffffffff)
+#define CLOCK_ID         0x92d177b0
+#define TAPE_NAME_LEN    16
 
 extern volatile struct tape_control  *tape_control;
 extern uint8_t                       *tape_load_area;

@@ -119,11 +119,26 @@ enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
 enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area, void **entry_point_out) {
     //Tapes are comprised of 2 sections, the data and (optionally) the symbols. Just load the first for now
     uint32_t entry_point = 0;
+    char tape_name[TAPE_NAME_LEN];
+
+    set_screen_data(normal, inverted, border_size);
+    clear_screen_default();
+    printf("Loading tape : ");
+
     enum tape_codes result = tape_next_word( &entry_point );
 
     if( READY != result ) {
         return result;
     }
+
+    for(int i = 0; i < sizeof(tape_name); i++) {
+        result = tape_next_byte( tape_name + i );
+        if( READY != result ) {
+            return result;
+        }
+    }
+
+    printf("%s\n", tape_name);
 
     result = load_tape_data( tape_area );
     if( READY != result ) {
