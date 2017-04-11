@@ -109,7 +109,7 @@ def pre_link(data, elf, os_symbols):
     return ''.join(data), symbol_lookup['main']
 
 
-def to_synapse_format(data, symbols, name, entry_point):
+def to_synapse_format(data, symbols, name, v_addr, entry_point):
     """
 We have a very simple format for the synapse binaries:
          Offset   |   Contents
@@ -123,7 +123,7 @@ We have a very simple format for the synapse binaries:
     print 'Data %d bytes, symbols %d bytes' % (len(data), len(symbols))
     out = struct.pack('>I', len(data)) + data + struct.pack('>I', len(symbols)) + symbols
     if entry_point != None:
-        out = struct.pack('>I', entry_point) + name + out
+        out = struct.pack('>I', entry_point) + name + struct.pack('>I', v_addr) + out
     return out
 
 def create_binary(header, elf, name, boot=False):
@@ -163,6 +163,7 @@ def create_binary(header, elf, name, boot=False):
             elf = ELFFile(f)
             boot_symbols = [c for c in get_symbols(elf)]
             symbols = boot_symbols + symbols
+        v_addr = None
 
     symbols.sort( lambda x,y: cmp(x[0], y[0]) )
     print 'entry %x' % entry_point
@@ -183,7 +184,7 @@ def create_binary(header, elf, name, boot=False):
         entry_point = None
     else:
         header = ''
-    return to_synapse_format(header+data, symbols, name, entry_point)
+    return to_synapse_format(header+data, symbols, name, v_addr, entry_point)
 
 if __name__ == '__main__':
     import argparse

@@ -140,12 +140,22 @@ enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area, void **entr
 
     printf("%s\n", tape_name);
 
-    result = load_tape_data( tape_area );
+    uint32_t load_addr = 0;
+
+    result = tape_next_word( &load_addr );
+
     if( READY != result ) {
         return result;
     }
 
-    result = load_tape_symbols( tape_area, symbols_area );
+    printf("Loading at %08x\n", load_addr);
+
+    result = load_tape_data( (void*)load_addr );
+    if( READY != result ) {
+        return result;
+    }
+
+    result = load_tape_symbols( load_addr, symbols_area );
     if( READY != result ) {
         return result;
     }
