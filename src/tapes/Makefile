@@ -5,13 +5,13 @@ STATIC_TARGETS = $(addprefix build/, ${TAPE_NAMES}) build/adventure
 SHARED_TARGETS = $(addsuffix .so, ${STATIC_TARGETS})
 LIBDIR := ../../build
 
-all: ${STATIC_TARGETS} ${SHARED_TARGETS}
+all: ${SHARED_TARGETS}
 
 build/%.so: %.c | build
 	${ARMCC} -shared ${ARMCFLAGS} -T linking.txt -o $@ $< 
 
-build/%: %.c | build
-	${ARMCC} -static -Wl,--omagic ${ARMCFLAGS} -o $@ $< ${LIBDIR}/synapse.o ${LIBDIR}/libc.a
+# build/%: %.c | build
+# 	${ARMCC} -static -Wl,--omagic ${ARMCFLAGS} -o $@ $< ${LIBDIR}/synapse.o ${LIBDIR}/libc.a
 
 build/adventure.so: build/adventure
 	cp adventure/adventure.so $@
