@@ -209,5 +209,9 @@ if __name__ == '__main__':
     if left:
         binary += (4 - left)*'\x00'
 
+    if not args.boot:
+        #If we're making a tape wrap it up in the tape format
+        binary = to_tape_format(binary)
+
     with open(args.output,'wb') as f:
         f.write(binary)
