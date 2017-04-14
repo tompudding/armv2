@@ -80,13 +80,13 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
         sym = info >> 8
         info = info & 0xff
         offset = addr_to_offset(elf,offset)
-        
+
         if info == RelTypes.R_ARM_ABS32:
-            
+
             #print 'abs symbols %x %x %d %s' % (offset, info, sym, symbols[sym])
-            
+
             data[offset:offset + 4] = list(struct.pack('<I',symbols[sym][0]))
-            
+
         elif info == RelTypes.R_ARM_JUMP_SLOT:
             if symbols[sym][1] in os_lookup:
                 val = os_lookup[symbols[sym][1]]
@@ -126,6 +126,15 @@ We have a very simple format for the synapse binaries:
         out = struct.pack('>I', entry_point) + name + struct.pack('>I', v_addr) + out
     return out
 
+def to_tape_format(data_blocks):
+    """
+    This is a very simple format that wraps up data blocks that should be joined by a pilot sound when put on tape
+    """
+    out = []
+    for block in data_blocks:
+        out.append(struct.pack('>I', len(block)) + block)
+    return ''.join(out)
+
 def create_binary(header, elf, name, boot=False):
     elf_data = load(elf)
     with open(elf,'rb') as f:
@@ -154,7 +163,7 @@ def create_binary(header, elf, name, boot=False):
                 #we only take the first segment
                 break
         data = ''.join(data)
-        
+
         if boot:
             entry_point = elffile.header['e_entry']
 
@@ -167,7 +176,7 @@ def create_binary(header, elf, name, boot=False):
 
     symbols.sort( lambda x,y: cmp(x[0], y[0]) )
     print 'entry %x' % entry_point
-            
+
     #get rid of any "bx lr"s
     #for cond in xrange(16):
     #    for reg in xrange(15):
@@ -211,7 +220,7 @@ if __name__ == '__main__':
 
     if not args.boot:
         #If we're making a tape wrap it up in the tape format
-        binary = to_tape_format(binary)
+        binary = to_tape_format([binary])
 
     with open(args.output,'wb') as f:
         f.write(binary)
