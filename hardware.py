@@ -11,6 +11,7 @@ import numpy
 import popcnt
 import wave
 import globals
+import struct
 from globals.types import Point
 
 class Keyboard(armv2.Device):
@@ -211,7 +212,12 @@ class TapeDrive(armv2.Device):
             return
         self.tape_sound.play()
         self.playing = True
-        self.start_time = globals.t
+        #start time for each block...
+        self.start_time = []
+        last_end = globals.t
+        for i,times in enumerate(self.bit_times):
+            self.start_time.append( last_end + (i+1)*self.pilot_length * 1000 )
+            last_end += times[-1]
 
     def stop_playing(self):
         if not self.tape_sound:
@@ -221,36 +227,64 @@ class TapeDrive(armv2.Device):
 
     def loadTape(self, filename):
         self.unloadTape()
-        self.tape = open(filename, 'rb')
+        self.data_blocks = []
+        with open(filename, 'rb') as f:
+            while True:
+                word = f.read(4)
+                if len(word) != 4:
+                    #We're done
+                    break
+                size = struct.unpack('>I',word)[0]
+                self.data_blocks.append(f.read(size))
+        #TODO: save tape position?
+        self.block_pos = 0
+        self.current_block = 0
+        #self.tape = open(filename, 'rb')
         self.tape_name = filename
         self.make_sound()
 
     def make_sound(self):
         freq, sample_size, num_channels = pygame.mixer.get_init()
-        data = numpy.fromfile(self.tape, dtype='uint32')
-        set_bits = popcnt.count_array(data)
-        clr_bits = (len(data) * 32) - set_bits
-        #The sigmals we're using are either 8 (4 on 4 off) or 16 samples at 22050 Hz, which is 
-        #either 1378 or 2756 Hz
         tone_length = 4*float(freq)/22050
         clr_length = int(tone_length)
         set_length = int(tone_length*2)
-        total_samples = 2*(set_bits*set_length + clr_bits*clr_length)
-        samples = numpy.zeros(shape=total_samples, dtype='float64')
-        #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(total_samples)/freq)
-        #The position in samples that each byte starts
-        self.byte_samples = numpy.zeros(shape=len(data)*4, dtype='uint32')
-        #The number of milliseconds that each bit should
-        self.bit_times = numpy.zeros(shape=len(data)*4*8, dtype='uint32')
-        self.bits = numpy.zeros(shape=len(data)*4*9, dtype='uint8')
-        popcnt.create_samples(data, samples, self.byte_samples, self.bit_times, self.bits, clr_length, set_length, float(1000)/22050)
 
-        #Now lets do the same for a pilot signal. We want it to last for 2 seconds
+        #We'll want a pilot signal first as it will go before all data segments
         num_pilot_samples = 22050*self.pilot_length
         pilot_samples = numpy.zeros(shape=num_pilot_samples, dtype='float64')
         popcnt.create_tone(pilot_samples, set_length)
 
-        samples = numpy.concatenate((pilot_samples,samples))
+        self.byte_samples = []
+        self.bit_times    = []
+        self.bits         = []
+
+        all_samples = []
+        total_samples = 0
+
+        for block in self.data_blocks:
+            data = numpy.fromstring(block, dtype='uint32')
+            set_bits = popcnt.count_array(data)
+            clr_bits = (len(data) * 32) - set_bits
+            #The sigmals we're using are either 8 (4 on 4 off) or 16 samples at 22050 Hz, which is
+            #either 1378 or 2756 Hz
+
+            total_samples += 2*(set_bits*set_length + clr_bits*clr_length)
+            total_samples += num_pilot_samples
+            samples = numpy.zeros(shape=total_samples, dtype='float64')
+            #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(total_samples)/freq)
+            #The position in samples that each byte starts
+            byte_samples = numpy.zeros(shape=len(data)*4, dtype='uint32')
+            #The number of milliseconds that each bit should
+            bit_times = numpy.zeros(shape=len(data)*4*8, dtype='uint32')
+            bits = numpy.zeros(shape=len(data)*4*9, dtype='uint8')
+            popcnt.create_samples(data, samples, byte_samples, bit_times, bits, clr_length, set_length, float(1000)/22050)
+            all_samples.append(pilot_samples)
+            all_samples.append(samples)
+            self.byte_samples.append(byte_samples)
+            self.bit_times.append(bit_times)
+            self.bits.append(bits)
+
+        samples = numpy.concatenate(all_samples)
         #bandpass filter it to make it less harsh
         samples = butter_bandpass_filter(samples, 500, 2700, freq).astype('int16')
 
@@ -259,17 +293,16 @@ class TapeDrive(armv2.Device):
             samples = samples.repeat(num_channels).reshape(total_samples + num_pilot_samples, num_channels)
 
         self.tape_sound = pygame.sndarray.make_sound(samples)
-        #rewind the tape so we can load from it correctly
-        self.tape.seek(0)
         self.sample_rate = float(freq)/1000
 
     def registerCallback(self, callback):
         self.end_callback = callback
 
     def unloadTape(self):
-        if self.tape:
-            self.tape.close()
-            self.tape = None
+        if self.tape_name:
+            self.data_blocks = []
+            self.current_block = 0
+            self.block_pos = 0
             self.tape_name = None
         if self.tape_sound:
             self.stop_playing()
@@ -292,16 +325,23 @@ class TapeDrive(armv2.Device):
             return self.data_byte
 
     def is_byte_ready(self):
-        elapsed = globals.t - (self.start_time + self.pilot_length * 1000)
-        current_byte = self.tape.tell()
-        if current_byte >= len(self.byte_samples):
+        if self.current_block >= len(self.data_blocks):
             return True
 
-        #return True
-        return elapsed * self.sample_rate > self.byte_samples[current_byte]
+        print 'jim',self.start_time, self.current_block
+        elapsed = globals.t - self.start_time[self.current_block]
+
+        return elapsed * self.sample_rate > self.byte_samples[self.current_block][self.block_pos]
 
     def feed_byte(self):
-        c = self.tape.read(1)
+        try:
+            c = self.data_blocks[self.current_block][self.block_pos]
+            self.block_pos += 1
+            if self.block_pos >= len(self.data_blocks[self.current_block]):
+                self.current_block += 1
+        except IndexError:
+            c = None
+
         if c:
             self.data_byte = ord(c)
             #self.tape_data = self.tape_data[-((len(self.stripes)/8)):] + [self.data_byte]
@@ -328,7 +368,7 @@ class TapeDrive(armv2.Device):
             self.cpu.cpu.Interrupt(self.id, self.status)
 
     def update(self):
-        
+
         if not self.playing:
             return
 
@@ -337,7 +377,7 @@ class TapeDrive(armv2.Device):
             if self.is_byte_ready():
                 self.feed_byte()
 
-        elapsed = globals.t - self.start_time - self.pilot_length * 1000
+        elapsed = globals.t - self.start_time[self.current_block]
 
         if elapsed < 0:
             #In this phase we do rolling bars of grey and red
@@ -354,21 +394,23 @@ class TapeDrive(armv2.Device):
             #The stripes should be all the ones up to that position. If we don't have anything
             #Use zeroes
 
-            if self.current_bit >= len(self.bit_times) or self.bit_times[self.current_bit] > elapsed:
+            if self.current_block >= len(self.data_blocks) or \
+                    self.current_bit >= len(self.bit_times[self.current_block]) or \
+                    self.bit_times[self.current_block][self.current_bit] > elapsed:
                 return
 
             #We've got some to show, how many
             try:
-                while self.bit_times[self.current_bit] <= elapsed:
+                while self.bit_times[self.current_block][self.current_bit] <= elapsed:
                     self.current_bit += 1
             except IndexError:
-                self.current_bit = len(self.bit_times)
+                self.current_bit = len(self.bit_times[self.current_block])
 
             stripe_pos = 0
             bit_pos = 0
             while stripe_pos < len(self.stripes):
                 try:
-                    bit = self.bits[self.current_bit + bit_pos]
+                    bit = self.bits[self.current_block][self.current_bit + bit_pos]
                 except IndexError:
                     bit = 0
 
@@ -394,7 +436,7 @@ class TapeDrive(armv2.Device):
                 stripe_pos += 1
 
         drawing.DrawNoTexture(self.quad_buffer)
-        
+
 
     def writeByteCallback(self,addr,value):
         if addr == 0:
@@ -406,7 +448,7 @@ class TapeDrive(armv2.Device):
                     #They want the next byte, are we ready for them?
                     #self.loading = pygame.time.get_ticks()
 
-                    if self.tape:
+                    if self.tape_name:
                         #Have we progressed enough to give the next byte?
                         if not self.playing:
                             self.start_playing()
@@ -445,7 +487,7 @@ class Display(armv2.Device):
     0x4b0 - 0x960 : Same as above, but each byte represents the ascii code for the character displayed
 
     """
-                    
+
     class Colours:
         BLACK       = (0, 0, 0, 255)
         WHITE       = (255, 255, 255, 255)
@@ -464,8 +506,8 @@ class Display(armv2.Device):
         LIGHT_BLUE  = (0, 136, 255, 255)
         LIGHT_GREY  = (187, 187, 187, 255)
 
-        palette = [ BLACK   , WHITE      , RED       , CYAN, 
-                    VIOLET  , GREEN      , BLUE      , YELLOW, 
+        palette = [ BLACK   , WHITE      , RED       , CYAN,
+                    VIOLET  , GREEN      , BLUE      , YELLOW,
                     ORANGE  , BROWN      , LIGHT_RED , DARK_GREY,
                     MED_GREY, LIGHT_GREEN, LIGHT_BLUE, LIGHT_GREY ]
 
