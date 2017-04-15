@@ -226,7 +226,7 @@ if __name__ == '__main__':
         blocks = [binary]
         loading_name = os.path.splitext(args.binary)[0] + '_loading.so'
         if os.path.exists(loading_name):
-            blocks.insert(0,create_binary(args.header, loading_name, 'yellow submarine', boot=args.boot))
+            blocks.insert(0,create_binary(args.header, loading_name, args.name + ' loader', boot=args.boot))
         #If we're making a tape wrap it up in the tape format
         binary = to_tape_format(blocks)
 

@@ -305,6 +305,7 @@ class TapeDrive(armv2.Device):
         if self.tape_name:
             self.data_blocks = []
             self.current_block = 0
+            self.current_bit = 0
             self.block_pos = 0
             self.tape_name = None
         if self.tape_sound:
@@ -342,8 +343,8 @@ class TapeDrive(armv2.Device):
             if self.block_pos >= len(self.data_blocks[self.current_block]):
                 self.current_block += 1
                 self.block_pos = 0
+                self.current_bit = 0
         except IndexError:
-            print 'bingo',self.current_block, self.block_pos
             c = None
 
         if c:
