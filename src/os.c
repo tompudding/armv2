@@ -116,7 +116,7 @@ enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
     return load_tape_data( symbol_entry_pos );
 }
 
-enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area, void **entry_point_out) {
+enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
     //Tapes are comprised of 2 sections, the data and (optionally) the symbols. Just load the first for now
     uint32_t entry_point = 0;
     char tape_name[TAPE_NAME_LEN];
@@ -161,7 +161,7 @@ enum tape_codes load_tape(uint8_t *tape_area, uint8_t *symbols_area, void **entr
     }
 
     //Now we're done, but let the tape drive know that we won't be needing it for a while
-    tape_control->write = READY;
+    //tape_control->write = READY;
 
     *entry_point_out = (void *)entry_point;
     return READY;
@@ -171,7 +171,7 @@ void handle_command(char *command) {
     if(0 == strcasecmp(command,"load")) {
         void *entry_point = NULL;
         puts("Loading...");
-        int result = load_tape(tape_load_area, symbols_load_area, &entry_point);
+        int result = load_tape(symbols_load_area, &entry_point);
         switch(result) {
         case READY:
         case END_OF_TAPE:
@@ -214,7 +214,7 @@ int main(void) {
     banner();
     processing = 1;
 
-    while(1) {        
+    while(1) {
         printf(PROMPT);
         handle_command(gets(command));
     }

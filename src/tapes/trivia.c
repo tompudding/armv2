@@ -199,6 +199,8 @@ char question[] = "What is the title of episode 00 of season 0 of Buffy the Vamp
 int main(void) {
     int max = 1000;
 
+    tape_control->write = READY;
+
     set_screen_data(normal, inverted, border_size);
     clear_screen_default();
     banner();
@@ -213,9 +215,9 @@ int main(void) {
         int   episode_number = rand() % ( season == 0 ? 12 : 22 );
 
         episode_name = episodes[season][episode_number];
-        
+
         //ask the question
-        printf("What is the title of episode %d of season %d of Buffy the Vampire Slayer?\n\n", 
+        printf("What is the title of episode %d of season %d of Buffy the Vampire Slayer?\n\n",
                episode_number + 1,
                season + 1);
 

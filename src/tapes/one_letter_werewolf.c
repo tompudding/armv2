@@ -762,6 +762,7 @@ void reset() {
 
 int main(void) {
     int i;
+    tape_control->write = READY;
 
     set_screen_data(BACKGROUND, FOREGROUND, 0);
     reset();

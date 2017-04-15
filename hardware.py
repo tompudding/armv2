@@ -218,6 +218,7 @@ class TapeDrive(armv2.Device):
         for i,times in enumerate(self.bit_times):
             self.start_time.append( last_end + (i+1)*self.pilot_length * 1000 )
             last_end += times[-1]
+        print 'st',globals.t,self.start_time
 
     def stop_playing(self):
         if not self.tape_sound:
@@ -268,10 +269,12 @@ class TapeDrive(armv2.Device):
             #The sigmals we're using are either 8 (4 on 4 off) or 16 samples at 22050 Hz, which is
             #either 1378 or 2756 Hz
 
-            total_samples += 2*(set_bits*set_length + clr_bits*clr_length)
+            block_samples = 2*(set_bits*set_length + clr_bits*clr_length)
+            total_samples += block_samples
             total_samples += num_pilot_samples
-            samples = numpy.zeros(shape=total_samples, dtype='float64')
-            #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(total_samples)/freq)
+
+            samples = numpy.zeros(shape=block_samples, dtype='float64')
+            #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(block_samples)/freq)
             #The position in samples that each byte starts
             byte_samples = numpy.zeros(shape=len(data)*4, dtype='uint32')
             #The number of milliseconds that each bit should
@@ -290,7 +293,7 @@ class TapeDrive(armv2.Device):
 
         if num_channels != 1:
             #Duplicate it into the required number of channels
-            samples = samples.repeat(num_channels).reshape(total_samples + num_pilot_samples, num_channels)
+            samples = samples.repeat(num_channels).reshape(total_samples, num_channels)
 
         self.tape_sound = pygame.sndarray.make_sound(samples)
         self.sample_rate = float(freq)/1000
@@ -328,7 +331,6 @@ class TapeDrive(armv2.Device):
         if self.current_block >= len(self.data_blocks):
             return True
 
-        print 'jim',self.start_time, self.current_block
         elapsed = globals.t - self.start_time[self.current_block]
 
         return elapsed * self.sample_rate > self.byte_samples[self.current_block][self.block_pos]
@@ -339,7 +341,9 @@ class TapeDrive(armv2.Device):
             self.block_pos += 1
             if self.block_pos >= len(self.data_blocks[self.current_block]):
                 self.current_block += 1
+                self.block_pos = 0
         except IndexError:
+            print 'bingo',self.current_block, self.block_pos
             c = None
 
         if c:
@@ -443,31 +447,30 @@ class TapeDrive(armv2.Device):
             #Trying to write to the read register. :(
             pass
         elif addr == 1:
-            if 1:
-                if value == self.Codes.NEXT_BYTE:
-                    #They want the next byte, are we ready for them?
-                    #self.loading = pygame.time.get_ticks()
+            if value == self.Codes.NEXT_BYTE:
+                #They want the next byte, are we ready for them?
+                #self.loading = pygame.time.get_ticks()
 
-                    if self.tape_name:
-                        #Have we progressed enough to give the next byte?
-                        if not self.playing:
-                            self.start_playing()
+                if self.tape_name:
+                    #Have we progressed enough to give the next byte?
+                    if not self.playing:
+                        self.start_playing()
 
-                        if self.is_byte_ready():
-                            #Great you can have a byte
-                            self.feed_byte()
-                        else:
-                            #Not ready for one yet
-                            self.data_byte = 0
-                            self.status = self.Codes.NOT_READY
-
+                    if self.is_byte_ready():
+                        #Great you can have a byte
+                        self.feed_byte()
                     else:
+                        #Not ready for one yet
                         self.data_byte = 0
-                        self.status = self.Codes.DRIVE_EMPTY
-                        self.cpu.cpu.Interrupt(self.id, self.status)
-                elif value == self.Codes.READY:
-                    #power down
-                    self.power_down()
+                        self.status = self.Codes.NOT_READY
+
+                else:
+                    self.data_byte = 0
+                    self.status = self.Codes.DRIVE_EMPTY
+                    self.cpu.cpu.Interrupt(self.id, self.status)
+            elif value == self.Codes.READY:
+                #power down
+                self.power_down()
         elif addr == 2:
             #Can't write to the data byte
             pass

@@ -83,9 +83,13 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
 
         if info == RelTypes.R_ARM_ABS32:
 
-            #print 'abs symbols %x %x %d %s' % (offset, info, sym, symbols[sym])
 
-            data[offset:offset + 4] = list(struct.pack('<I',symbols[sym][0]))
+            sym_val = symbols[sym][0]
+            if sym_val == 0:
+                sym_val = os_lookup[symbols[sym][1]]
+            print 'abs symbols %x %x %d %s val=%x' % (offset, info, sym, symbols[sym], sym_val)
+
+            data[offset:offset + 4] = list(struct.pack('<I',sym_val))
 
         elif info == RelTypes.R_ARM_JUMP_SLOT:
             if symbols[sym][1] in os_lookup:
@@ -93,7 +97,7 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
             else:
                 val = symbol_lookup[symbols[sym][1]]
 
-            #print 'B %x %x %d %s %s' % (offset, info, sym, symbols[sym], val)
+            print 'B %x %x %d %s %s' % (offset, info, sym, symbols[sym], val)
             data[offset:offset + 4] = list(struct.pack('<I', val))
 
 
@@ -120,10 +124,15 @@ We have a very simple format for the synapse binaries:
       4 + len + 4 |   symbols
 """
     data = pad(data, 4)
-    print 'Data %d bytes, symbols %d bytes' % (len(data), len(symbols))
+    symbols = pad(symbols, 4)
+    #Pad the name out to 16 bytes
+    name = name[:15]
+    name = name + ('\x00'*(16 - len(name)))
+    print 'Data %d bytes, symbols %d bytes, name %s' % (len(data), len(symbols), name)
     out = struct.pack('>I', len(data)) + data + struct.pack('>I', len(symbols)) + symbols
     if entry_point != None:
         out = struct.pack('>I', entry_point) + name + struct.pack('>I', v_addr) + out
+
     return out
 
 def to_tape_format(data_blocks):
@@ -135,7 +144,7 @@ def to_tape_format(data_blocks):
         out.append(struct.pack('>I', len(block)) + block)
     return ''.join(out)
 
-def create_binary(header, elf, name, boot=False):
+def create_binary(header, elf, tape_name, boot=False):
     elf_data = load(elf)
     with open(elf,'rb') as f:
         elffile = ELFFile(f)
@@ -193,7 +202,7 @@ def create_binary(header, elf, name, boot=False):
         entry_point = None
     else:
         header = ''
-    return to_synapse_format(header+data, symbols, name, v_addr, entry_point)
+    return to_synapse_format(header+data, symbols, tape_name, v_addr, entry_point)
 
 if __name__ == '__main__':
     import argparse
@@ -211,16 +220,15 @@ if __name__ == '__main__':
 
     args.name = args.name[:15]
 
-    #Pad the name out to 16 bytes
-    args.name = args.name + ('\x00'*(16 - len(args.name)))
     binary = create_binary(args.header, args.binary, args.name, boot=args.boot)
-    left = len(binary)&3
-    if left:
-        binary += (4 - left)*'\x00'
 
     if not args.boot:
+        blocks = [binary]
+        loading_name = os.path.splitext(args.binary)[0] + '_loading.so'
+        if os.path.exists(loading_name):
+            blocks.insert(0,create_binary(args.header, loading_name, 'yellow submarine', boot=args.boot))
         #If we're making a tape wrap it up in the tape format
-        binary = to_tape_format([binary])
+        binary = to_tape_format(blocks)
 
     with open(args.output,'wb') as f:
         f.write(binary)

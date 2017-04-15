@@ -63,6 +63,7 @@ static char rcsid[] = "$NetBSD: main.c,v 1.5 1996/05/21 21:53:09 mrg Exp $";
 
 int main(int argc,char *argv[])
 {
+    tape_control->write = READY;
 	register int i;
 	int rval,ll;
 	struct text *kk;

@@ -8,13 +8,13 @@ _LOADING_TARGETS = ${addprefix build/, ${LOADING_SCREENS}}
 LOADING_TARGETS = ${addsuffix _loading.so, ${_LOADING_TARGETS}}
 LIBDIR := ../../build
 
-all: ${SHARED_TARGETS} #${LOADING_TARGETS}
-
-build/%.so: %.c | build
-	${ARMCC} -shared ${ARMCFLAGS} -T linking.txt -o $@ $< 
+all: ${SHARED_TARGETS} ${LOADING_TARGETS}
 
 build/%_loading.so: %_loading.c | build
-	${ARMCC} -shared ${ARMCFLAGS} -T linking_loading.txt -o $@ $
+	${ARMCC} -shared ${ARMCFLAGS} -T linking_loading.txt -o $@ $<
+
+build/%.so: %.c | build
+	${ARMCC} -shared ${ARMCFLAGS} -T linking.txt -o $@ $<
 
 build/adventure.so: build/adventure
 	cp adventure/adventure.so $@

@@ -32,6 +32,7 @@ void banner() {
 
 int main(void) {
     int max = 1000;
+    tape_control->write = READY;
 
     set_screen_data(normal, inverted, border_size);
     clear_screen_default();
