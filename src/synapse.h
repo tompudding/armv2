@@ -30,6 +30,7 @@ enum letter_codes {
 #define INT_ID(info)     ((info)&0xffffffff)
 #define CLOCK_ID         0x92d177b0
 #define TAPE_NAME_LEN    16
+#define TAPE_FLAG_FINAL  0x80000000
 
 extern volatile struct tape_control  *tape_control;
 extern uint8_t                       *tape_load_area;

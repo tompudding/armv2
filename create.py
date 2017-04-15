@@ -113,7 +113,7 @@ def pre_link(data, elf, os_symbols):
     return ''.join(data), symbol_lookup['main']
 
 
-def to_synapse_format(data, symbols, name, v_addr, entry_point):
+def to_synapse_format(data, symbols, name, v_addr, entry_point, final):
     """
 We have a very simple format for the synapse binaries:
          Offset   |   Contents
@@ -129,7 +129,8 @@ We have a very simple format for the synapse binaries:
     name = name[:15]
     name = name + ('\x00'*(16 - len(name)))
     print 'Data %d bytes, symbols %d bytes, name %s' % (len(data), len(symbols), name)
-    out = struct.pack('>I', len(data)) + data + struct.pack('>I', len(symbols)) + symbols
+    len_flags = len(data) | (0x80000000 if final and entry_point != None else 0)
+    out = struct.pack('>I', len_flags) + data + struct.pack('>I', len(symbols)) + symbols
     if entry_point != None:
         out = struct.pack('>I', entry_point) + name + struct.pack('>I', v_addr) + out
 
@@ -144,7 +145,7 @@ def to_tape_format(data_blocks):
         out.append(struct.pack('>I', len(block)) + block)
     return ''.join(out)
 
-def create_binary(header, elf, tape_name, boot=False):
+def create_binary(header, elf, tape_name, boot=False, final=True):
     elf_data = load(elf)
     with open(elf,'rb') as f:
         elffile = ELFFile(f)
@@ -202,7 +203,7 @@ def create_binary(header, elf, tape_name, boot=False):
         entry_point = None
     else:
         header = ''
-    return to_synapse_format(header+data, symbols, tape_name, v_addr, entry_point)
+    return to_synapse_format(header+data, symbols, tape_name, v_addr, entry_point, final)
 
 if __name__ == '__main__':
     import argparse
@@ -226,7 +227,7 @@ if __name__ == '__main__':
         blocks = [binary]
         loading_name = os.path.splitext(args.binary)[0] + '_loading.so'
         if os.path.exists(loading_name):
-            blocks.insert(0,create_binary(args.header, loading_name, args.name + ' loader', boot=args.boot))
+            blocks.insert(0,create_binary(args.header, loading_name, args.name + ' loader', boot=args.boot, final=False))
         #If we're making a tape wrap it up in the tape format
         binary = to_tape_format(blocks)
 

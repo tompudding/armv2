@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <terminal.h>
+#include <stdbool.h>
 
 char *banner_lines[] = {
     "\n",
@@ -64,9 +65,14 @@ int tape_next_word(uint32_t *out) {
     return result;
 }
 
-int load_tape_data( uint8_t *tape_area ) {
+int load_tape_data( uint8_t *tape_area, bool *final ) {
     uint32_t section_length = 0;
     int result = tape_next_word( &section_length );
+    if( final ) {
+        *final = section_length & TAPE_FLAG_FINAL;
+    }
+
+    section_length &= (~TAPE_FLAG_FINAL);
 
     while(result == READY && section_length != 0) {
         uint8_t byte;
@@ -113,7 +119,7 @@ enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
     //Now we've just read the
 
     //Now we can load symbols from the tape in
-    return load_tape_data( symbol_entry_pos );
+    return load_tape_data( symbol_entry_pos, NULL );
 }
 
 enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
@@ -149,8 +155,9 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
     }
 
     printf("Loading at %08x\n", load_addr);
+    bool final = false;
 
-    result = load_tape_data( (void*)load_addr );
+    result = load_tape_data( (void*)load_addr, &final );
     if( READY != result ) {
         return result;
     }
@@ -160,8 +167,11 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
         return result;
     }
 
-    //Now we're done, but let the tape drive know that we won't be needing it for a while
-    //tape_control->write = READY;
+    // Now we're done, but let the tape drive know that we won't be needing it for a while, but only if this is
+    // the final data block
+    if( final ) {
+        tape_control->write = READY;
+    }
 
     *entry_point_out = (void *)entry_point;
     return READY;
