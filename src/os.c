@@ -127,8 +127,6 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
     uint32_t entry_point = 0;
     char tape_name[TAPE_NAME_LEN];
 
-    set_screen_data(normal, inverted, border_size);
-    clear_screen_default();
     printf("Loading tape : ");
 
     enum tape_codes result = tape_next_word( &entry_point );
@@ -180,6 +178,8 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
 void handle_command(char *command) {
     if(0 == strcasecmp(command,"load")) {
         void *entry_point = NULL;
+        set_screen_data(normal, inverted, border_size);
+        clear_screen_default();
         puts("Loading...");
         int result = load_tape(symbols_load_area, &entry_point);
         switch(result) {
