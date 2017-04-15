@@ -1,0 +1,3 @@
+ - tape playing sound doesn't stop on reset. That's not necessarily a bug, but for it to make sense there'd need to be more separate state for the tape player, not resetting position etc
+ - Debbuger symbols don't get reset properly on reset
+ - Step-over doesn't work sometimes and ends up resuming
