@@ -158,6 +158,7 @@ class TapeDrive(armv2.Device):
         self.tape_name  = None
         self.tape       = None
         self.tape_sound = None
+        self.entered_pilot = False
         self.running    = True
         self.playing    = False
         self.loading   = False
@@ -398,6 +399,10 @@ class TapeDrive(armv2.Device):
 
         if elapsed < 0:
             #In this phase we do rolling bars of grey and red
+            if not self.entered_pilot:
+                if self.end_callback:
+                    self.end_callback()
+                    self.entered_pilot = True
             pos = float(elapsed) / 20
             for i,stripes in enumerate(self.stripes):
                 if ((i + 8 - pos) % 12) >= 4:
@@ -410,6 +415,7 @@ class TapeDrive(armv2.Device):
         else:
             #The stripes should be all the ones up to that position. If we don't have anything
             #Use zeroes
+            self.entered_pilot = False
 
             if self.current_block >= len(self.data_blocks) or \
                     self.current_bit >= len(self.bit_times[self.current_block]) or \
@@ -490,7 +496,7 @@ class TapeDrive(armv2.Device):
         return 0;
 
     def Delete(self):
-        return
+        self.power_down()
 
 class Display(armv2.Device):
     """

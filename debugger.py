@@ -180,6 +180,7 @@ class Debugger(object):
 
     def new_machine(self, machine):
         self.machine = machine
+        self.machine.tape_drive.registerCallback(self.set_need_symbols)
         self.next_instruction = None
         for bkpt in self.breakpoints:
             self.breakpoints[bkpt] = self.machine.memw[bkpt]

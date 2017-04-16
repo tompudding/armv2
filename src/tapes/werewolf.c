@@ -341,19 +341,19 @@ static void process_input(uint8_t c, struct character *character) {
     struct position new_pos = character->pos;
     switch(tolower(c)) {
     case 'a':
-    case LEFT:
+    case KEY_LEFT:
         new_pos.x -= 1;
         break;
     case 'd':
-    case RIGHT:
+    case KEY_RIGHT:
         new_pos.x += 1;
         break;
     case 'w':
-    case UP:
+    case KEY_UP:
         new_pos.y += 1;
         break;
     case 's':
-    case DOWN:
+    case KEY_DOWN:
         new_pos.y -= 1;
         break;
     }

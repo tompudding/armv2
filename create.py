@@ -73,6 +73,7 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
     start = section['sh_offset']
     end = start + section['sh_size']
     rel_data = data[start : end]
+    undefined = False
 
     for pos in xrange(0, end - start, 8):
         offset, info = struct.unpack('<II', ''.join(rel_data[pos:pos+8]))
@@ -87,7 +88,7 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
             sym_val = symbols[sym][0]
             if sym_val == 0:
                 sym_val = os_lookup[symbols[sym][1]]
-            print 'abs symbols %x %x %d %s val=%x' % (offset, info, sym, symbols[sym], sym_val)
+            #print 'abs symbols %x %x %d %s val=%x' % (offset, info, sym, symbols[sym], sym_val)
 
             data[offset:offset + 4] = list(struct.pack('<I',sym_val))
 
@@ -97,8 +98,15 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
             else:
                 val = symbol_lookup[symbols[sym][1]]
 
-            print 'B %x %x %d %s %s' % (offset, info, sym, symbols[sym], val)
+            #print 'B %x %x %d %s %x' % (offset, info, sym, symbols[sym], val)
+            if val == 0:
+                print 'Undefined reference to %s' % symbols[sym][1]
+                undefined = True
+                val = 0xffffffff
             data[offset:offset + 4] = list(struct.pack('<I', val))
+
+    if undefined:
+        raise Exception('Unresolved symbols')
 
 
 def pre_link(data, elf, os_symbols):

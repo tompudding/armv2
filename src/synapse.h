@@ -19,10 +19,10 @@ enum tape_codes {
 };
 
 enum letter_codes {
-    LEFT  = 250,
-    RIGHT = 251,
-    UP    = 252,
-    DOWN  = 253
+    KEY_LEFT  = 250,
+    KEY_RIGHT = 251,
+    KEY_UP    = 252,
+    KEY_DOWN  = 253
 };
 
 #define RINGBUFFER_SIZE  128
