@@ -83,7 +83,7 @@ int load_with_progress_bar(char *title, size_t title_len) {
     {
         //The tape is loaded so let's clear the screen and jump to the tape
         void (*fn)(void) = (void*)entry_point;
-        clear_screen(BLACK,BLACK);
+        clear_screen_default();
         fn();
         break;
     }

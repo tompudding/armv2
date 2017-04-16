@@ -52,3 +52,4 @@ enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area );
 
 #include <xprintf.h>
 #define printf xprintf
+#define __assert_func __dessert_func

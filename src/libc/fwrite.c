@@ -39,19 +39,19 @@ size_t _stdio_write(register FILE *stream,
 {
     size_t todo = bufsize;
     ssize_t rv, stodo;
-    
+
     /* __STDIO_STREAM_VALIDATE(stream); */
     /* assert(stream->__filedes >= -1); */
     /* assert(__STDIO_STREAM_IS_WRITING(stream)); */
     /* assert(!__STDIO_STREAM_BUFFER_WUSED(stream)); /\* Buffer must be empty. *\/ */
-    
+
     while (todo != 0) {
         stodo = (todo <= SSIZE_MAX) ? todo : SSIZE_MAX;
         rv = write(stream, (char *) buf, stodo);
         if (rv >= 0) {
             todo -= rv;
             buf += rv;
-        } 
+        }
         else {
             //__STDIO_STREAM_SET_ERROR(stream);
 
@@ -84,8 +84,14 @@ size_t _stdio_write(register FILE *stream,
     return bufsize;
 }
 
-size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) 
+size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
     //In our system at present there is no such thing as buffering
     return _stdio_write(stream, ptr, size*nmemb);
+}
+
+int fflush(FILE *stream)
+{
+    //TODO : implement this
+    return 0;
 }

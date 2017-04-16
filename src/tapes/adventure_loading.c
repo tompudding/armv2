@@ -11,7 +11,7 @@
 uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
-#define TITLE "WEREWOLF"
+#define TITLE "COLOSSAL CAVE ADVENTURE"
 
 int main(void) {
     int border_size = 2;
