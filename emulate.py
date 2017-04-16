@@ -78,6 +78,7 @@ class Emulator(object):
         self.dbg.machine.Delete()
         self.dbg.new_machine(new_machine())
         self.dbg.Update()
+        self.dbg.load_symbols()
 
     def skip_loading(self):
         self.dbg.machine.tape_drive.skip_loading()
