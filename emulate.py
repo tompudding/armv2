@@ -79,6 +79,9 @@ class Emulator(object):
         self.dbg.new_machine(new_machine())
         self.dbg.Update()
 
+    def skip_loading(self):
+        self.dbg.machine.tape_drive.skip_loading()
+
     def is_stopped(self):
         return self.dbg.stopped
 
@@ -121,7 +124,7 @@ class Emulator(object):
         drawing.EndFrame()
         pygame.display.flip()
             #self.last = globals.t
-            
+
         if callback:
             try:
                 callback()

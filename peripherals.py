@@ -1290,6 +1290,10 @@ class Application(Tkinter.Frame):
         if self.emulator:
             self.emulator.restart()
 
+    def skip_loading(self):
+        if self.emulator:
+            self.emulator.skip_loading()
+
     def adjacent_item(self, item, direction):
         if item is self.disassembly.symbols_searcher:
             item = self.disassembly
@@ -1351,6 +1355,9 @@ class Application(Tkinter.Frame):
         self.restart_button = Button(self, self.button_frame, 'restart', self.restart)
         #self.restart_button.pack(side=Tkinter.LEFT, pady=6, padx=2)
         self.restart_button.grid(row=0,column=2,pady=6,padx=5)
+
+        self.skip_button = Button(self, self.button_frame, 'skip load', self.skip_loading)
+        self.skip_button.grid(row=0,column=3,pady=6,padx=5)
         self.button_frame.place(x=self.button_frame_pos[0],
                                 y=self.button_frame_pos[1],
                                 width=self.registers.width_pixels,

@@ -162,6 +162,7 @@ class TapeDrive(armv2.Device):
         self.playing    = False
         self.loading   = False
         self.end_callback = None
+        self.skipped = False
         self.lock = threading.Lock()
         self.current_bit = 0
 
@@ -210,6 +211,7 @@ class TapeDrive(armv2.Device):
     def start_playing(self):
         if not self.tape_sound:
             return
+        self.skipped = False
         self.tape_sound.play()
         self.playing = True
         #start time for each block...
@@ -328,8 +330,13 @@ class TapeDrive(armv2.Device):
         elif addr == 2:
             return self.data_byte
 
+    def skip_loading(self):
+        if self.playing:
+            self.tape_sound.stop()
+            self.skipped = True
+
     def is_byte_ready(self):
-        if self.current_block >= len(self.data_blocks):
+        if self.current_block >= len(self.data_blocks) or self.skipped:
             return True
 
         elapsed = globals.t - self.start_time[self.current_block]
