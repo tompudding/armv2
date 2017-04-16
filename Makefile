@@ -7,7 +7,7 @@ TAPES_DIR  = tapes
 BUILD_DIR  = build
 TAPE_SRC := $(wildcard src/*.cpp)
 OBJ_FILES := $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
-TAPE_NAMES := guessing trivia one_letter_werewolf adventure
+TAPE_NAMES := guessing trivia werewolf adventure
 TAPES_BIN  = $(patsubst %, ${TAPES_DIR}/%.tape, ${TAPE_NAMES})
 ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc -Os
 .PRECIOUS: build/% #Don't delete our intermediate object files, they're useful for debugging

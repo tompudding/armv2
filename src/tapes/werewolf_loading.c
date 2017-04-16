@@ -6,12 +6,12 @@
 #include <terminal.h>
 #include "loading.h"
 
-#define BACKGROUND WHITE
-#define FOREGROUND BLACK
+#define BACKGROUND BLACK
+#define FOREGROUND RED
 uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
-#define TITLE "Buffy the Vampire Slayer Trivia"
+#define TITLE "WEREWOLF"
 
 int main(void) {
     int border_size = 2;

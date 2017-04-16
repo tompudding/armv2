@@ -1,7 +1,7 @@
 ARMCC=arm-none-eabi-gcc
 ARMCFLAGS  = -Os -std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -I.. -I../libc
-TAPE_NAMES = guessing trivia one_letter_werewolf
-LOADING_SCREENS = trivia
+TAPE_NAMES = guessing trivia werewolf
+LOADING_SCREENS = trivia werewolf
 STATIC_TARGETS = $(addprefix build/, ${TAPE_NAMES}) build/adventure
 SHARED_TARGETS = $(addsuffix .so, ${STATIC_TARGETS})
 _LOADING_TARGETS = ${addprefix build/, ${LOADING_SCREENS}}
@@ -10,8 +10,8 @@ LIBDIR := ../../build
 
 all: ${SHARED_TARGETS} ${LOADING_TARGETS}
 
-build/%_loading.so: %_loading.c | build
-	${ARMCC} -shared ${ARMCFLAGS} -T linking_loading.txt -o $@ $<
+build/%_loading.so: %_loading.c loading_common.c | build
+	${ARMCC} -shared ${ARMCFLAGS} -T linking_loading.txt -o $@ $^
 
 build/%.so: %.c | build
 	${ARMCC} -shared ${ARMCFLAGS} -T linking.txt -o $@ $<
