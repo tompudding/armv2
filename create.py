@@ -83,13 +83,12 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
         offset = addr_to_offset(elf,offset)
 
         if info == RelTypes.R_ARM_ABS32:
-
-
             sym_val = symbols[sym][0]
             if sym_val == 0:
                 sym_val = os_lookup[symbols[sym][1]]
             #print 'abs symbols %x %x %d %s val=%x' % (offset, info, sym, symbols[sym], sym_val)
-
+            current = struct.unpack('<I',''.join(data[offset:offset+4]))[0]
+            sym_val += current
             data[offset:offset + 4] = list(struct.pack('<I',sym_val))
 
         elif info == RelTypes.R_ARM_JUMP_SLOT:
