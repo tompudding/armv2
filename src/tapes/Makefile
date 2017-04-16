@@ -1,5 +1,5 @@
 ARMCC=arm-none-eabi-gcc
-ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -I.. -I../libc
+ARMCFLAGS  = -Os -std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -I.. -I../libc
 TAPE_NAMES = guessing trivia one_letter_werewolf
 LOADING_SCREENS = trivia
 STATIC_TARGETS = $(addprefix build/, ${TAPE_NAMES}) build/adventure
