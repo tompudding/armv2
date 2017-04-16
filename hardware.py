@@ -382,7 +382,12 @@ class TapeDrive(armv2.Device):
             if self.is_byte_ready():
                 self.feed_byte()
 
-        elapsed = globals.t - self.start_time[self.current_block]
+        try:
+            elapsed = globals.t - self.start_time[self.current_block]
+        except IndexError:
+            #We reached the end of the tape
+            self.power_down()
+            return
 
         if elapsed < 0:
             #In this phase we do rolling bars of grey and red
