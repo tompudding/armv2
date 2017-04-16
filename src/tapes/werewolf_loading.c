@@ -22,7 +22,7 @@ int main(void) {
 
     //Returning at all is an error
 
-    printf("Error loading trivia\n");
+    printf("Error loading werewolf\n");
 inf_loop:
     while(1) {
         wait_for_interrupt();
