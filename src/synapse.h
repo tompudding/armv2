@@ -45,7 +45,10 @@ void set_alarm(int milliseconds);
 void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr);
 uint32_t ntohl( uint32_t );
 extern int libc_init(void);
+int tape_next_byte(uint8_t *out);
+int tape_next_word(uint32_t *out);
 enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out);
+enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area );
 
 #include <xprintf.h>
 #define printf xprintf
