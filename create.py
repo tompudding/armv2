@@ -168,7 +168,9 @@ def create_binary(header, elf, tape_name, boot=False, final=True):
             if segment['p_type'] != 'PT_LOAD':
                 continue
             print offset,v_addr,filesz,memsz,flags
-            data.append(elf_data[offset:offset + filesz] + '\x00'*(memsz-filesz))
+            #Don't add zeroes for the bss section, when it's loaded there'll be zeroes in ram
+            #data.append(elf_data[offset:offset + filesz] + '\x00'*(memsz-filesz))
+            data.append(elf_data[offset:offset + filesz])
             if not boot:
                 #we only take the first segment
                 break
