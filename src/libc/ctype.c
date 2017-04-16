@@ -6,12 +6,14 @@
 
 #include <ctype.h>
 
-unsigned char _ctype[] = {
+#define _s (_S|_P)
+
+unsigned char _ctype[] = {0, //index is offset by one
 _C,_C,_C,_C,_C,_C,_C,_C,                        /* 0-7 */
 _C,_C|_S,_C|_S,_C|_S,_C|_S,_C|_S,_C,_C,         /* 8-15 */
 _C,_C,_C,_C,_C,_C,_C,_C,                        /* 16-23 */
 _C,_C,_C,_C,_C,_C,_C,_C,                        /* 24-31 */
-_S,_P,_P,_P,_P,_P,_P,_P,                    /* 32-39 */
+_s,_P,_P,_P,_P,_P,_P,_P,                    /* 32-39 */
 _P,_P,_P,_P,_P,_P,_P,_P,                        /* 40-47 */
 _N,_N,_N,_N,_N,_N,_N,_N,                        /* 48-55 */
 _N,_N,_P,_P,_P,_P,_P,_P,                        /* 56-63 */

@@ -1773,20 +1773,25 @@ void listen(void)
         }
         /* Notice that this algorithm depends on the buffer's being
          * terminated by "\n\0", or at least some whitespace character. */
-        for (q = word1; !isspace(*p); ++p, ++q) {
+        for (q = word1; *p && !isspace(*p); ++p, ++q) {
             *q = tolower(*p);
         }
         *q = '\0';
-        for (++p; isspace(*p); ++p) ;
-        if (*p == '\0') {
-            *word2 = '\0'; return;
+        if(*p) {
+            //There's a second command after some kind of space
+            for (++p; *p && isspace(*p); ++p) ;
+            if (*p == '\0') {
+                *word2 = '\0'; return;
+            }
+            for (q = word2; *p && !isspace(*p); ++p, ++q) {
+                *q = tolower(*p);
+            }
+            *q = '\0';
+            if(p) {
+                for (++p; isspace(*p); ++p) ;
+            }
         }
-        for (q = word2; !isspace(*p); ++p, ++q) {
-            *q = tolower(*p);
-        }
-        *q = '\0';
-        for (++p; isspace(*p); ++p) ;
-        if (*p == '\0') return;
+            if (*p == '\0') return;
         puts(" Please stick to 1- and 2-word commands.");
     }
 }
