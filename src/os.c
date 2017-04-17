@@ -224,8 +224,6 @@ int main(void) {
     banner();
     processing = 1;
 
-    printf("space %d\n", isspace(' '));
-
     while(1) {
         printf(PROMPT);
         handle_command(gets(command));

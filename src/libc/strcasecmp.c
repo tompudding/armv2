@@ -14,7 +14,7 @@ int strcasecmp(const char *s1, const char *s2) {
 }
 
 char *strcpy(char *dest, const char *src) {
-    return memcpy(dest, src, strlen(src));
+    return memcpy(dest, src, strlen(src)+1);
 }
 
 int strcmp(const char* s1, const char* s2)

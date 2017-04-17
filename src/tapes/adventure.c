@@ -1765,11 +1765,13 @@ void listen(void)
 {
     char *p, *q;
     while (true) {
+        //I have no idea why this doesn't use fscanf
         printf("* "); fflush(stdout);
         fgets(buffer, sizeof(buffer), stdin);
         for (p = buffer; isspace(*p); ++p) ;
         if (*p == '\0') {
-            puts(" Tell me to do something."); continue;
+            puts(" Tell me to do something."); 
+            continue;
         }
         /* Notice that this algorithm depends on the buffer's being
          * terminated by "\n\0", or at least some whitespace character. */
@@ -1777,21 +1779,21 @@ void listen(void)
             *q = tolower(*p);
         }
         *q = '\0';
-        if(*p) {
-            //There's a second command after some kind of space
-            for (++p; *p && isspace(*p); ++p) ;
-            if (*p == '\0') {
-                *word2 = '\0'; return;
-            }
-            for (q = word2; *p && !isspace(*p); ++p, ++q) {
-                *q = tolower(*p);
-            }
-            *q = '\0';
-            if(p) {
-                for (++p; isspace(*p); ++p) ;
-            }
+        while(isspace(*p))
+            p++;
+        if (*p == '\0') {
+            *word2 = '\0';
+            return;
         }
-            if (*p == '\0') return;
+        //second command    
+        for (q = word2; *p && !isspace(*p); ++p, ++q) {
+            *q = tolower(*p);
+        }
+        *q = '\0';
+        while(isspace(*p))
+            p++;
+    
+        if (*p == '\0') return;
         puts(" Please stick to 1- and 2-word commands.");
     }
 }
