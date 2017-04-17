@@ -22,6 +22,7 @@ int main(void) {
     if( READY == load_with_progress_bar( TITLE, sizeof(TITLE)-1, &entry ) ) {
         //Go go go...
         clear_screen_default();
+        set_word_wrap(true);
         entry();
     }
 

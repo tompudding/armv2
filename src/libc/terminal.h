@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 enum colours    {
     BLACK       = 0,
@@ -45,3 +46,4 @@ void clear_screen(enum colours background, enum colours foreground);
 void clear_screen_with_border(uint32_t normal, uint32_t inverted, size_t border_size);
 void clear_screen_default();
 int tty_write(const char *s, size_t cnt);
+void set_word_wrap(bool val);

@@ -14,6 +14,9 @@ uint32_t os_normal      = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t os_inverted    = PALETTE(FOREGROUND,BACKGROUND);
 size_t   os_border_size = 2;
 size_t   os_cursor_pos  = 0;
+bool word_wrap = true;
+bool in_word = false;
+int word_start = 0;
 
 void set_screen_data(uint32_t normal, uint32_t inverted, size_t border_size) 
 {
@@ -73,6 +76,9 @@ void newline(int reset_square)
         memset(letter_data + (WIDTH*(HEIGHT-os_border_size-1)), 0, WIDTH);
         os_cursor_pos = ((os_cursor_pos/WIDTH)*WIDTH) + os_border_size - WIDTH;
         //os_cursor_pos = INITIAL_OS_CURSOR_POS;
+        if(in_word) {
+            word_start -= WIDTH;
+        }
     }
 }
 
@@ -86,6 +92,34 @@ void process_string(char *s)
 void process_char(uint8_t c) 
 {
     if(isprint(c)) {
+        if(isspace(c)) {
+            in_word = false;
+        }
+        else if(!in_word) {
+            //we're starting a new word
+            word_start = os_cursor_pos;
+            in_word = true;
+        }
+        else if(word_wrap &&
+                //(((os_cursor_pos + 1) % WIDTH) >= (WIDTH - os_border_size)) &&
+                (os_cursor_pos % WIDTH) == os_border_size &&
+                (word_start % WIDTH) != os_border_size) {
+            //We're already in a word and we're continuing it, and we're about to go over the edge
+            //This means we have to advance to the next line and bring the whole word with it
+            //int old_pos = os_cursor_pos;
+            //newline(1);
+            //the position our word started at likely shifted up
+            //word_start -= (WIDTH);
+            int width = (WIDTH - os_border_size) - (word_start % WIDTH);
+            memcpy(letter_data + os_cursor_pos, letter_data + word_start, width);
+            //then set the original word to nothings
+            memset(letter_data + word_start, ' ', width);
+            word_start = os_cursor_pos;
+            *(palette_data + os_cursor_pos) = os_normal;
+            os_cursor_pos += width;
+        }
+
+        //We're not word wrapping for some reason. 
         size_t line_pos;
         *(palette_data+os_cursor_pos) = os_normal;
         letter_data[os_cursor_pos++] = c;
@@ -93,10 +127,12 @@ void process_char(uint8_t c)
         if(line_pos >= WIDTH-os_border_size) {
             newline(0);
         }
+
     }
     else {
         if(c == '\n') {
             newline(1);
+            in_word = false;
         }
         else if(c == 8) {
             //backspace
@@ -145,9 +181,14 @@ int tty_read(char *s, size_t cnt)
     return num_read;
 }
 
+void set_word_wrap(bool val) {
+    word_wrap = val;
+}
+
 void terminal_init() {
     uint32_t normal   = PALETTE(BLACK,GREEN);
     uint32_t inverted = PALETTE(GREEN,BLACK);
+    word_wrap = true;
 
     set_screen_data(normal, inverted, 1);
     clear_screen_default();
