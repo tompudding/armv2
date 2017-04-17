@@ -6,7 +6,7 @@
 #include <terminal.h>
 #include "loading.h"
 
-int load_with_progress_bar(char *title, size_t title_len) {
+int load_with_progress_bar(char *title, size_t title_len, entry_t *entry) {
     int bar_x = 4;
     int bar_y = HEIGHT-14;
     int bar_end = (WIDTH - bar_x);
@@ -23,7 +23,7 @@ int load_with_progress_bar(char *title, size_t title_len) {
     enum tape_codes result = tape_next_word( &entry_point );
 
     if( READY != result ) {
-        return result;
+        return -1;
     }
 
     for(int i = 0; i < TAPE_NAME_LEN; i++) {
@@ -73,22 +73,16 @@ int load_with_progress_bar(char *title, size_t title_len) {
     }
 
     result = load_tape_symbols( (void*)load_addr, symbols_load_area );
-    if( READY != result ) {
+    if( READY != result && result != END_OF_TAPE ) {
         return result;
     }
+    *entry = (void*)entry_point;
     tape_control->write = READY;
-    switch(result) {
-    case READY:
-    case END_OF_TAPE:
-    {
-        //The tape is loaded so let's clear the screen and jump to the tape
-        void (*fn)(void) = (void*)entry_point;
-        clear_screen_default();
-        fn();
-        break;
-    }
-    default:
-        break;
+
+    //END_OF_TAPE is also cool
+    if( result == END_OF_TAPE ) {
+        result = READY;
     }
 
+    return result;
 }

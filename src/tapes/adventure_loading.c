@@ -15,10 +15,15 @@ uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
 int main(void) {
     int border_size = 2;
+    void (*entry)(void) = NULL;
     set_screen_data(normal, inverted, border_size);
     clear_screen_default();
 
-    load_with_progress_bar(TITLE, sizeof(TITLE)-1);
+    if( READY == load_with_progress_bar( TITLE, sizeof(TITLE)-1, &entry ) ) {
+        //Go go go...
+        clear_screen_default();
+        entry();
+    }
 
     //Returning at all is an error
 
