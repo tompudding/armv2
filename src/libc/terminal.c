@@ -98,6 +98,42 @@ void process_string(char *s)
     }
 }
 
+size_t prev_pos(size_t pos) {
+    if((pos%WIDTH) > os_border_size) {
+        return pos - 1;
+    }
+    else if( (pos / WIDTH) > os_border_size ) {
+        //This hopefully means it exactly equal to border size and not on the top row
+        return pos - (os_border_size * 2 + 1);
+    }
+    return pos;
+}
+
+void recreate_word_start() {
+    //From the current position we have to step backwards to see how big the word we've gone back into is
+    if( os_cursor_pos == os_cursor_min ) {
+        in_word = false;
+        return;
+    }
+
+    size_t last = prev_pos(os_cursor_pos);
+    if( last == os_cursor_pos || isspace(letter_data[last]) ) {
+        in_word = false;
+        return;
+    }
+
+    //This means we are in a word
+    in_word = true;
+    while( last > os_cursor_min && !isspace(letter_data[last]) ) {
+        word_start = last;
+        size_t new_last = prev_pos(last);
+        if( new_last == last ) {
+            break;
+        }
+        last = new_last;
+    }
+}
+
 void process_char(uint8_t c) 
 {
     if(isprint(c)) {
@@ -141,15 +177,13 @@ void process_char(uint8_t c)
         }
         else if(c == 8 && os_cursor_pos > os_cursor_min) {
             //backspace
-            *(palette_data+os_cursor_pos) = os_normal;
-            if((os_cursor_pos%WIDTH) > os_border_size) {
-                os_cursor_pos--;
+            size_t old_pos = os_cursor_pos;
+            os_cursor_pos = prev_pos(os_cursor_pos);
+           
+            if(old_pos != os_cursor_pos) {
+                palette_data[old_pos] = os_normal;
                 letter_data[os_cursor_pos] = ' ';
-            }
-            else if( (os_cursor_pos / WIDTH) > os_border_size ) {
-                //This hopefully means it exactly equal to border size and not on the top row
-                os_cursor_pos -= (os_border_size * 2 + 1);
-                letter_data[os_cursor_pos] = ' ';
+                recreate_word_start();
             }
         }
     }
