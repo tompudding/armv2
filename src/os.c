@@ -202,7 +202,7 @@ void handle_command(char *command) {
 
     }
     else {
-        printf("Unknown command\n");
+        printf("Unknown command : [%s]\n", command);
     }
 }
 

@@ -167,10 +167,12 @@ int tty_write(const char *s, size_t cnt)
 int tty_read(char *s, size_t cnt) 
 {
     size_t num_read = 0;
-    static uint8_t last_pos = -1;
+    static bool init = false;
+    static uint8_t last_pos = 0;
 
-    if(last_pos == -1) {
+    if(!init) {
         last_pos = *ringbuffer_pos;
+        init = true;
     }
 
     while(num_read < cnt) {
