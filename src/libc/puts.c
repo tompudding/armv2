@@ -5,6 +5,7 @@
 #undef getchar
 #include <unistd.h>
 #include "xprintf.h"
+#include "terminal.h"
 
 int puts(const char *s) 
 {
@@ -76,6 +77,7 @@ static unsigned char getchar_cb(void)
 
 char *fgets(char *s, int size, FILE *stream)
 {
+    set_cursor_min();
     int num = xfgets(getchar_cb, s, size);
     if(num > 0) {
         return s;

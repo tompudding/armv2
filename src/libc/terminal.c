@@ -10,10 +10,13 @@ uint8_t           *letter_data         = (void*)0x01001000 + WIDTH*HEIGHT;
 
 #define BACKGROUND BLACK
 #define FOREGROUND GREEN
+#define OS_CURSOR_MIN_DEFAULT (os_border_size * (WIDTH + 1))
+
 uint32_t os_normal      = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t os_inverted    = PALETTE(FOREGROUND,BACKGROUND);
 size_t   os_border_size = 2;
 size_t   os_cursor_pos  = 0;
+size_t   os_cursor_min  = 0;
 bool word_wrap = true;
 bool in_word = false;
 int word_start = 0;
@@ -79,6 +82,12 @@ void newline(int reset_square)
         if(in_word) {
             word_start -= WIDTH;
         }
+        if( os_cursor_min > OS_CURSOR_MIN_DEFAULT + WIDTH ) {
+            os_cursor_min -= WIDTH;
+        }
+        else {
+            os_cursor_min = OS_CURSOR_MIN_DEFAULT;
+        }
     }
 }
 
@@ -130,11 +139,16 @@ void process_char(uint8_t c)
             newline(1);
             in_word = false;
         }
-        else if(c == 8) {
+        else if(c == 8 && os_cursor_pos > os_cursor_min) {
             //backspace
             *(palette_data+os_cursor_pos) = os_normal;
             if((os_cursor_pos%WIDTH) > os_border_size) {
                 os_cursor_pos--;
+                letter_data[os_cursor_pos] = ' ';
+            }
+            else if( (os_cursor_pos / WIDTH) > os_border_size ) {
+                //This hopefully means it exactly equal to border size and not on the top row
+                os_cursor_pos -= (os_border_size * 2 + 1);
                 letter_data[os_cursor_pos] = ' ';
             }
         }
@@ -185,10 +199,15 @@ void set_word_wrap(bool val) {
     word_wrap = val;
 }
 
+void set_cursor_min() {
+    os_cursor_min = os_cursor_pos;
+}
+
 void terminal_init() {
     uint32_t normal   = PALETTE(BLACK,GREEN);
     uint32_t inverted = PALETTE(GREEN,BLACK);
     word_wrap = true;
+    os_cursor_min = OS_CURSOR_MIN_DEFAULT;
 
     set_screen_data(normal, inverted, 1);
     clear_screen_default();

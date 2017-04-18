@@ -47,3 +47,4 @@ void clear_screen_with_border(uint32_t normal, uint32_t inverted, size_t border_
 void clear_screen_default();
 int tty_write(const char *s, size_t cnt);
 void set_word_wrap(bool val);
+void set_cursor_min();
