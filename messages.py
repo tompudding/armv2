@@ -496,7 +496,8 @@ class Comms(object):
                 self.connected = False
                 print 'got disconnected'
         else:
-            print 'lost',type(message)
+            #print 'lost',type(message)
+            pass
 
     def handle(self, message):
         if self.callback:

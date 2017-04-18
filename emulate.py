@@ -105,6 +105,8 @@ class Emulator(object):
                     key = ord(event.unicode)
                 except (TypeError,AttributeError):
                     pass
+                if key == ord('\r'):
+                    key = ord('\n')
                 if key < 256:
                     self.dbg.machine.keyboard.KeyDown(key)
             elif event.type == pygame.locals.KEYUP:
@@ -115,6 +117,8 @@ class Emulator(object):
                     key = ord(event.unicode)
                 except (TypeError,AttributeError):
                     pass
+                if key == ord('\r'):
+                    key = ord('\n')
                 if key < 256:
                     self.dbg.machine.keyboard.KeyUp(key)
         #elapsed = globals.t - self.last
