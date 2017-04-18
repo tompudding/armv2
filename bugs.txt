@@ -1,2 +1,2 @@
  - Step-over doesn't work sometimes and ends up resuming
- - Keypresses are sometimes registered, but the terminal doesn't display the key
+

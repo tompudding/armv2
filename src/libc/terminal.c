@@ -101,15 +101,11 @@ void process_char(uint8_t c)
             in_word = true;
         }
         else if(word_wrap &&
-                //(((os_cursor_pos + 1) % WIDTH) >= (WIDTH - os_border_size)) &&
                 (os_cursor_pos % WIDTH) == os_border_size &&
                 (word_start % WIDTH) != os_border_size) {
-            //We're already in a word and we're continuing it, and we're about to go over the edge
-            //This means we have to advance to the next line and bring the whole word with it
-            //int old_pos = os_cursor_pos;
-            //newline(1);
-            //the position our word started at likely shifted up
-            //word_start -= (WIDTH);
+            //We're already in a word and we're continuing it, and we're about to type the first
+            //letter on a new line, we need to move the last part down
+
             int width = (WIDTH - os_border_size) - (word_start % WIDTH);
             memcpy(letter_data + os_cursor_pos, letter_data + word_start, width);
             //then set the original word to nothings
@@ -157,7 +153,11 @@ int tty_write(const char *s, size_t cnt)
 int tty_read(char *s, size_t cnt) 
 {
     size_t num_read = 0;
-    uint8_t last_pos = *ringbuffer_pos;
+    static uint8_t last_pos = -1;
+
+    if(last_pos == -1) {
+        last_pos = *ringbuffer_pos;
+    }
 
     while(num_read < cnt) {
         uint8_t new_pos;
