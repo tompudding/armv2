@@ -23,7 +23,7 @@ char *banner_lines[] = {
 uint32_t normal   = PALETTE(BACKGROUND,FOREGROUND);
 uint32_t inverted = PALETTE(FOREGROUND,BACKGROUND);
 
-void banner() {
+static void banner() {
     size_t i;
     for(i=0; i< sizeof(banner_lines)/sizeof(banner_lines[0]); i++) {
         process_string(banner_lines[i]);
