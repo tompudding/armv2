@@ -14,8 +14,8 @@ from optparse import OptionParser
 width,height = (960, 720)
 globals.screen = Point(width,height)
 
-def new_machine():
-    machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'build/boot.rom')
+def new_machine(boot_rom):
+    machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = boot_rom)
     try:
         machine.AddHardware(hardware.Keyboard(machine), name='keyboard')
         machine.AddHardware(hardware.Display(machine,scale_factor=1),name='display')
@@ -27,9 +27,9 @@ def new_machine():
     return machine
 
 class Emulator(object):
-    def __init__(self,callback=None):
+    def __init__(self,callback=None,boot_rom='build/boot.rom'):
         self.last = 0
-        self.machine = new_machine()
+        self.machine = new_machine(boot_rom)
 
         try:
             self.dbg = debugger.Debugger(self.machine)
