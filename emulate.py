@@ -126,7 +126,7 @@ class Emulator(object):
         drawing.NewFrame()
         self.dbg.machine.display.Update()
         self.dbg.machine.tape_drive.update()
-        drawing.EndFrame()
+        drawing.EndFrame(self.dbg.machine.display.crt_buffer)
         pygame.display.flip()
             #self.last = globals.t
 

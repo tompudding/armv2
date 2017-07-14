@@ -116,10 +116,8 @@ class CrtBuffer(object):
 
 default_shader   = ShaderData()
 crt_shader       = ShaderData()
-crt_buffer       = None
 
 def Init(w, h, pixel_size):
-    global crt_buffer
     default_shader.Load('default',
                         uniforms = ('tex','translation','scale',
                                     'screen_dimensions',
@@ -134,7 +132,7 @@ def Init(w, h, pixel_size):
                     attributes = ('vertex_data',
                                   'tc_data'))
 
-    crt_buffer = CrtBuffer(*pixel_size)
+    #crt_buffer = CrtBuffer(*pixel_size)
 
     glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
@@ -148,7 +146,7 @@ def Init(w, h, pixel_size):
 
 def NewFrame():
     default_shader.Use()
-    crt_buffer.BindForWriting()
+    #crt_buffer.BindForWriting()
     #glDepthMask(GL_TRUE)
     #glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -156,7 +154,7 @@ def NewFrame():
     #glEnable(GL_BLEND)
     #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-def EndFrame():
+def EndFrame(crt_buffer):
     crt_shader.Use()
     glUniform1f(crt_shader.locations.global_time, globals.t/1000.0)
     crt_buffer.BindForReading(0)

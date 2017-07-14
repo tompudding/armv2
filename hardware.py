@@ -552,6 +552,7 @@ class Display(armv2.Device):
         self.fore_quads_buffer = drawing.QuadBuffer(self.width*self.height)
         self.back_quads = [drawing.Quad(self.back_quads_buffer) for i in xrange(self.width*self.height)]
         self.fore_quads = [drawing.Quad(self.fore_quads_buffer) for i in xrange(self.width*self.height)]
+        self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
 
         for z,quad_list in enumerate((self.back_quads,self.fore_quads)):
             for pos,quad in enumerate(quad_list):
@@ -634,6 +635,8 @@ class Display(armv2.Device):
         self.fore_quads[pos].SetTextureCoordinates(tc)
 
     def Update(self):
+
+        self.crt_buffer.BindForWriting()
         drawing.DrawNoTexture(self.back_quads_buffer)
         drawing.DrawAll(self.fore_quads_buffer, self.atlas.texture)
 
