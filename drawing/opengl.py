@@ -29,15 +29,16 @@ class ShaderData(object):
         self.program   = None
         self.locations = ShaderLocations()
         self.dimensions = (0, 0, 0)
+        self.dirname = os.path.dirname(os.path.realpath(__file__))
 
     def Use(self):
         shaders.glUseProgram(self.program)
 
     def Load(self,name,uniforms,attributes):
-        vertex_name,fragment_name = (os.path.join('drawing','shaders','%s_%s.glsl' % (name,typeof)) for typeof in ('vertex','fragment'))
+        vertex_name,fragment_name = (os.path.join('shaders','%s_%s.glsl' % (name,typeof)) for typeof in ('vertex','fragment'))
         codes = []
         for name in vertex_name,fragment_name:
-            with open(name,'rb') as f:
+            with open(os.path.join(self.dirname,name),'rb') as f:
                 data = f.read()
             codes.append(data)
         VERTEX_SHADER   = shaders.compileShader(codes[0]  , GL_VERTEX_SHADER)
@@ -162,6 +163,7 @@ def EndFrame(crt_buffer):
     glEnableVertexAttribArray( crt_shader.locations.vertex_data );
     glEnableVertexAttribArray( crt_shader.locations.tc_data );
     #glUniform2f(crt_shader.locations.scale, 0.33333, 0.3333)
+    print 'c',globals.screen_quadbuffer
     glVertexAttribPointer( crt_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, globals.screen_quadbuffer.vertex_data );
     glVertexAttribPointer( crt_shader.locations.tc_data, 2, GL_FLOAT, GL_FALSE, 0, drawing.constants.full_tc );
 

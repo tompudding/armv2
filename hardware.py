@@ -635,7 +635,6 @@ class Display(armv2.Device):
         self.fore_quads[pos].SetTextureCoordinates(tc)
 
     def Update(self):
-
         self.crt_buffer.BindForWriting()
         drawing.DrawNoTexture(self.back_quads_buffer)
         drawing.DrawAll(self.fore_quads_buffer, self.atlas.texture)

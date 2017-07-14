@@ -5,7 +5,7 @@ import os
 import sys
 import hardware
 import pygame
-import drawing
+import drawing as drawing
 import globals
 from globals.types import Point
 from pygame.locals import *
@@ -137,7 +137,7 @@ class Emulator(object):
                 callback = None
         return False
 
-def init():
+def init(do_screen=True):
     if hasattr(sys, "_MEIPASS"):
         os.chdir(sys._MEIPASS)
 
@@ -148,9 +148,11 @@ def init():
     globals.dirs = globals.types.Directories('resource')
     globals.screen_quadbuffer     = drawing.QuadBuffer(16)
     globals.screen.full_quad      = drawing.Quad(globals.screen_quadbuffer)
-    globals.screen.full_quad.SetVertices(Point(0,0),globals.screen,0.01)
-
-    screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
+    #globals.screen.full_quad.SetVertices(Point(0,0),globals.screen,0.01)
+    globals.screen.full_quad.SetVertices(globals.screen*0.5, globals.screen,0.01)
+    print 'b',globals.screen_quadbuffer
+    if do_screen:
+        screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
     drawing.Init(width, height, hardware.Display.pixel_size)
     drawing.InitDrawing()
 
