@@ -151,18 +151,21 @@ def Init(w, h, pixel_size):
     glEnable(GL_ALPHA_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-def NewFrame(crt_buffer):
+def clear_screen():
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+def new_crt_frame(crt_buffer):
     default_shader.Use()
     #crt_buffer.BindForWriting()
     #glDepthMask(GL_TRUE)
     #glClearColor(0.0, 0.0, 0.0, 1.0)
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    #glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     crt_buffer.BindForWriting()
     #glEnable(GL_DEPTH_TEST)
     #glEnable(GL_BLEND)
     #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-def EndFrame(crt_buffer):
+def end_crt_frame(crt_buffer):
     crt_shader.Use()
     glUniform1f(crt_shader.locations.global_time, globals.t/1000.0)
     crt_buffer.BindForReading(0)

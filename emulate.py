@@ -121,9 +121,10 @@ class Emulator(object):
         #elapsed = globals.t - self.last
         #if 1 and elapsed > 20:
         #drawing.NewFrame()
-        self.dbg.machine.display.NewFrame()
+        drawing.opengl.clear_screen()
+        self.dbg.machine.display.new_frame()
         self.dbg.machine.tape_drive.update()
-        self.dbg.machine.display.EndFrame()
+        self.dbg.machine.display.end_frame()
         #drawing.EndFrame(self.dbg.machine.display.crt_buffer)
         pygame.display.flip()
             #self.last = globals.t
