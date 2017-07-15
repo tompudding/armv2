@@ -11,9 +11,6 @@ from globals.types import Point
 from pygame.locals import *
 from optparse import OptionParser
 
-width,height = (960, 720)
-globals.screen = Point(width,height)
-
 def new_machine(boot_rom):
     machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = boot_rom)
     try:
@@ -123,10 +120,11 @@ class Emulator(object):
                     self.dbg.machine.keyboard.KeyUp(key)
         #elapsed = globals.t - self.last
         #if 1 and elapsed > 20:
-        drawing.NewFrame()
-        self.dbg.machine.display.Update()
+        #drawing.NewFrame()
+        self.dbg.machine.display.NewFrame()
         self.dbg.machine.tape_drive.update()
-        drawing.EndFrame(self.dbg.machine.display.crt_buffer)
+        self.dbg.machine.display.EndFrame()
+        #drawing.EndFrame(self.dbg.machine.display.crt_buffer)
         pygame.display.flip()
             #self.last = globals.t
 
@@ -137,7 +135,7 @@ class Emulator(object):
                 callback = None
         return False
 
-def init(do_screen=True):
+def init(width, height, do_screen=True):
     if hasattr(sys, "_MEIPASS"):
         os.chdir(sys._MEIPASS)
 
@@ -145,6 +143,7 @@ def init(do_screen=True):
     pygame.display.set_caption('Synapse')
     #pygame.mouse.set_visible(0)
     pygame.key.set_repeat(500,50)
+    globals.screen = Point(width, height)
     globals.dirs = globals.types.Directories('resource')
     globals.screen_quadbuffer     = drawing.QuadBuffer(16)
     globals.screen.full_quad      = drawing.Quad(globals.screen_quadbuffer)
@@ -163,7 +162,7 @@ if __name__ == '__main__':
     #p = Process(target=peripherals.run) p.start() This is a module, but we also want to be able to call it
     #directly so it needs to be able to import itself
     def main():
-        init()
+        init(width=960, height=720)
         emulator = Emulator()
         emulator.run()
 

@@ -634,10 +634,14 @@ class Display(armv2.Device):
         tc = self.atlas.TextureCoords(chr(letter))
         self.fore_quads[pos].SetTextureCoordinates(tc)
 
-    def Update(self):
-        self.crt_buffer.BindForWriting()
+    def NewFrame(self):
+        drawing.NewFrame(self.crt_buffer)
+        #self.crt_buffer.BindForWriting()
         drawing.DrawNoTexture(self.back_quads_buffer)
         drawing.DrawAll(self.fore_quads_buffer, self.atlas.texture)
+
+    def EndFrame(self):
+        drawing.EndFrame(self.crt_buffer)
 
 class Clock(armv2.Device):
     """
