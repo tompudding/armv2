@@ -1,13 +1,13 @@
 import numpy
-import drawing
 try:
     import rebellion.globals as globals
+    from rebellion.globals.types import Point
 except ImportError:
     import globals
+    from globals.types import Point
 
-from globals.types import Point
-from drawing.opengl import GL_QUADS
-from drawing.opengl import GL_LINES
+import opengl
+import constants
 
 class ShapeBuffer(object):
     """
@@ -81,7 +81,7 @@ class ShapeBuffer(object):
 
 class QuadBuffer(ShapeBuffer):
     num_points = 4
-    draw_type = drawing.opengl.GL_QUADS
+    draw_type = opengl.GL_QUADS
     def __init__(self,size,ui = False,mouse_relative = False):
         self.is_ui = ui
         self.mouse_relative = mouse_relative
@@ -117,7 +117,7 @@ class ShadowQuadBuffer(QuadBuffer):
 
 class LineBuffer(ShapeBuffer):
     num_points = 2
-    draw_type = GL_LINES
+    draw_type = opengl.GL_LINES
     def __init__(self,size,ui = False,mouse_relative = False):
         self.is_ui = ui
         self.mouse_relative = mouse_relative
@@ -303,21 +303,21 @@ class QuadBorder(object):
         #top bar
         self.quads[0].SetVertices(Point(bl.x,tr.y-self.line_width),
                                   tr,
-                                  drawing.constants.DrawLevels.ui+1)
+                                  constants.DrawLevels.ui+1)
         #right bar
         self.quads[1].SetVertices(Point(tr.x-self.line_width,bl.y),
                                   tr,
-                                  drawing.constants.DrawLevels.ui+1)
+                                  constants.DrawLevels.ui+1)
 
         #bottom bar
         self.quads[2].SetVertices(bl,
                                   Point(tr.x,bl.y+self.line_width),
-                                  drawing.constants.DrawLevels.ui+1)
+                                  constants.DrawLevels.ui+1)
 
         #left bar
         self.quads[3].SetVertices(bl,
                                   Point(bl.x+self.line_width,tr.y),
-                                  drawing.constants.DrawLevels.ui+1)
+                                  constants.DrawLevels.ui+1)
 
     def SetColour(self,colour):
         for quad in self.quads:

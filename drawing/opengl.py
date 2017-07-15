@@ -1,4 +1,3 @@
-import drawing
 import os
 
 from OpenGL.arrays import numpymodule
@@ -9,10 +8,11 @@ from OpenGL.GL.framebufferobjects import *
 
 try:
     import rebellion.globals as globals
+    from rebellion.globals.types import Point
 except ImportError:
     import globals
+    from globals.types import Point
 
-from globals.types import Point
 import sys
 import time
 import constants
@@ -170,7 +170,7 @@ def EndFrame(crt_buffer):
     glEnableVertexAttribArray( crt_shader.locations.tc_data );
     #glUniform2f(crt_shader.locations.scale, 0.33333, 0.3333)
     glVertexAttribPointer( crt_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, globals.screen_quadbuffer.vertex_data );
-    glVertexAttribPointer( crt_shader.locations.tc_data, 2, GL_FLOAT, GL_FALSE, 0, drawing.constants.full_tc );
+    glVertexAttribPointer( crt_shader.locations.tc_data, 2, GL_FLOAT, GL_FALSE, 0, constants.full_tc );
 
     glDrawElements(GL_QUADS,globals.screen_quadbuffer.current_size,GL_UNSIGNED_INT,globals.screen_quadbuffer.indices)
 
