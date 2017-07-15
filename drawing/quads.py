@@ -1,6 +1,10 @@
 import numpy
 import drawing
-import globals
+try:
+    import rebellion.globals as globals
+except ImportError:
+    import globals
+
 from globals.types import Point
 from drawing.opengl import GL_QUADS
 from drawing.opengl import GL_LINES

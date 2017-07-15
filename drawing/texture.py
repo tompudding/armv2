@@ -5,7 +5,11 @@ import glob
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GL.framebufferobjects import *
-import globals
+try:
+    import rebellion.globals as globals
+except ImportError:
+    import globals
+
 #drawing modules
 import constants
 import quads

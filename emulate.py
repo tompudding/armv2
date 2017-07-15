@@ -1,8 +1,8 @@
+import sys
 import armv2
 import binascii
 import debugger
 import os
-import sys
 import hardware
 import pygame
 import drawing as drawing
@@ -160,8 +160,8 @@ if __name__ == '__main__':
     #from multiprocessing import Process
     #import peripherals,time
 
-    #p = Process(target=peripherals.run)
-    #p.start()
+    #p = Process(target=peripherals.run) p.start() This is a module, but we also want to be able to call it
+    #directly so it needs to be able to import itself
     def main():
         init()
         emulator = Emulator()

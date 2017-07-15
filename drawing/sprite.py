@@ -1,5 +1,8 @@
 import numpy
-from globals.types import Point
+try:
+    from rebellion.globals.types import Point
+except ImportError:
+    from globals.types import Point
 
 class Sprite(object):
     """

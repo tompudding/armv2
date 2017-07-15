@@ -6,8 +6,14 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GL import shaders
 from OpenGL.GL.framebufferobjects import *
+
+try:
+    import rebellion.globals as globals
+except ImportError:
+    import globals
+
 from globals.types import Point
-import globals
+import sys
 import time
 import constants
 
@@ -159,11 +165,10 @@ def EndFrame(crt_buffer):
     crt_shader.Use()
     glUniform1f(crt_shader.locations.global_time, globals.t/1000.0)
     crt_buffer.BindForReading(0)
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    #glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glEnableVertexAttribArray( crt_shader.locations.vertex_data );
     glEnableVertexAttribArray( crt_shader.locations.tc_data );
     #glUniform2f(crt_shader.locations.scale, 0.33333, 0.3333)
-    print 'c',globals.screen_quadbuffer
     glVertexAttribPointer( crt_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, globals.screen_quadbuffer.vertex_data );
     glVertexAttribPointer( crt_shader.locations.tc_data, 2, GL_FLOAT, GL_FALSE, 0, drawing.constants.full_tc );
 
