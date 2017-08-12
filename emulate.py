@@ -34,6 +34,16 @@ class Emulator(object):
             self.machine.Delete()
             raise
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.dbg.exit()
+        try:
+            self.dbg.machine.Delete()
+        except:
+            pass
+
     def run(self, callback=None):
         try:
             done = False
