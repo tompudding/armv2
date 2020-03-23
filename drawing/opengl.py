@@ -156,11 +156,11 @@ def clear_screen():
 
 def new_crt_frame(crt_buffer):
     default_shader.Use()
-    #crt_buffer.BindForWriting()
-    #glDepthMask(GL_TRUE)
-    #glClearColor(0.0, 0.0, 0.0, 1.0)
-    #glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     crt_buffer.BindForWriting()
+    #glDepthMask(GL_TRUE)
+    glClearColor(0.0, 0.0, 0.0, 1.0)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    #crt_buffer.BindForWriting()
     #glEnable(GL_DEPTH_TEST)
     #glEnable(GL_BLEND)
     #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -230,4 +230,3 @@ def DrawNoTexture(quad_buffer):
 
     glDisableVertexAttribArray( default_shader.locations.vertex_data );
     glDisableVertexAttribArray( default_shader.locations.colour_data );
-

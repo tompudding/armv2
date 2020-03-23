@@ -130,12 +130,10 @@ class Emulator(object):
                     self.dbg.machine.keyboard.KeyUp(key)
         #elapsed = globals.t - self.last
         #if 1 and elapsed > 20:
-        #drawing.NewFrame()
         drawing.opengl.clear_screen()
         self.dbg.machine.display.new_frame()
         self.dbg.machine.tape_drive.update()
         self.dbg.machine.display.end_frame()
-        #drawing.EndFrame(self.dbg.machine.display.crt_buffer)
         pygame.display.flip()
             #self.last = globals.t
 
@@ -181,4 +179,3 @@ if __name__ == '__main__':
     cProfile.run('main()','runstats')
     #pygame.display.quit()
     #p.join()
-
