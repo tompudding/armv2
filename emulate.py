@@ -27,11 +27,14 @@ class Emulator(object):
     def __init__(self,callback=None,boot_rom='build/boot.rom'):
         self.last = 0
         self.machine = new_machine(boot_rom)
-
+        print('got new machine')
         try:
             self.dbg = debugger.Debugger(self.machine)
+            print('got debugger')
         except:
+            print('exception')
             self.machine.Delete()
+            print('delete')
             raise
 
     def __enter__(self):

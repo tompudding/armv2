@@ -100,7 +100,10 @@ class ByteMemory(object):
             indices = xrange(*indices)
         else:
             indices = (index,)
-        return bytearray(self.getter(index) for index in indices)
+        if len(indices) == 1:
+            return self.getter(index)
+        else:
+            return bytearray(self.getter(index) for index in indices)
 
     def __setitem__(self,index,values):
         if isinstance(index,slice):
@@ -342,12 +345,11 @@ debugf = None
 log_lock = threading.Lock()
 def DebugLog(message):
     global debugf
-    return
     message = str(threading.get_ident()) + ' ' + message
     with log_lock:
         if debugf == None:
             debugf = open('/tmp/pyarmv2.log','wb')
         if not message.endswith('\n'):
             message += '\n'
-        debugf.write(message)
+        debugf.write(message.encode('ascii'))
         debugf.flush()

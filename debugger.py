@@ -158,9 +158,11 @@ class Debugger(object):
                 break
             name = []
             pos += 4
-            while self.machine.mem[pos] != '\x00':
-                name.append(self.machine.mem[pos])
+            b = self.machine.mem[pos]
+            while b != 0:
+                name.append(chr(b))
                 pos += 1
+                b = self.machine.mem[pos]
             pos += 1
             name = ''.join(name)
             symbols.append( ( value, name ) )
