@@ -202,7 +202,7 @@ def create_binary(header, elf, tape_name, boot=False, final=True):
     #        data = data.replace(struct.pack('<I',(cond << 28) +  0x12fff10 + reg),struct.pack('<I',(cond << 28) + 0x1a0f000 + reg))
     data = data.replace(struct.pack('<I', 0xe12fff1e), struct.pack('<I', 0xe1a0f00e))
     #We'll stick the symbols on the end
-    symbols = ''.join(struct.pack('>I',value) + name + '\00' for (value,name) in symbols)
+    symbols = ''.join(struct.pack('>I',value) + name.encode('ascii') + '\00' for (value,name) in symbols)
 
     if boot:
         header = load(header)

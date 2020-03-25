@@ -15,19 +15,19 @@ ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwor
 all: armv2.so build/boot.rom src/tapes/build ${TAPES_BIN}
 
 armv2.so: libarmv2.a armv2.pyx carmv2.pxd
-	python setup.py build_ext --inplace
+	python2 setup.py build_ext --inplace
 
 libarmv2.a: step.o instructions.o init.o armv2.h mmu.o hw_manager.o
 	${AR} rcs $@ step.o instructions.o init.o mmu.o hw_manager.o
 
 build/boot.rom: build/boot.bin build/os | build
-	python create.py --boot $^ -o $@
+	python2 create.py --boot $^ -o $@
 
 build/boot.bin: build/boot.o | build
 	${COPY} -O binary $< $@
 
 build/boot.symbols: build/boot.o | build
-	python create_symbols $< $@
+	python2 create_symbols $< $@
 
 build/boot.o: src/boot.S | build
 	${AS} -march=armv2a -mapcs-26 -o $@ $<
@@ -42,8 +42,8 @@ build/libc.a: src/libc/*.c src/libc/*.S | build
 	make -C src/libc
 	cp src/libc/build/libc.a build/libc.a
 
-${TAPES_DIR}/%.tape: src/tapes/build/%.so src/tapes/build | ${TAPES_DIR}
-	python create.py -o $@ dummy_header $<
+${TAPES_DIR}/%.tape: src/tapes/build | ${TAPES_DIR}
+	python2 create.py -o $@ dummy_header src/tapes/build/$*.so
 
 src/tapes/build: | build/synapse.o build/libc.a
 	make -C src/tapes
@@ -61,4 +61,4 @@ clean:
 	rm -rf build/temp*
 	rm -f build/*
 	rm -df build
-	python setup.py clean
+	python2 setup.py clean
