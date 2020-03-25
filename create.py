@@ -10,7 +10,7 @@ class RelTypes:
 
 def load(filename):
     with open(filename,'rb') as f:
-        return f.read()
+        return bytearray(f.read())
 
 def get_symbols(elf):
     for section in elf.iter_sections():
@@ -53,9 +53,9 @@ def get_full_symbols(elf):
     return out
 
 def pad(data, alignment):
-    target = ((len(data) + (alignment - 1)) / alignment) * alignment
+    target = ((len(data) + (alignment - 1)) // alignment) * alignment
     if target > len(data):
-        data += '\00'*(target-len(data))
+        data += b'\x00'*(target-len(data))
     return data
 
 def addr_to_offset(elf, addr):
@@ -75,8 +75,8 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
     rel_data = data[start : end]
     undefined = False
 
-    for pos in xrange(0, end - start, 8):
-        offset, info = struct.unpack('<II', ''.join(rel_data[pos:pos+8]))
+    for pos in range(0, end - start, 8):
+        offset, info = struct.unpack('<II', rel_data[pos:pos+8])
         #switch for info
         sym = info >> 8
         info = info & 0xff
@@ -87,7 +87,7 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
             if sym_val == 0:
                 sym_val = os_lookup[symbols[sym][1]]
             #print 'abs symbols %x %x %d %s val=%x' % (offset, info, sym, symbols[sym], sym_val)
-            current = struct.unpack('<I',''.join(data[offset:offset+4]))[0]
+            current = struct.unpack('<I',data[offset:offset+4])[0]
             sym_val += current
             data[offset:offset + 4] = list(struct.pack('<I',sym_val))
 
@@ -99,7 +99,7 @@ def process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup):
 
             #print 'B %x %x %d %s %x' % (offset, info, sym, symbols[sym], val)
             if val == 0:
-                print 'Undefined reference to %s' % symbols[sym][1]
+                print('Undefined reference to %s' % symbols[sym][1])
                 undefined = True
                 val = 0xffffffff
             data[offset:offset + 4] = list(struct.pack('<I', val))
@@ -112,12 +112,12 @@ def pre_link(data, elf, os_symbols):
     symbols = get_full_symbols(elf)
     os_lookup = { name : value for (value, name) in os_symbols }
     symbol_lookup = { name : value for (value, name) in symbols }
-    data = list(data)
     for section in elf.iter_sections():
         if section['sh_type'] == 'SHT_REL':
             process_relocation(data, elf, section, symbols, symbol_lookup, os_lookup)
 
-    return ''.join(data), symbol_lookup['main']
+
+    return data, symbol_lookup['main']
 
 
 def to_synapse_format(data, symbols, name, v_addr, entry_point, final):
@@ -130,16 +130,18 @@ We have a very simple format for the synapse binaries:
           4 + len |   Length of symbols
       4 + len + 4 |   symbols
 """
+    print(f'a {len(data)}')
     data = pad(data, 4)
     symbols = pad(symbols, 4)
     #Pad the name out to 16 bytes
     name = name[:15]
     name = name + ('\x00'*(16 - len(name)))
-    print 'Data %d bytes, symbols %d bytes, name %s' % (len(data), len(symbols), name)
+    print('Data %d bytes, symbols %d bytes, name %s' % (len(data), len(symbols), name))
     len_flags = len(data) | (0x80000000 if final and entry_point != None else 0)
     out = struct.pack('>I', len_flags) + data + struct.pack('>I', len(symbols)) + symbols
+
     if entry_point != None:
-        out = struct.pack('>I', entry_point) + name + struct.pack('>I', v_addr) + out
+        out = struct.pack('>I', entry_point) + name.encode('ascii') + struct.pack('>I', v_addr) + out
 
     return out
 
@@ -147,10 +149,10 @@ def to_tape_format(data_blocks):
     """
     This is a very simple format that wraps up data blocks that should be joined by a pilot sound when put on tape
     """
-    out = []
+    out = bytearray()
     for block in data_blocks:
-        out.append(struct.pack('>I', len(block)) + block)
-    return ''.join(out)
+        out.extend(struct.pack('>I', len(block)) + block)
+    return out
 
 def create_binary(header, elf, tape_name, boot=False, final=True):
     elf_data = load(elf)
@@ -174,14 +176,14 @@ def create_binary(header, elf, tape_name, boot=False, final=True):
             flags  = segment['p_flags']
             if segment['p_type'] != 'PT_LOAD':
                 continue
-            print offset,v_addr,filesz,memsz,flags
+            print(offset,v_addr,filesz,memsz,flags)
             #Don't add zeroes for the bss section, when it's loaded there'll be zeroes in ram
             #data.append(elf_data[offset:offset + filesz] + '\x00'*(memsz-filesz))
             data.append(elf_data[offset:offset + filesz])
             if not boot:
                 #we only take the first segment
                 break
-        data = ''.join(data)
+        data = b''.join(data)
 
         if boot:
             entry_point = elffile.header['e_entry']
@@ -193,25 +195,31 @@ def create_binary(header, elf, tape_name, boot=False, final=True):
             symbols = boot_symbols + symbols
         v_addr = None
 
-    symbols.sort( lambda x,y: cmp(x[0], y[0]) )
-    print 'entry %x' % entry_point
+    symbols.sort( key=lambda data: data[0] )
+    print('entry %x' % entry_point)
 
     #get rid of any "bx lr"s
     #for cond in xrange(16):
     #    for reg in xrange(15):
     #        data = data.replace(struct.pack('<I',(cond << 28) +  0x12fff10 + reg),struct.pack('<I',(cond << 28) + 0x1a0f000 + reg))
+    print('len data',len(data))
     data = data.replace(struct.pack('<I', 0xe12fff1e), struct.pack('<I', 0xe1a0f00e))
     #We'll stick the symbols on the end
-    symbols = ''.join(struct.pack('>I',value) + name + '\00' for (value,name) in symbols)
+    total = 0
+
+    symbols = b''.join(struct.pack('>I',value) + name.encode('ascii') + b'\x00' for (value, name) in symbols)
+    print(f'symbols len {len(symbols)}')
+    print(f'data len {len(data)}')
 
     if boot:
         header = load(header)
         header = header.replace(struct.pack('<I',0xcafebabe),struct.pack('<I',entry_point))
         assert len(header) < 0x1000
-        header = header + '\x00'*(0x1000 - len(header))
+        header = header + b'\x00'*(0x1000 - len(header))
+        print(f'header_len {len(header)}')
         entry_point = None
     else:
-        header = ''
+        header = bytearray(b'')
     return to_synapse_format(header+data, symbols, tape_name, v_addr, entry_point, final)
 
 if __name__ == '__main__':

@@ -109,7 +109,7 @@ class View(object):
 
     def status_update(self, message):
         for i,label in enumerate(self.label_rows):
-            if i == self.num_lines/2:
+            if i == self.num_lines // 2:
                 content = ('*** %s ***' % message).center(self.width)
             else:
                 content = ' '*self.width
@@ -356,7 +356,7 @@ class Scrollable(View):
         return self.view_start + (self.buffer + index)*self.line_size
 
     def addr_to_index(self, addr):
-        return ((addr - self.view_start)/self.line_size) - self.buffer
+        return ((addr - self.view_start) // self.line_size) - self.buffer
 
     def select(self, addr, index=None):
         if index is None:
@@ -418,20 +418,20 @@ class Scrollable(View):
     def centre(self, pos):
         if pos is None:
             return
-        start = pos - self.full_height*self.line_size/2
+        start = pos - self.full_height*self.line_size // 2
         if start < -self.buffer*self.line_size:
             start = -self.buffer*self.line_size
-        self.adjust_view((start - self.view_start)/self.line_size)
+        self.adjust_view((start - self.view_start) // self.line_size)
 
     def keyboard_page_up(self, event):
         self.adjust_view(-self.height*self.line_size)
-        target = self.index_to_addr(self.height/2)
+        target = self.index_to_addr(self.height // 2)
         self.centre(target)
         self.select(target)
 
     def keyboard_page_down(self, event):
         self.adjust_view(self.height*self.line_size)
-        target = self.index_to_addr(self.height/2)
+        target = self.index_to_addr(self.height // 2)
         self.centre(target)
         self.select(target)
 
@@ -453,10 +453,10 @@ class Scrollable(View):
             return
 
         adjust = new_start - self.view_start
-        amount = adjust / self.line_size
+        amount = adjust // self.line_size
         self.set_start(new_start, *args)
 
-        if abs(amount) < self.view_size/self.line_size:
+        if abs(amount) < self.view_size // self.line_size:
             #we can reuse some lines
             if amount < 0:
                 start,step,stride = len(self.lines)-1, -1, -1
@@ -869,11 +869,11 @@ class Disassembly(Searchable):
         p = pos
         n = 1 if p in self.symbols else 0
         show_first_label = True
-        while n < len(self.label_rows)/2 and p >= 0:
+        while n < len(self.label_rows) // 2 and p >= 0:
             n += 1
             p -= self.line_size
             if p in self.symbols:
-                if n >= len(self.label_rows)/2:
+                if n >= len(self.label_rows) // 2:
                     #Balls. We can't get this line to appear right in the middle due to the label which needs to go at the start
                     #To get round this, just don't show the label
                     show_first_label = False
@@ -881,7 +881,7 @@ class Disassembly(Searchable):
                     n += 1
 
         start = p - self.buffer*self.line_size
-        self.adjust_view((start - self.view_start) / self.line_size, show_first_label)
+        self.adjust_view((start - self.view_start) // self.line_size, show_first_label)
 
     def set_pc(self, pc):
         #first turn off the old label
@@ -913,9 +913,9 @@ class Disassembly(Searchable):
         min_addr = self.addr_lookups[ 0 ]
         if addr > max_addr:
             #We can work this out
-            return max_index + (addr - max_addr)/self.line_size
+            return max_index + (addr - max_addr) // self.line_size
         elif addr < min_addr:
-            return (addr - min_addr)/self.line_size
+            return (addr - min_addr) // self.line_size
         else:
             raise TypeError('Addr to index with misaligned addr %x' % addr)
 
@@ -953,7 +953,7 @@ class Disassembly(Searchable):
             addr += self.line_size
 
     def receive(self, message):
-        line_index = (message.start - self.view_start)/self.word_size
+        line_index = (message.start - self.view_start) // self.word_size
 
         for (i,dis) in enumerate(message.lines):
             if line_index < 0 or line_index >= len(self.lines):
@@ -1020,7 +1020,7 @@ class Memory(Searchable):
             return
 
         for addr in xrange(message.start, message.start + message.size, 8):
-            line_index = (addr - self.view_start)/self.line_size
+            line_index = (addr - self.view_start) // self.line_size
             if line_index < 0 or line_index >= len(self.lines):
                 continue
             data = message.data[addr - message.start:addr + self.line_size - message.start]
@@ -1152,7 +1152,7 @@ class Registers(View):
         self.height = height
         self.height_pixels = self.height * self.row_height
         self.width  = width
-        self.col_width = self.width/3
+        self.col_width = self.width // 3
         self.app    = app
         self.frame = Frame(app.frame,
                            width=self.width,
@@ -1165,7 +1165,7 @@ class Registers(View):
         self.label_rows = []
         for i in xrange(self.num_entries):
             widget = Label(self.frame, width=self.col_width, padx=0, text='bobbins')
-            widget.grid(row = i%self.height, column=i/self.height, padx=0)
+            widget.grid(row = i%self.height, column=i // self.height, padx=0)
             self.label_rows.append([widget])
         self.num_lines = self.height
         self.num_cols = self.width

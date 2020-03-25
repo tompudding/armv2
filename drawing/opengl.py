@@ -15,7 +15,7 @@ except ImportError:
 
 import sys
 import time
-import constants
+from . import constants
 
 numpymodule.NumpyHandler.ERROR_ON_COPY = True
 
@@ -90,7 +90,7 @@ class CrtBuffer(object):
         #self.depth_texture = glGenTextures(1)
         glActiveTexture(GL_TEXTURE0)
 
-        for i in xrange(self.NUM_TEXTURES):
+        for i in range(self.NUM_TEXTURES):
             glBindTexture(GL_TEXTURE_2D, self.textures[i])
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, None)
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -105,7 +105,7 @@ class CrtBuffer(object):
         glDrawBuffers([GL_COLOR_ATTACHMENT0])
 
         if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
-            print 'crapso1'
+            print('crapso1')
             raise SystemExit
 
     def BindForWriting(self):

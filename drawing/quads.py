@@ -6,8 +6,8 @@ except ImportError:
     import globals
     from globals.types import Point
 
-import opengl
-import constants
+from . import opengl
+from . import constants
 
 class ShapeBuffer(object):
     """
@@ -23,13 +23,13 @@ class ShapeBuffer(object):
         self.colour_data = numpy.ones((size*self.num_points,4),numpy.float32) #RGBA default is white opaque
         self.indices      = numpy.zeros(size*self.num_points,numpy.uint32)  #de
         self.size = size
-        for i in xrange(size*self.num_points):
+        for i in range(size*self.num_points):
             self.indices[i] = i
         self.current_size = 0
         self.max_size     = size*self.num_points
         self.vacant = set()
 
-    def next(self):
+    def __next__(self):
         """
         Please can we have another quad? If some quads have been deleted and left a hole then we give
         those out first, otherwise we add one to the end.
@@ -39,9 +39,9 @@ class ShapeBuffer(object):
         if len(self.vacant) > 0:
             #for a vacant one we blatted the indices, so we should reset those...
             out = self.vacant.pop()
-            for i in xrange(self.num_points):
+            for i in range(self.num_points):
                 self.indices[out+i] = out+i
-                for j in xrange(4):
+                for j in range(4):
                     self.colour_data[out+i][j] = 1
             return out
 
@@ -61,7 +61,7 @@ class ShapeBuffer(object):
         much overhead
         """
         self.current_size = n
-        for i in xrange(self.size*self.num_points):
+        for i in range(self.size*self.num_points):
             self.indices[i] = i
         self.colour_data = numpy.ones((self.max_size,4),numpy.float32) #RGBA default is white opaque
         self.vacant = set()
@@ -74,9 +74,9 @@ class ShapeBuffer(object):
         hoping it won't ever be an issue
         """
         self.vacant.add(index)
-        for i in xrange(self.num_points):
+        for i in range(self.num_points):
             self.indices[index+i] = 0
-            for j in xrange(3):
+            for j in range(3):
                 self.vertex_data[index+i][j] = 0
 
 class QuadBuffer(ShapeBuffer):
@@ -89,7 +89,7 @@ class QuadBuffer(ShapeBuffer):
 
 
     def SortForDepth(self):
-        depths = [(i,min(self.vertex_data[self.indices[i+j]][1] for j in xrange(4))) for i in xrange(0,self.current_size,4) if i not in self.vacant]
+        depths = [(i,min(self.vertex_data[self.indices[i+j]][1] for j in range(4))) for i in range(0,self.current_size,4) if i not in self.vacant]
         #The dotted textures are supposed to be drawn on top of the tiles, so they have their z coordinates added to
         #max_world.y so they have the highest z values. However for draw order we don't want them drawn last else they'll
         #mess up the occlude maps (they have no occlude component), so we mod everything by max_world.y to get them back in
@@ -99,7 +99,7 @@ class QuadBuffer(ShapeBuffer):
         pos = 0
         new_indices = numpy.zeros(self.size*self.num_points,numpy.uint32)
         for i,depth in depths:
-            for j in xrange(4):
+            for j in range(4):
                 new_indices[pos+j] = self.indices[i+j]
             pos += 4
         self.indices = new_indices
@@ -150,7 +150,7 @@ class Shape(object):
 
     def __init__(self,source,vertex = None,tc = None,colour_info = None,index = None):
         if index == None:
-            self.index = source.next()
+            self.index = next(source)
         else:
             self.index = index
         self.source = source
@@ -185,7 +185,7 @@ class Shape(object):
         self.enabled = False
         if self.old_vertices == None:
             self.old_vertices = numpy.copy(self.vertex[0:self.num_points])
-            for i in xrange(self.num_points):
+            for i in range(self.num_points):
                 self.vertex[i] = (0,0,0)
 
     def Enable(self):
@@ -196,7 +196,7 @@ class Shape(object):
             return
         self.enabled = True
         if self.old_vertices != None:
-            for i in xrange(self.num_points):
+            for i in range(self.num_points):
                 self.vertex[i] = self.old_vertices[i]
             self.old_vertices = None
 
@@ -206,7 +206,7 @@ class Shape(object):
         self.setvertices(self.vertex,bl,tr,z)
         if self.old_vertices != None:
             self.old_vertices = numpy.copy(self.vertex[0:self.num_points])
-            for i in xrange(self.num_points):
+            for i in range(self.num_points):
                 self.vertex[i] = (0,0,0)
 
     def SetAllVertices(self,vertices,z):
@@ -215,7 +215,7 @@ class Shape(object):
         setallvertices(self,self.vertex,vertices,z)
         if self.old_vertices != None:
             self.old_vertices = numpy.copy(self.vertex[0:self.num_points])
-            for i in xrange(self.num_points):
+            for i in range(self.num_points):
                 self.vertex[i] = (0,0,0)
 
     def GetCentre(self):
@@ -226,7 +226,7 @@ class Shape(object):
             vertices = self.old_vertices
         else:
             vertices = self.vertex
-        for i in xrange(4):
+        for i in range(4):
             vertices[i][0] -= amount[0]
             vertices[i][1] -= amount[1]
 
@@ -239,7 +239,7 @@ class Shape(object):
         if self.deleted:
             return
         for current,target in zip(self.colour,colours):
-            for i in xrange(self.num_points):
+            for i in range(self.num_points):
                 current[i] = target[i]
 
     def SetTextureCoordinates(self,tc):
@@ -261,23 +261,23 @@ def setverticesline(self,vertex,start,end,z):
     vertex[1] = (end.x,end.y,z)
 
 def setcolourquad(self,colour,value):
-    for i in xrange(4):
-        for j in xrange(4):
+    for i in range(4):
+        for j in range(4):
             colour[i][j] = value[j]
 
 def setcoloursquad(self,colour,values):
-    for i in xrange(4):
-        for j in xrange(4):
+    for i in range(4):
+        for j in range(4):
             colour[i][j] = values[i][j]
 
 def setcolourline(self,colour,value):
-    for i in xrange(2):
-        for j in xrange(4):
+    for i in range(2):
+        for j in range(4):
             colour[i][j] = value[j]
 
 def setcoloursline(self,colour,values):
-    for i in xrange(2):
-        for j in xrange(4):
+    for i in range(2):
+        for j in range(4):
             colour[i][j] = values[i][j]
 
 class Quad(Shape):
@@ -294,7 +294,7 @@ class Line(Shape):
 class QuadBorder(object):
     """Class that draws the outline of a rectangle"""
     def __init__(self,source,line_width,colour = None):
-        self.quads = [Quad(source) for i in xrange(4)]
+        self.quads = [Quad(source) for i in range(4)]
         self.line_width = line_width
         if colour:
             self.SetColour(colour)

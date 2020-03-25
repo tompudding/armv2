@@ -58,7 +58,7 @@ class Debugger(object):
         try:
             handler = self.handlers[message.type]
         except KeyError:
-            print 'Ooops got unknown message type',message.type
+            print('Ooops got unknown message type',message.type)
             return
         return handler(message)
 
@@ -75,14 +75,14 @@ class Debugger(object):
         self.Next(explicit=True)
 
     def handle_restart(self,message):
-        print 'Got restart'
+        print('Got restart')
 
     def handle_set_breakpoint(self,message):
-        print 'Got set breakpoint'
+        print('Got set breakpoint')
         self.AddBreakpoint(message.addr)
 
     def handle_unset_breakpoint(self,message):
-        print 'Got unset breakpoint'
+        print('Got unset breakpoint')
         self.RemoveBreakpoint(message.addr)
 
     def handle_taperequest(self,message):
@@ -138,7 +138,7 @@ class Debugger(object):
                                                ))
 
     def send_mem_update(self):
-        for message in self.mem_watches.itervalues():
+        for message in self.mem_watches.values():
             data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
             self.connection.send(messages.MemViewReply(message.id,message.watch_start,data))
 
@@ -200,7 +200,7 @@ class Debugger(object):
         #armv2.DebugLog('stepping %s %s %s' % (self.machine.pc,num, self.machine.pc in self.breakpoints))
         if skip_breakpoint and self.machine.pc in self.breakpoints:
             old_pos = self.machine.pc
-            print 'boom doing replacement'
+            print('boom doing replacement')
             self.machine.memw[self.machine.pc] = self.breakpoints[self.machine.pc]
             status = self.machine.StepAndWait(1)
             self.machine.memw[old_pos] = self.BKPT
@@ -226,7 +226,7 @@ class Debugger(object):
             word = self.breakpoints[self.machine.pc]
         else:
             word = self.machine.memw[self.machine.pc]
-        print hex(self.machine.pc),hex(word),disassemble.sets_lr(word)
+        print(hex(self.machine.pc),hex(word),disassemble.sets_lr(word))
         if not disassemble.sets_lr(word):
             #We can just step 1 instruction in this case
             return self.Step(explicit)
@@ -234,7 +234,7 @@ class Debugger(object):
         next_instruction = self.machine.pc + 4
         if next_instruction in self.breakpoints:
             #In this case we just allow a continue since it'll stop anyway
-            print 'blarg'
+            print('blarg')
             return self.Continue(explicit)
 
         #OK so we're going to actually put the breakpoint in
@@ -247,7 +247,7 @@ class Debugger(object):
         self.stopped = False
         status = self.StepNumInternal(self.num_to_step, skip_breakpoint=explicit)
         if armv2.Status.Breakpoint == status:
-            print '**************** GOT BREAKPOINT **************'
+            print('**************** GOT BREAKPOINT **************')
             self.Stop()
         #raise SystemExit('bob %d' % self.num_to_step)
 
@@ -277,7 +277,7 @@ class Debugger(object):
         self.stopped = True
         if self.next_breakpoint is not None:
             next_instruction, word = self.next_breakpoint
-            print 'replace at %08x with %08x pc=%08x' % (next_instruction, word, self.machine.pc)
+            print('replace at %08x with %08x pc=%08x' % (next_instruction, word, self.machine.pc))
             #We always clear the next breakpoint when we stop
             self.machine.memw[next_instruction] = word
             self.next_breakpoint = None

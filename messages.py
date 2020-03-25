@@ -1,6 +1,6 @@
 import socket
 import threading
-import SocketServer
+import socketserver
 import time
 import select
 import struct
@@ -68,7 +68,7 @@ class MachineState(Message):
     type = Types.STATE
 
     def __init__(self, regs, mode, pc, is_waiting):
-        self.registers = [regs[i] for i in xrange(16)]
+        self.registers = [regs[i] for i in range(16)]
         self.mode = mode
         self.pc = pc
         self.is_waiting = is_waiting
@@ -83,7 +83,7 @@ class MachineState(Message):
 
     @staticmethod
     def from_binary(data):
-        regs = [struct.unpack('>I',data[i*4:(i+1)*4])[0] for i in xrange(16)]
+        regs = [struct.unpack('>I',data[i*4:(i+1)*4])[0] for i in range(16)]
         mode,pc = struct.unpack('>II',data[16*4:16*4+8])
         is_waiting = True if data[16*4+8] == '1' else False
         return MachineState(regs, mode, pc, is_waiting)
@@ -153,7 +153,7 @@ class TapeReply(TapesView):
         data = data[16:]
         tape_list = data.split('\x00')
         if len(tape_list) != size:
-            print 'Error tape_list mismatch lengths %d %d' % (len(tape_list), size)
+            print('Error tape_list mismatch lengths %d %d' % (len(tape_list), size))
             return None
         return TapeReply(id, start, tape_list, num_tapes)
 
@@ -173,7 +173,7 @@ class MemViewReply(MemView):
         id,start,size = struct.unpack('>III',data[:12])
         data = data[12:]
         if len(data) != size:
-            print 'Error mismatch lengths %d %d' % (len(data),size)
+            print('Error mismatch lengths %d %d' % (len(data),size))
             return None
         return MemViewReply(id,start,data)
 
@@ -213,8 +213,8 @@ class DisassemblyViewReply(Message):
         if mem_length != len(mem):
             raise Error('Dissasembly length mismatch %d %d' % (mem_length,len(mem)))
         lines = data[8+mem_length:].split('\n')
-        if len(lines) != mem_length/4:
-            raise Error('Dissasembly num_lines %d should be %d' % (len(lines),mem_length/4))
+        if len(lines) != mem_length // 4:
+            raise Error('Dissasembly num_lines %d should be %d' % (len(lines),mem_length // 4))
         return DisassemblyViewReply(start, mem, lines)
 
 class Symbols(Message):
@@ -263,11 +263,11 @@ class Symbols(Message):
         return self.lookup.__next__()
 
     def iteritems(self):
-        for item in self.lookup.iteritems():
+        for item in self.lookup.items():
             yield item
 
     def items(self):
-        return list(self.iteritems())
+        return list(self.items())
 
     def __contains__(self, addr):
         return addr in self.lookup
@@ -401,12 +401,12 @@ def MessageFactory(data):
     try:
         return messages_by_type[type].from_binary(data[4:])
     except KeyError:
-        print 'Unknown message type %d' % type
+        print('Unknown message type %d' % type)
     except Error as e:
-        print 'Error (%s) while receiving message of type %d' % (e,type)
+        print('Error (%s) while receiving message of type %d' % (e,type))
 
 
-class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
+class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     select_timeout = 0.5
     total_timeout = 1.0
     def read_message(self):
@@ -442,11 +442,11 @@ class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
             while not self.server.done:
                 self.read_message()
         except socket.error as e:
-            print 'Got socket error'
+            print('Got socket error')
             self.server.comms.disconnect()
 
 
-class ThreadedTCPServer(SocketServer.TCPServer):
+class ThreadedTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
 class Comms(object):
@@ -462,7 +462,7 @@ class Comms(object):
 
     def start(self):
         self.thread.start()
-        print 'Server loop running in thread:', self.thread.name
+        print('Server loop running in thread:', self.thread.name)
 
     def __enter__(self):
         self.start()
@@ -494,7 +494,7 @@ class Comms(object):
                 self.send_socket.send(struct.pack('>I',len(m)) + m)
             except socket.error:
                 self.connected = False
-                print 'got disconnected'
+                print('got disconnected')
         else:
             #print 'lost',type(message)
             pass
@@ -508,9 +508,9 @@ class Comms(object):
         self.server.done = True
         self.server.shutdown()
         self.server.server_close()
-        print 'joining thread'
+        print('joining thread')
         self.thread.join()
-        print 'joined'
+        print('joined')
 
 class Server(Comms):
     def handle(self, message):
@@ -571,7 +571,7 @@ class Client(Comms):
 
     def start_handshake(self):
         #Send a handshake message with our listen port
-        print 'Sending a handshake message with',(self.host,self.port)
+        print('Sending a handshake message with',(self.host,self.port))
         handshake = Handshake(self.host,self.port)
         self.send(handshake)
         if self.connected:
@@ -581,4 +581,3 @@ class Client(Comms):
 
 # class DummyClient(object):
 #     def __init__(self, host, port, callback):
-

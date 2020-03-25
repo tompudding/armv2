@@ -11,10 +11,10 @@ except ImportError:
     import globals
 
 #drawing modules
-import constants
-import quads
-import opengl
-import sprite
+from . import constants
+from . import quads
+from . import opengl
+from . import sprite
 
 from globals.types import Point
 
@@ -90,14 +90,14 @@ class RenderTarget(object):
         glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER_EXT, self.depthbuffer)
         glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.texture, 0);
         if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
-            print 'crapso'
+            print('crapso')
             raise SystemExit
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
 
     def Target(self):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
         if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
-            print 'crapso1'
+            print('crapso1')
             raise SystemExit
 
     def Detarget(self):
@@ -121,7 +121,7 @@ class SubImage(object):
 
 class TextureAtlas(object):
     def __init__(self,image_filename,data_filename):
-        extra_names = [image_filename[:-4] + extra + image_filename[-4:] for extra in '_normal','_occlude','_displace']
+        extra_names = [image_filename[:-4] + extra + image_filename[-4:] for extra in ('_normal','_occlude','_displace')]
 
         self.texture = Texture(image_filename,*extra_names)
         self.subimages = {}
@@ -155,7 +155,7 @@ class TextureAtlas(object):
     def TransformCoords(self,subimage,tc):
         subimage = '_'.join(subimage.split(os.path.sep))
         subimage = self.subimages[subimage]
-        for i in xrange(len(tc)):
+        for i in range(len(tc)):
             self.TransformCoord(subimage,tc[i])
 
     def TextureCoords(self,subimage):
@@ -171,7 +171,7 @@ class PetsciiAtlas(TextureAtlas):
         self.texture = Texture(image_filename)
         self.subimages = {}
         image_name = os.path.basename(image_filename)
-        for ch in xrange(0x20,0xa0):
+        for ch in range(0x20,0xa0):
             subimage_name = chr(ch)
             if subimage_name.isalpha():
                 subimage_name = chr(ch^0x20)
@@ -184,7 +184,7 @@ class PetsciiAtlas(TextureAtlas):
             w = 8
             h = 8
             self.subimages[subimage_name] = SubImage(Point(float(x)/self.texture.width,float(y)/self.texture.height),(Point(w,h)))
-        for i in xrange(256):
+        for i in range(256):
             c = chr(i)
             if c not in self.subimages:
                 self.subimages[c] = self.subimages[' ']

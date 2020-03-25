@@ -34,7 +34,7 @@ class Keyboard(armv2.Device):
 
     def __init__(self, cpu):
         super(Keyboard,self).__init__(cpu)
-        self.ring_buffer = [0 for i in xrange(self.ringbuffer_size)]
+        self.ring_buffer = [0 for i in range(self.ringbuffer_size)]
         self.pos = 0
         self.key_state = 0
         armv2.DebugLog('keyboard keyboard keyboard!\n')
@@ -60,7 +60,7 @@ class Keyboard(armv2.Device):
             return (self.key_state>>(8*addr)&0xffffffff)
         elif addr < self.ringbuffer_pos:
             pos = addr - self.ringbuffer_start
-            bytes = [self.ring_buffer[pos + i % len(self.ring_buffer)] for i in xrange(4)]
+            bytes = [self.ring_buffer[pos + i % len(self.ring_buffer)] for i in range(4)]
             return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
         elif addr == self.ringbuffer_pos:
             return self.pos
@@ -91,17 +91,17 @@ class Keyboard(armv2.Device):
         return 0
 
 def SetPixels(pixels,word):
-    for j in xrange(64):
+    for j in range(64):
         #the next line is so obvious it doesn't need a comment
-        pixels[j/8][j%8] = ((word>>j)&1)
+        pixels[j//8][j%8] = ((word>>j)&1)
 
 from scipy.signal import butter, lfilter
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
     nyq  = 0.5 * fs
-    low  = lowcut / nyq
-    high = highcut / nyq
+    low  = lowcut // nyq
+    high = highcut // nyq
     b, a = butter(order, [low, high], btype='band')
     return b, a
 
@@ -113,7 +113,7 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
 
 def butter_lowpass(cutoff, fs, order=5):
     nyq = 0.5 * fs
-    normal_cutoff = cutoff / nyq
+    normal_cutoff = cutoff // nyq
     b, a = butter(order, normal_cutoff, btype='low', analog=True)
     return b, a
 
@@ -170,26 +170,26 @@ class TapeDrive(armv2.Device):
         screen_width = self.cpu.display.pixel_width()
         screen_height = self.cpu.display.pixel_height()
 
-        num_t_stripes = self.border_pixels / self.stripe_height
-        num_l_stripes = (screen_height - (self.border_pixels * 2)) / self.stripe_height
+        num_t_stripes = self.border_pixels // self.stripe_height
+        num_l_stripes = (screen_height - (self.border_pixels * 2)) // self.stripe_height
         num_stripes = 2*(num_t_stripes + num_l_stripes)
 
-        print num_stripes
+        print(num_stripes)
         self.quad_buffer = drawing.QuadBuffer( num_stripes )
         #Add the stripes as a tuple for each row. The first few will have just one in (for the top rows that
         #go all the way across), then the middle lot will have 2, then the final sets will be one again
         self.stripes = []
         #First the bottom
-        for i in xrange(num_t_stripes):
+        for i in range(num_t_stripes):
             q = drawing.Quad(self.quad_buffer)
             bl = Point(0, i*self.stripe_height)
             tr = Point(screen_width, (i+1) * self.stripe_height)
             q.SetVertices(bl, tr, 5)
             self.stripes.append([q])
 
-        for i in xrange(num_t_stripes, num_t_stripes + num_l_stripes):
+        for i in range(num_t_stripes, num_t_stripes + num_l_stripes):
             row = []
-            for j in xrange(2):
+            for j in range(2):
                 q = drawing.Quad(self.quad_buffer)
                 bl = Point(j*(screen_width - self.border_pixels), i*self.stripe_height)
                 tr = Point(bl.x + self.border_pixels, (i+1) * self.stripe_height)
@@ -197,7 +197,7 @@ class TapeDrive(armv2.Device):
                 row.append(q)
             self.stripes.append(row)
 
-        for i in xrange(num_t_stripes):
+        for i in range(num_t_stripes):
             row = num_t_stripes + num_l_stripes + i
             q = drawing.Quad(self.quad_buffer)
             bl = Point(0, row*self.stripe_height)
@@ -221,7 +221,7 @@ class TapeDrive(armv2.Device):
         for i,times in enumerate(self.bit_times):
             self.start_time.append( last_end + (i+1)*self.pilot_length * 1000 )
             last_end += times[-1]
-        print 'st',globals.t,self.start_time
+        print('st',globals.t,self.start_time)
 
     def stop_playing(self):
         if not self.tape_sound:
@@ -249,7 +249,7 @@ class TapeDrive(armv2.Device):
 
     def make_sound(self):
         freq, sample_size, num_channels = pygame.mixer.get_init()
-        tone_length = 4*float(freq)/22050
+        tone_length = 4*float(freq) / 22050
         clr_length = int(tone_length)
         set_length = int(tone_length*2)
 
@@ -277,13 +277,13 @@ class TapeDrive(armv2.Device):
             total_samples += num_pilot_samples
 
             samples = numpy.zeros(shape=block_samples, dtype='float64')
-            #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(block_samples)/freq)
+            #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(block_samples) // freq)
             #The position in samples that each byte starts
             byte_samples = numpy.zeros(shape=len(data)*4, dtype='uint32')
             #The number of milliseconds that each bit should
             bit_times = numpy.zeros(shape=len(data)*4*8, dtype='uint32')
             bits = numpy.zeros(shape=len(data)*4*9, dtype='uint8')
-            popcnt.create_samples(data, samples, byte_samples, bit_times, bits, clr_length, set_length, float(1000)/22050)
+            popcnt.create_samples(data, samples, byte_samples, bit_times, bits, clr_length, set_length, float(1000) / 22050)
             all_samples.append(pilot_samples)
             all_samples.append(samples)
             self.byte_samples.append(byte_samples)
@@ -299,7 +299,7 @@ class TapeDrive(armv2.Device):
             samples = samples.repeat(num_channels).reshape(total_samples, num_channels)
 
         self.tape_sound = pygame.sndarray.make_sound(samples)
-        self.sample_rate = float(freq)/1000
+        self.sample_rate = float(freq) / 1000
 
     def registerCallback(self, callback):
         self.end_callback = callback
@@ -357,7 +357,7 @@ class TapeDrive(armv2.Device):
 
         if c:
             self.data_byte = ord(c)
-            #self.tape_data = self.tape_data[-((len(self.stripes)/8)):] + [self.data_byte]
+            #self.tape_data = self.tape_data[-((len(self.stripes)//8)):] + [self.data_byte]
             #self.tape_data.extend( [((self.data_byte >> i) & 1) for i in xrange(8)] )
             # #How quickly should we show those bytes? Pretend that they arrived in even intervals
             # if self.last_byte_time is None:
@@ -367,7 +367,7 @@ class TapeDrive(armv2.Device):
             # else:
             #     elapsed = globals.t - self.last_byte_time
             #     print 'elapsed',elapsed
-            #     self.tape_times.extend( [globals.t + int(i*float(elapsed)/8) for i in xrange(8)] )
+            #     self.tape_times.extend( [globals.t + int(i*float(elapsed)//8) for i in xrange(8)] )
             #     self.last_byte_time = globals.t
             self.status = self.Codes.READY
             #time.sleep(0.001)
@@ -550,24 +550,24 @@ class Display(armv2.Device):
 
         self.back_quads_buffer = drawing.QuadBuffer(self.width*self.height)
         self.fore_quads_buffer = drawing.QuadBuffer(self.width*self.height)
-        self.back_quads = [drawing.Quad(self.back_quads_buffer) for i in xrange(self.width*self.height)]
-        self.fore_quads = [drawing.Quad(self.fore_quads_buffer) for i in xrange(self.width*self.height)]
+        self.back_quads = [drawing.Quad(self.back_quads_buffer) for i in range(self.width*self.height)]
+        self.fore_quads = [drawing.Quad(self.fore_quads_buffer) for i in range(self.width*self.height)]
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
 
         for z,quad_list in enumerate((self.back_quads,self.fore_quads)):
             for pos,quad in enumerate(quad_list):
                 x = pos%self.width
-                y = self.height - 1 - (pos/self.width)
+                y = self.height - 1 - (pos // self.width)
                 bl = Point(x*self.cell_size, y*self.cell_size)
                 tr = bl + Point(self.cell_size, self.cell_size)
                 quad.SetVertices(bl, tr, z)
 
-        self.font_data = [0 for i in xrange(256)]
-        self.letter_data = [0 for i in xrange(self.width*self.height)]
-        self.palette_data = [0 for i in xrange(self.width*self.height)]
+        self.font_data = [0 for i in range(256)]
+        self.letter_data = [0 for i in range(self.width*self.height)]
+        self.palette_data = [0 for i in range(self.width*self.height)]
 
         #initialise the whole screen
-        for pos in xrange(len(self.letter_data)):
+        for pos in range(len(self.letter_data)):
             self.redraw(pos)
 
     def readCallback(self,addr,value):
@@ -576,7 +576,7 @@ class Display(armv2.Device):
             return int(random.getrandbits(32))
         if addr == self.letter_end + 4:
             return int(time.time())
-        bytes = [self.readByteCallback(addr + i, 0) for i in xrange(4)]
+        bytes = [self.readByteCallback(addr + i, 0) for i in range(4)]
         return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
 
     def pixel_width(self):
@@ -590,7 +590,7 @@ class Display(armv2.Device):
         if addr == self.letter_end:
             random.seed(value)
             return 0
-        for i in xrange(4):
+        for i in range(4):
             byte = value&0xff
             self.writeByteCallback(addr,byte)
             addr += 1
@@ -804,4 +804,4 @@ class Machine:
         #     while pos < self.display.pixels():
         #         length = width*4 + data*10
         #         while length >= width:
-        #             self.display.screen.fill(colour_one, pygame.Rect((pos%width,pos/width),((pos+length)
+        #             self.display.screen.fill(colour_one, pygame.Rect((pos%width,pos // width),((pos+length)

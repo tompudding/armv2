@@ -1,7 +1,7 @@
 import armv2
 import bisect
 
-registerNames = [('r%d' % i) for i in xrange(13)] + ['sp','lr','pc']
+registerNames = [('r%d' % i) for i in range(13)] + ['sp','lr','pc']
 shiftTypes = ['LSL','LSR','ASR','ROR']
 
 def OperandShift(self,bits,type_flag):
@@ -25,7 +25,7 @@ def OperandShift(self,bits,type_flag):
 def RegisterList(bits):
     runs = []
     on = None
-    for i in xrange(16):
+    for i in range(16):
         if on == None and (bits>>i)&1:
             on = i
         elif on != None and not ((bits>>i)&1):
@@ -36,7 +36,7 @@ def RegisterList(bits):
     regs = []
     for start,end in runs:
         if end-start <= 2:
-            for r in xrange(start,end):
+            for r in range(start,end):
                 regs.append(registerNames[r])
         else:
             regs.append('%s - %s' % (registerNames[start],registerNames[end-1]))
@@ -262,7 +262,7 @@ class CoprocessorInstruction(Instruction):
         self.crd      = (word>>12)&0xf
         self.crn      = (word>>16)&0xf
         self.opcode   = (word>>20)&0xf
-        self.args = ['%x' % self.proc_num,'#%x' % self.opcode] + [('CR%d') % n for n in self.crd,self.crn,self.crm]
+        self.args = ['%x' % self.proc_num,'#%x' % self.opcode] + [('CR%d') % n for n in (self.crd,self.crn,self.crm)]
 
 class CoprocessorRegisterTransferInstruction(CoprocessorInstruction):
     mneumonic = 'MCR'
@@ -270,7 +270,7 @@ class CoprocessorRegisterTransferInstruction(CoprocessorInstruction):
         super(CoprocessorRegisterTransferInstruction,self).__init__(addr,word,cpu)
         if self.opcode&1:
             self.mneumonic = 'MRC'
-        self.args = ['%x' % self.proc_num,'#%x' % self.opcode, 'R%d' % self.crd] + [('CR%d') % n for n in self.crn,self.crm]
+        self.args = ['%x' % self.proc_num,'#%x' % self.opcode, 'R%d' % self.crd] + [('CR%d') % n for n in (self.crn,self.crm)]
 
 class CoprocessorDataOperationInstruction(CoprocessorInstruction):
     mneumonic = 'CDP'
@@ -304,14 +304,14 @@ def InstructionFactory(addr, word, cpu=None, symbols=None):
     return handler(addr, word, cpu)
 
 def Disassemble(cpu, breakpoints, start, end, symbols):
-    for addr in xrange(start,end,4):
+    for addr in range(start,end,4):
         if addr in breakpoints:
             word = breakpoints[addr]
         elif (addr&3) == 0:
             word = cpu.memw[addr]
         else:
             word = 0
-            for byte in ((ord(cpu.mem[addr+i]) << ((3-i)*8)) for i in xrange(4)):
+            for byte in ((ord(cpu.mem[addr+i]) << ((3-i)*8)) for i in range(4)):
                 word |= byte
         yield InstructionFactory(addr, word, cpu, symbols)
 

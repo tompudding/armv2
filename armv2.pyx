@@ -3,7 +3,6 @@ from libc.stdint cimport uint32_t, int64_t
 from libc.stdlib cimport malloc, free
 import itertools
 import threading
-import thread
 
 NUMREGS            = carmv2.NUMREGS
 NUM_EFFECTIVE_REGS = carmv2.NUM_EFFECTIVE_REGS
@@ -101,7 +100,7 @@ class ByteMemory(object):
             indices = xrange(*indices)
         else:
             indices = (index,)
-        return ''.join(chr(self.getter(index)) for index in indices)
+        return bytearray(self.getter(index) for index in indices)
 
     def __setitem__(self,index,values):
         if isinstance(index,slice):
@@ -311,8 +310,8 @@ cdef class Armv2:
         if filename != None:
             self.LoadROM(filename)
 
-    def LoadROM(self,filename):
-        result = carmv2.load_rom(self.cpu,filename)
+    def LoadROM(self, filename):
+        result = carmv2.load_rom(self.cpu, filename.encode('ascii'))
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 
@@ -343,8 +342,8 @@ debugf = None
 log_lock = threading.Lock()
 def DebugLog(message):
     global debugf
-    return 
-    message = str(thread.get_ident()) + ' ' + message
+    return
+    message = str(threading.get_ident()) + ' ' + message
     with log_lock:
         if debugf == None:
             debugf = open('/tmp/pyarmv2.log','wb')
