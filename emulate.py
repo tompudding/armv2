@@ -29,8 +29,8 @@ def new_machine(boot_rom):
 class Emulator(object):
     def __init__(self,callback=None,boot_rom='build/boot.rom'):
         self.last = 0
-        self.machine = new_machine(boot_rom)
-
+        self.boot_rom = boot_rom
+        self.machine = new_machine(self.boot_rom)
         try:
             self.dbg = debugger.Debugger(self.machine)
         except:
@@ -76,7 +76,7 @@ class Emulator(object):
     def restart(self):
         breakpoints = self.dbg.breakpoints
         self.dbg.machine.Delete()
-        self.dbg.new_machine(new_machine())
+        self.dbg.new_machine(new_machine(self.boot_rom))
         self.dbg.Update()
         self.dbg.load_symbols()
 
@@ -169,4 +169,3 @@ if __name__ == '__main__':
     cProfile.run('main()','runstats')
     #pygame.display.quit()
     #p.join()
-
