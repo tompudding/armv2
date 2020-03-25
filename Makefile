@@ -42,8 +42,8 @@ build/libc.a: src/libc/*.c src/libc/*.S | build
 	make -C src/libc
 	cp src/libc/build/libc.a build/libc.a
 
-${TAPES_DIR}/%.tape: src/tapes/build/%.so src/tapes/build | ${TAPES_DIR}
-	python create.py -o $@ dummy_header $<
+${TAPES_DIR}/%.tape: src/tapes/build | ${TAPES_DIR}
+	python create.py -o $@ dummy_header src/tapes/build/$*.so
 
 src/tapes/build: | build/synapse.o build/libc.a
 	make -C src/tapes
@@ -51,11 +51,11 @@ src/tapes/build: | build/synapse.o build/libc.a
 build:
 	mkdir -p $@
 
-${TAPES_DIR}:
+${TAPES_DIR}: src/tapes/build
 	mkdir -p ${TAPES_DIR}
 
 clean:
-	rm -f armv2 ${TAPES_DIR}/*.tape boot.rom armtest step.o instructions.o init.o armv2.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
+	rm -f armv2 ${TAPES_DIR}/*.tape boot.rom armtest step.o instructions.o init.o armv2.c popcnt.c armv2.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
 	make -C src/libc clean
 	make -C src/tapes clean
 	rm -rf build/temp*
