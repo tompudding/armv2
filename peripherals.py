@@ -1503,7 +1503,6 @@ class EmulatorWrapper(object):
             return 'break'
 
     def handle_keydown(self, event):
-        print('PKD:',self.locked)
         if self.locked:
             return self.emulator.key_down(event)
 
