@@ -54,13 +54,13 @@ class Handshake(Message):
 
     def to_binary(self):
         first = super(Handshake,self).to_binary()
-        last = struct.pack('>H',self.port) + self.host
+        last = struct.pack('>H',self.port) + self.host.encode('ascii')
         return first + last
 
     @staticmethod
     def from_binary(data):
         port = struct.unpack('>H',data[:2])[0]
-        host = data[2:]
+        host = data[2:].decode('ascii')
         return Handshake(host, port)
 
 
@@ -75,10 +75,10 @@ class MachineState(Message):
 
     def to_binary(self):
         first = super(MachineState,self).to_binary()
-        regs = ''.join(struct.pack('>I',reg) for reg in self.registers)
+        regs = b''.join(struct.pack('>I',reg) for reg in self.registers)
         mode = struct.pack('>I',self.mode)
         pc = struct.pack('>I',self.pc)
-        is_waiting = '1' if self.is_waiting else '\x00'
+        is_waiting = b'1' if self.is_waiting else b'\x00'
         return first + regs + mode + pc + is_waiting
 
     @staticmethod
@@ -145,13 +145,13 @@ class TapeReply(TapesView):
 
     def to_binary(self):
         first = super(TapeReply,self).to_binary()
-        return first + struct.pack('>I',self.max) + '\x00'.join(self.tape_list)
+        return first + struct.pack('>I',self.max) + b'\x00'.join((tape.encode('ascii') for tape in self.tape_list))
 
     @staticmethod
     def from_binary(data):
         id,start,size,num_tapes = struct.unpack('>IIII',data[:16])
         data = data[16:]
-        tape_list = data.split('\x00')
+        tape_list = [tape.decode('ascii') for tape in data.split(b'\x00')]
         if len(tape_list) != size:
             print('Error tape_list mismatch lengths %d %d' % (len(tape_list), size))
             return None
@@ -203,7 +203,7 @@ class DisassemblyViewReply(Message):
         first = super(DisassemblyViewReply,self).to_binary()
         start = struct.pack('>I',self.start)
         mem   = struct.pack('>I',len(self.memory)) + self.memory
-        lines = '\n'.join(self.lines)
+        lines = b'\n'.join((line.encode('ascii') for line in self.lines))
         return first + start + mem + lines
 
     @staticmethod
@@ -212,7 +212,7 @@ class DisassemblyViewReply(Message):
         mem = data[8:8+mem_length]
         if mem_length != len(mem):
             raise Error('Dissasembly length mismatch %d %d' % (mem_length,len(mem)))
-        lines = data[8+mem_length:].split('\n')
+        lines = [line.decode('ascii') for line in data[8+mem_length:].split(b'\n')]
         if len(lines) != mem_length // 4:
             raise Error('Dissasembly num_lines %d should be %d' % (len(lines),mem_length // 4))
         return DisassemblyViewReply(start, mem, lines)
@@ -229,8 +229,8 @@ class Symbols(Message):
         first = super(Symbols, self).to_binary()
         data = []
         for addr,name in self.symbols_list:
-            data.append(struct.pack('>I', addr) + name + '\x00')
-        return first + ''.join(data)
+            data.append(struct.pack('>I', addr) + name.encode('ascii') + b'\x00')
+        return first + b''.join(data)
 
     def get_symbol_and_offset(self, addr):
         index = bisect.bisect_left(self.addrs, addr)
@@ -267,7 +267,7 @@ class Symbols(Message):
             yield item
 
     def items(self):
-        return list(self.items())
+        return list(self.iteritems())
 
     def __contains__(self, addr):
         return addr in self.lookup
@@ -280,8 +280,8 @@ class Symbols(Message):
         symbols = []
         while data:
             addr = struct.unpack('>I',data[:4])[0]
-            name,data = data[4:].split('\x00',1)
-            symbols.append( (addr, name) )
+            name,data = data[4:].split(b'\x00',1)
+            symbols.append( (addr, name.decode('ascii')) )
         return Symbols(symbols)
 
 
@@ -437,7 +437,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         try:
-            self.data = ''
+            self.data = b''
             self.needed = None
             while not self.server.done:
                 self.read_message()

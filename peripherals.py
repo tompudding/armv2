@@ -1,27 +1,27 @@
-import Tkinter
+import tkinter
 import random
 import messages
 import string
 import struct
 import itertools
 import sys
-import Queue
+import queue
 import time
 import os
 
 def insert_wrapper(func):
     def wrapper(self, *args, **kwargs):
-        self.configure(state=Tkinter.NORMAL)
+        self.configure(state=tkinter.NORMAL)
         func(self,*args,**kwargs)
-        self.configure(state=Tkinter.DISABLED)
+        self.configure(state=tkinter.DISABLED)
     return wrapper
 
-Tkinter.Text.insert = insert_wrapper(Tkinter.Text.insert)
-Tkinter.Text.delete = insert_wrapper(Tkinter.Text.delete)
+tkinter.Text.insert = insert_wrapper(tkinter.Text.insert)
+tkinter.Text.delete = insert_wrapper(tkinter.Text.delete)
 
 mode_names = ['USR','FIQ','IRQ','SUP']
 
-class Button(Tkinter.Button):
+class Button(tkinter.Button):
     unselected_fg = '#56f82e'
     #unselected_border = '#46cb26'
     unselected_border = '#2b9c17'
@@ -31,14 +31,14 @@ class Button(Tkinter.Button):
     selected_bg = unselected_fg
     disabled_border = '#004000'
 
-    def __init__(self, app, parent, text, callback, state=Tkinter.NORMAL):
+    def __init__(self, app, parent, text, callback, state=tkinter.NORMAL):
         self.app = app
         self.parent = parent
         self.text = text
         self.callback = callback
-        self.enabled = state == Tkinter.NORMAL
+        self.enabled = state == tkinter.NORMAL
         border = self.unselected_border if self.enabled else self.disabled_border
-        Tkinter.Button.__init__(self,
+        tkinter.Button.__init__(self,
                                 self.parent,
                                 width=6,
                                 pady=2,
@@ -51,7 +51,7 @@ class Button(Tkinter.Button):
                                 activeforeground=self.selected_fg,
                                 command=self.callback,
                                 text=text,
-                                relief=Tkinter.FLAT,
+                                relief=tkinter.FLAT,
                                 state=state,
                                 )
         self.bind("<Tab>", self.tab)
@@ -60,17 +60,17 @@ class Button(Tkinter.Button):
 
     def disable(self):
         self.enabled = False
-        self.config(state=Tkinter.DISABLED)
+        self.config(state=tkinter.DISABLED)
         self.config(highlightbackground=self.disabled_border)
 
     def enable(self):
         self.enabled = True
-        self.config(state=Tkinter.NORMAL)
+        self.config(state=tkinter.NORMAL)
         self.config(highlightbackground=self.unselected_border)
 
     def take_focus(self, direction=1):
         if self.enabled:
-            Tkinter.Button.focus_set(self)
+            tkinter.Button.focus_set(self)
         else:
             self.app.adjacent_item(self, direction).take_focus(direction)
 
@@ -119,9 +119,9 @@ class View(object):
         self.frame_pos = self.app.current_pos(self.height_pixels)
         self.frame.place(x=self.frame_pos[0], y=self.frame_pos[1], width=self.width_pixels, height=self.height_pixels)
 
-class Frame(Tkinter.Frame):
+class Frame(tkinter.Frame):
     def __init__(self, parent, width, height):
-        Tkinter.Frame.__init__(self,
+        tkinter.Frame.__init__(self,
                                parent,
                                width=width,
                                height=height*10,
@@ -130,24 +130,24 @@ class Frame(Tkinter.Frame):
                                highlightbackground='#004000',
                                highlightcolor='lawn green',
                                highlightthickness=1,
-                               relief=Tkinter.SOLID)
+                               relief=tkinter.SOLID)
 
     def take_focus(self, direction=1):
         Frame.focus_set(self)
 
-class Check(Tkinter.Checkbutton):
+class Check(tkinter.Checkbutton):
     def __init__(self, parent, text, val, callback):
         self.parent = parent
-        self.var = Tkinter.IntVar()
+        self.var = tkinter.IntVar()
         self.var.set(val)
-        Tkinter.Checkbutton.__init__(self,
+        tkinter.Checkbutton.__init__(self,
                                      parent.frame,
                                      font='TkFixedFont',
                                      highlightbackground='#000000',
                                      highlightcolor='lawn green',
                                      highlightthickness=1,
                                      padx=5,
-                                     relief=Tkinter.SOLID,
+                                     relief=tkinter.SOLID,
                                      bg=View.unselected_bg,
                                      fg=View.unselected_fg,
                                      activeforeground=View.unselected_bg,
@@ -183,13 +183,13 @@ class RadioGrid(View):
     def __init__(self, parent, modes, callback):
         self.parent = parent
         self.buttons = []
-        self.var = Tkinter.StringVar()
+        self.var = tkinter.StringVar()
         self.var.set("0")
         self.selected = None
         self.buttons = []
         self.callback = callback
         for i,name in enumerate(modes):
-            radio = Tkinter.Radiobutton(self.parent.frame,
+            radio = tkinter.Radiobutton(self.parent.frame,
                                         borderwidth=0,
                                         pady=0,
                                         padx=0,
@@ -207,7 +207,7 @@ class RadioGrid(View):
                                         value = str(i),
                                         variable = self.var)
             self.buttons.append(radio)
-            radio.grid(row=i,column=1,sticky=Tkinter.W)
+            radio.grid(row=i,column=1,sticky=tkinter.W)
         #update for the current contents
         self.click()
 
@@ -219,11 +219,11 @@ class RadioGrid(View):
         self.callback(self.selected)
 
 
-class Label(Tkinter.Label):
+class Label(tkinter.Label):
     def __init__(self, parent, width, text, bg='black', fg='lawn green', anchor='w', padx=2):
-        self.sv = Tkinter.StringVar()
+        self.sv = tkinter.StringVar()
         self.sv.set(text)
-        Tkinter.Label.__init__(self,
+        tkinter.Label.__init__(self,
                                parent,
                                width=width,
                                height=1,
@@ -235,7 +235,7 @@ class Label(Tkinter.Label):
                                fg=fg,
                                anchor=anchor,
                                textvariable=self.sv,
-                               relief=Tkinter.SOLID)
+                               relief=tkinter.SOLID)
 
     def set(self, text):
         self.sv.set(text)
@@ -279,23 +279,23 @@ class Scrollable(View):
         self.frame.bind("<Button-1>", lambda x: self.frame.take_focus())
         self.label_rows = []
         start_row = self.initial_decoration()
-        for i in xrange(self.height):
+        for i in range(self.height):
             labels = []
-            for j in xrange(self.labels_per_row):
+            for j in range(self.labels_per_row):
                 widget = Label(self.frame, width = self.label_widths[j], text=' ', padx=1)
 
                 widget.bind("<Button-1>", lambda x,i=i: [self.click(i),self.frame.take_focus()])
                 widget.bind("<MouseWheel>", self.mouse_wheel)
                 widget.bind("<Button-4>", self.mousewheel_up)
                 widget.bind("<Button-5>", self.mousewheel_down)
-                widget.grid(row=start_row + i, column=j, padx=0, pady=0, sticky=Tkinter.W)
+                widget.grid(row=start_row + i, column=j, padx=0, pady=0, sticky=tkinter.W)
                 labels.append(widget)
 
             self.label_rows.append(labels)
 
 
         self.num_lines = self.height + self.buffer*2
-        self.lines = [' ' for i in xrange(self.num_lines)]
+        self.lines = [' ' for i in range(self.num_lines)]
         self.num_cols = self.width
 
         self.view_start = -self.buffer*self.line_size
@@ -467,7 +467,7 @@ class Scrollable(View):
                 unknown_start = self.view_start + self.view_size - adjust
                 unknown_size = adjust
 
-            for i in xrange(start, step, stride):
+            for i in range(start, step, stride):
                 if i + amount >= 0 and i + amount < len(self.lines):
                     new_value = self.lines[i+amount]
                 else:
@@ -520,10 +520,10 @@ class SymbolsSearcher(Scrollable):
         self.parent = parent
 
     def initial_decoration(self):
-        self.entry_label = Tkinter.StringVar()
+        self.entry_label = tkinter.StringVar()
         self.entry_label.trace('w', lambda name, index, mode: self.entry_changed())
-        print 'making entry',self.label_widths,self.content_label
-        self.text_entry = Tkinter.Entry(self.frame,
+        print('making entry',self.label_widths,self.content_label)
+        self.text_entry = tkinter.Entry(self.frame,
                                         width = self.label_widths[self.content_label],
                                         font='TkFixedFont',
                                         bd=0,
@@ -539,9 +539,9 @@ class SymbolsSearcher(Scrollable):
                                         )
         self.set_frame_bindings(self.text_entry)
         self.goto_label = Label(self.frame, width=5, text='Goto:')
-        self.text_entry.grid(row=0,column=1,padx=0, sticky=Tkinter.W)
+        self.text_entry.grid(row=0,column=1,padx=0, sticky=tkinter.W)
         self.goto_label.grid(row=0,column=0,padx=0)
-        self.separator = Tkinter.Frame(self.frame, height=1, width=1, bg=self.unselected_fg)
+        self.separator = tkinter.Frame(self.frame, height=1, width=1, bg=self.unselected_fg)
         self.separator.grid(pady=4,columnspan=2)
         #return number of rows
         return 2
@@ -593,18 +593,18 @@ class SymbolsSearcher(Scrollable):
 
     def receive_symbols(self, symbols):
         self.symbols = symbols
-        self.substrings = {'' : symbols.items()}
-        for addr,name in symbols.iteritems():
-            for substring_length in xrange(1,len(name)+1):
-                for start_pos in xrange(0,len(name) + 1 - substring_length):
+        self.substrings = {'' : list(symbols.items())}
+        for addr,name in symbols.items():
+            for substring_length in range(1,len(name)+1):
+                for start_pos in range(0,len(name) + 1 - substring_length):
                     substring = name[start_pos:start_pos + substring_length]
                     try:
                         self.substrings[substring].append( (addr,name) )
                     except KeyError:
                         self.substrings[substring] = [(addr,name)]
 
-        for substring,name_list in self.substrings.iteritems():
-            name_list.sort(lambda x,y: cmp(x[0],y[0]))
+        for substring,name_list in self.substrings.items():
+            name_list.sort(key=lambda x: x[0])
         self.entry_changed()
 
     def redraw(self):
@@ -670,7 +670,7 @@ class BreakpointView(Scrollable):
         self.substrings = {}
         self.contents = []
         super(BreakpointView, self).__init__(app, height, width, invisible=True)
-        print 'breakpoints:',self.label_widths
+        print('breakpoints:',self.label_widths)
 
     def set_parent(self, parent):
         self.parent = parent
@@ -678,7 +678,7 @@ class BreakpointView(Scrollable):
     def initial_decoration(self):
         self.goto_label = Label(self.frame, width=12, text='Breakpoints')
         self.goto_label.grid(row=0,column=0,padx=0,columnspan=2)
-        self.separator = Tkinter.Frame(self.frame, height=1, width=1, bg=self.unselected_fg)
+        self.separator = tkinter.Frame(self.frame, height=1, width=1, bg=self.unselected_fg)
         self.separator.grid(pady=4,columnspan=2)
         #return number of rows
         return 2
@@ -824,8 +824,8 @@ class Disassembly(Searchable):
     def __init__(self, app, symbols_searcher, breakpoint_view, height, width):
         self.pc = None
         self.last_message = None
-        self.addr_lookups = {i:-self.buffer*self.line_size + (self.buffer + i)*self.line_size for i in xrange(height)}
-        self.index_lookups = {value:key for key,value in self.addr_lookups.iteritems()}
+        self.addr_lookups = {i:-self.buffer*self.line_size + (self.buffer + i)*self.line_size for i in range(height)}
+        self.index_lookups = {value:key for key,value in self.addr_lookups.items()}
         self.show_first_label = True
         self.breakpoint_view = breakpoint_view
         self.breakpoint_view.set_parent(self)
@@ -995,13 +995,13 @@ class Memory(Searchable):
             addr += self.line_size
 
     def format_bytes(self, data):
-        return ' '.join((('%02x' % ord(data[i])) if i < len(data) else '??') for i in xrange(self.line_size))
+        return ' '.join((('%02x' % data[i]) if i < len(data) else '??') for i in range(self.line_size))
 
     def format_any(self, data, width, token):
         out = []
         format_string = '%%0%dx' % (width*2)
         unknown = '?'*(width*2)
-        for i in xrange(0,self.line_size,width):
+        for i in range(0,self.line_size,width):
             if i + width <= len(data):
                 item = format_string % struct.unpack(token,data[i:i+width])[0]
             else:
@@ -1019,16 +1019,18 @@ class Memory(Searchable):
         if message.start&7 or self.format_data is None:
             return
 
-        for addr in xrange(message.start, message.start + message.size, 8):
+        for addr in range(message.start, message.start + message.size, 8):
             line_index = (addr - self.view_start) // self.line_size
             if line_index < 0 or line_index >= len(self.lines):
                 continue
+
             data = message.data[addr - message.start:addr + self.line_size - message.start]
             if len(data) < self.line_size:
                 data += '??'*(self.line_size-len(data))
+
             data_string = self.format_data(data)
 
-            ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and data[i] in self.printable else '.') for i in xrange(self.line_size)))
+            ascii_string = ''.join( ('%c' % (data[i] if i < len(data) and chr(data[i]) in self.printable else '.') for i in range(self.line_size)))
             self.lines[line_index] = '%07x : %23s  %s' % (addr, data_string, ascii_string)
 
     def activate_item(self, item):
@@ -1054,7 +1056,7 @@ class Tapes(Scrollable):
         super(Tapes,self).__init__(*args, **kwargs)
 
     def redraw(self):
-        for pos in xrange(self.view_start, self.view_start + len(self.label_rows)):
+        for pos in range(self.view_start, self.view_start + len(self.label_rows)):
             index = pos - self.view_start
             self.label_rows[index][self.content_label].set(self.lines[self.buffer + index])
             self.label_rows[index][0].set(self.loaded_message if pos == self.loaded else self.not_loaded_message)
@@ -1116,7 +1118,7 @@ class Options(View):
                        "Follow PC",
                        val = 1 if self.app.follow_pc else 0,
                        callback = self.cb)
-        self.c.pack(side=Tkinter.LEFT)
+        self.c.pack(side=tkinter.LEFT)
         self.checks = [self.c]
 
     def adjacent_item(self, item, dir):
@@ -1163,7 +1165,7 @@ class Registers(View):
         self.frame.bind("<Shift-ISO_Left_Tab>", self.switch_from_back)
         self.place()
         self.label_rows = []
-        for i in xrange(self.num_entries):
+        for i in range(self.num_entries):
             widget = Label(self.frame, width=self.col_width, padx=0, text='bobbins')
             widget.grid(row = i%self.height, column=i // self.height, padx=0)
             self.label_rows.append([widget])
@@ -1192,7 +1194,7 @@ class Registers(View):
         else:
             return ['fp','sp','lr','r15','MODE','PC'][i-12]
 
-class Application(Tkinter.Frame):
+class Application(tkinter.Frame):
     unselected_fg = 'lawn green'
     unselected_bg = 'black'
     #Inverted for selected
@@ -1205,7 +1207,7 @@ class Application(Tkinter.Frame):
         self.master = master
         self.follow_pc = True
         self.emulator_frame = emulator_frame
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         self.frame_pos = 0
         self.message_handlers = {messages.Types.DISCONNECT : self.disconnected,
                                  messages.Types.CONNECT    : self.connected,
@@ -1216,7 +1218,7 @@ class Application(Tkinter.Frame):
                                  messages.Types.TAPE_LIST  : self.receive_tapes,
                                  messages.Types.SYMBOL_DATA : self.receive_symbols,
         }
-        Tkinter.Frame.__init__(self, master,width=self.width_pixels + 8,height=720)
+        tkinter.Frame.__init__(self, master,width=self.width_pixels + 8,height=720)
         self.stopped = False
         self.pc = None
         self.breakpoints = set()
@@ -1242,7 +1244,7 @@ class Application(Tkinter.Frame):
             try:
                 handler = self.message_handlers[message.type]
             except KeyError:
-                print 'Unexpected message %d' % message.type
+                print('Unexpected message %d' % message.type)
             if handler:
                 handler(message)
         if self.need_symbols and self.client:
@@ -1329,7 +1331,7 @@ class Application(Tkinter.Frame):
     def createWidgets(self):
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         self.dead = False
-        self.frame = Tkinter.Frame(self, width = self.width_pixels, height = 720)
+        self.frame = tkinter.Frame(self, width = self.width_pixels, height = 720)
         self.frame.grid()
         self.frame.grid_propagate(0)
         symbols_searcher = SymbolsSearcher(self, width=51, height=12)
@@ -1342,13 +1344,13 @@ class Application(Tkinter.Frame):
         self.tapes = Tapes(self, width=51, height=6)
         self.options = Options(self, width=50, height=2)
 
-        self.button_frame = Tkinter.Frame(self.frame)
+        self.button_frame = tkinter.Frame(self.frame)
         self.button_frame_pos = self.current_pos(100)
         self.stop_button = Button(self, self.button_frame, 'stop', self.stop)
         #self.stop_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
         self.stop_button.grid(row=0,column=0,pady=6,padx=5)
 
-        self.step_button = Button(self, self.button_frame, 'step', self.step, state=Tkinter.DISABLED)
+        self.step_button = Button(self, self.button_frame, 'step', self.step, state=tkinter.DISABLED)
         #self.step_button.pack(side=Tkinter.LEFT, pady=6, padx=5)
         self.step_button.grid(row=0,column=1,pady=6,padx=5)
 
@@ -1384,10 +1386,10 @@ class Application(Tkinter.Frame):
     def disconnected(self, message):
         try:
             self.status_update('DISCONNECTED')
-        except (Tkinter.TclError,RuntimeError) as e:
+        except (tkinter.TclError,RuntimeError) as e:
             self.dead = True
             #This can happen if we're bringing everything down
-            print 'Ignoring TCL error during disconnect',self.dead
+            print('Ignoring TCL error during disconnect',self.dead)
 
     def connected(self, message=None):
         self.status_update('CONNECTED')
@@ -1420,12 +1422,12 @@ class Application(Tkinter.Frame):
 
 def run():
     #import hanging_threads
-    root = Tkinter.Tk()
+    root = tkinter.Tk()
     root.tk_setPalette(background='black',
                        highlightbackground='lawn green')
     app = Application(master=root)
     with messages.Client('localhost', 0x4141, callback=app.message_handler) as client:
-        print client
+        print(client)
         app.init(client)
         app.mainloop()
     root.destroy()
@@ -1436,20 +1438,22 @@ class EmulatorWrapper(object):
     def __init__(self, parent, width, height):
         self.emulator = None
         self.app = None
-        self.frame = Tkinter.Frame(parent,
+        self.width = width
+        self.height = height
+        self.frame = tkinter.Frame(parent,
                                    width=width+2,
                                    height=height+2,
                                    highlightcolor='lawn green',
                                    highlightbackground='#004000',
                                    highlightthickness=1)
 
-        self.embed = Tkinter.Frame(self.frame,
+        self.embed = tkinter.Frame(self.frame,
                                    width = 960,
                                    height = 720)
 
         os.environ['SDL_WINDOWID'] = str(self.embed.winfo_id())
-        self.frame.pack(side=Tkinter.LEFT)
-        self.embed.pack(side=Tkinter.LEFT)
+        self.frame.pack(side=tkinter.LEFT)
+        self.embed.pack(side=tkinter.LEFT)
 
         self.frame.bind("<Key>", self.key_down)
         self.frame.bind("<KeyRelease>", self.key_up)
@@ -1462,6 +1466,9 @@ class EmulatorWrapper(object):
         self.frame.bind("<Shift-ISO_Left_Tab>", self.shift_tab)
         self.frame.bind("<Escape>", self.break_lock_key)
         self.locked = False
+
+    def init_emulator(self):
+        emulate.init(self.width, self.height)
 
     def register_emulator(self, emulator):
         self.emulator = emulator
@@ -1531,25 +1538,25 @@ class EmulatorWrapper(object):
 def main():
     import pygame
     import emulate
-    root = Tkinter.Tk()
+    root = tkinter.Tk()
     root.wm_title('Rebellion')
     root.resizable(0,0)
     root.tk_setPalette(background='black',
                        highlightbackground='lawn green')
     emulator_wrapper = EmulatorWrapper(root, 960, 720)
-    debugger = Tkinter.Frame(root)
+    debugger = tkinter.Frame(root)
     app = Application(master=debugger, emulator_frame=emulator_wrapper)
-    debugger.pack(side=Tkinter.TOP)
+    debugger.pack(side=tkinter.TOP)
 
     try:
         with messages.Client('localhost', 0x4141, callback=app.message_handler) as client:
-            print client
+            print(client)
             app.client = client
             #app.mainloop()
             app.update()
             #os.environ['SDL_VIDEODRIVER'] = 'windib'
             emulator_wrapper.take_focus(1)
-            emulate.init()
+            emulate.init(emulator_wrapper.width, emulator_wrapper.height)
             emulator = emulate.Emulator()
             app.emulator = emulator
             emulator_wrapper.register_emulator(emulator)
@@ -1560,7 +1567,7 @@ def main():
     finally:
         try:
             root.destroy()
-        except Tkinter.TclError as e:
+        except tkinter.TclError as e:
             pass
 
 if __name__ == '__main__':
