@@ -146,7 +146,7 @@ class WordMemory(object):
             indices = (index,)
             values  = (values,)
         try:
-            for i,v in itertools.izip_longest(indices,values):
+            for i,v in itertools.zip_longest(indices,values):
                 self.setter(i,v)
         except TypeError:
             raise ValueError('Wrong values sequence length')
