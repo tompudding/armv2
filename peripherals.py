@@ -1467,9 +1467,6 @@ class EmulatorWrapper(object):
         self.frame.bind("<Escape>", self.break_lock_key)
         self.locked = False
 
-    def init_emulator(self):
-        emulate.init(self.width, self.height)
-
     def register_emulator(self, emulator):
         self.emulator = emulator
 
@@ -1482,12 +1479,12 @@ class EmulatorWrapper(object):
         return 'break'
 
     def key_down(self, event):
-        self.handle_keydown(event)
-
         #If we're not locked and we just pressed some key other than tab or escape, then lock on
         if not self.locked and not self.emulator.is_stopped():
             self.locked = True
             self.frame.config(highlightcolor=self.locked_color)
+
+        self.handle_keydown(event)
 
         return 'break'
 
@@ -1506,6 +1503,7 @@ class EmulatorWrapper(object):
             return 'break'
 
     def handle_keydown(self, event):
+        print('PKD:',self.locked)
         if self.locked:
             return self.emulator.key_down(event)
 
