@@ -19,7 +19,7 @@ adventure: ${SRCS}
 	${ARMCC} -o $@ -fno-stack-protector -static ${ARMCFLAGS} $^ ../../../build/synapse.o ../../../build/libc.a
 
 data.c: data.pre
-	python create_data.py $@ $< 
+	python create_data.py $@ $<
 
 data.pre: glorkz setup
 	./setup glorkz > data.pre
@@ -30,4 +30,4 @@ setup: setup.c hdr.h
 
 
 clean:
-	rm -f ${CLEANFILES}
+	rm -f ${CLEANFILES} adventure.so

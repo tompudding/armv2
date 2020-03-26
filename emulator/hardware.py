@@ -5,10 +5,10 @@ import traceback
 import signal
 import time
 import random
-import drawing
+from . import drawing
 import os
 import numpy
-import popcnt
+from . import popcnt
 import wave
 import globals
 import struct

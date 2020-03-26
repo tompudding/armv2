@@ -1,6 +1,6 @@
 import tkinter
 import random
-import messages
+import emulator.messages as messages
 import string
 import struct
 import itertools
@@ -1534,7 +1534,7 @@ class EmulatorWrapper(object):
 
 def main():
     import pygame
-    import emulate
+    import emulator
     root = tkinter.Tk()
     root.wm_title('Rebellion')
     root.resizable(0,0)
@@ -1553,14 +1553,14 @@ def main():
             app.update()
             #os.environ['SDL_VIDEODRIVER'] = 'windib'
             emulator_wrapper.take_focus(1)
-            emulate.init(emulator_wrapper.width, emulator_wrapper.height)
-            emulator = emulate.Emulator()
-            app.emulator = emulator
-            emulator_wrapper.register_emulator(emulator)
+            emulator.init(emulator_wrapper.width, emulator_wrapper.height)
+            machine = emulator.Emulator(boot_rom='emulator/build/boot.rom')
+            app.emulator = machine
+            emulator_wrapper.register_emulator(machine)
             emulator_wrapper.register_app(app)
             root.bind("<Escape>", app.handle_escape)
 
-            emulator.run( callback=app.update )
+            machine.run( callback=app.update )
     finally:
         try:
             root.destroy()

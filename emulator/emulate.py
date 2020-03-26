@@ -1,11 +1,11 @@
 import sys
-import armv2
-import binascii
-import debugger
+from . import armv2
+from . import debugger
+from . import hardware
+from . import drawing
 import os
-import hardware
+import binascii
 import pygame
-import drawing as drawing
 import globals
 from globals.types import Point
 from pygame.locals import *
@@ -162,19 +162,3 @@ def init(width, height, do_screen=True):
         screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
     drawing.Init(width, height, hardware.Display.pixel_size)
     drawing.InitDrawing()
-
-if __name__ == '__main__':
-    #from multiprocessing import Process
-    #import peripherals,time
-
-    #p = Process(target=peripherals.run) p.start() This is a module, but we also want to be able to call it
-    #directly so it needs to be able to import itself
-    def main():
-        init(width=960, height=720)
-        emulator = Emulator()
-        emulator.run()
-
-    import cProfile
-    cProfile.run('main()','runstats')
-    #pygame.display.quit()
-    #p.join()

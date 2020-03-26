@@ -316,7 +316,7 @@ cdef class Armv2:
     def LoadROM(self, filename):
         result = carmv2.load_rom(self.cpu, filename.encode('ascii'))
         if result != carmv2.ARMV2STATUS_OK:
-            raise ValueError()
+            raise ValueError(f'result {result}')
 
     def Step(self,number = None):
         cdef uint32_t result

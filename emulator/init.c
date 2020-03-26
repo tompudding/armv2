@@ -169,7 +169,7 @@ static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32
         }
         section_length -= to_read;
     }
-    
+
     *size_out = size;
 
     return ARMV2STATUS_OK;
@@ -179,7 +179,6 @@ enum armv2_status load_rom(struct armv2 *cpu, const char *filename) {
     FILE              *f          = NULL;
     enum armv2_status  retval     = ARMV2STATUS_OK;
     struct stat        st         = {0};
-
     if(NULL == cpu) {
         return ARMV2STATUS_OK;
     }

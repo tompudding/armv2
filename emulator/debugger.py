@@ -1,12 +1,11 @@
-import disassemble
+from . import disassemble
 import time
 import armv2
 import pygame
 import os
 import string
 import glob
-import messages
-import disassemble
+from . import messages
 import struct
 from pygame.locals import *
 
@@ -36,7 +35,7 @@ class Debugger(object):
                          messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
                          messages.Types.SYMBOL_DATA : self.handle_request_symbols,
         }
-        self.tapes = glob.glob(os.path.join('tapes','*.tape'))
+        self.tapes = glob.glob(os.path.join('emulator','tapes','*.tape'))
         self.loaded_tape = None
         self.need_symbols = False
         self.machine.tape_drive.registerCallback(self.set_need_symbols)
