@@ -1,10 +1,10 @@
 import numpy
-try:
-    import rebellion.globals as globals
-    from rebellion.globals.types import Point
-except ImportError:
-    import globals
-    from globals.types import Point
+
+#import globals as globals
+#from rebellion.globals.types import Point
+
+import emulator.globals
+from emulator.globals.types import Point
 
 from . import opengl
 from . import constants

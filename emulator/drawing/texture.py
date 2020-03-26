@@ -5,10 +5,9 @@ import glob
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GL.framebufferobjects import *
-try:
-    import rebellion.globals as globals
-except ImportError:
-    import globals
+
+import emulator.globals as globals
+from emulator.globals.types import Point
 
 #drawing modules
 from . import constants
@@ -16,7 +15,6 @@ from . import quads
 from . import opengl
 from . import sprite
 
-from globals.types import Point
 
 cache = {}
 global_scale = 1

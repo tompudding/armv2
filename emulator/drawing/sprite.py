@@ -1,8 +1,6 @@
 import numpy
-try:
-    from rebellion.globals.types import Point
-except ImportError:
-    from globals.types import Point
+
+from emulator.globals.types import Point
 
 class Sprite(object):
     """
@@ -55,18 +53,18 @@ class StaticSpriteContainer(dict):
 class AnimatedSprite(object):
     def __init__(self,name,eventType,fps):
         self.name           = name
-        self.event_type     = eventType 
+        self.event_type     = eventType
         self.fps            = fps
         self.frame_duration = float(1)/fps
         self.frames         = []
-        
+
     def AddFrame(self,frame):
         self.frames.append(frame)
 
     def GetFrame(self,time):
         frame_num = int(time/self.frame_duration)%len(self.frames)
         return self.frames[frame_num]
-        
+
     def TextureCoordinates(self,time):
         return self.GetFrame(time).tex_coords
 

@@ -6,12 +6,8 @@ from OpenGL.GLU import *
 from OpenGL.GL import shaders
 from OpenGL.GL.framebufferobjects import *
 
-try:
-    import rebellion.globals as globals
-    from rebellion.globals.types import Point
-except ImportError:
-    import globals
-    from globals.types import Point
+import emulator.globals as globals
+from emulator.globals.types import Point
 
 import sys
 import time

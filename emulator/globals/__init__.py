@@ -1,3 +1,4 @@
+from . import types
 screen                = None
 quad_buffer           = None
 ui_buffer             = None
