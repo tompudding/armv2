@@ -355,8 +355,8 @@ class TapeDrive(armv2.Device):
         except IndexError:
             c = None
 
-        if c:
-            self.data_byte = ord(c)
+        if c is not None:
+            self.data_byte = c
             #self.tape_data = self.tape_data[-((len(self.stripes)//8)):] + [self.data_byte]
             #self.tape_data.extend( [((self.data_byte >> i) & 1) for i in xrange(8)] )
             # #How quickly should we show those bytes? Pretend that they arrived in even intervals

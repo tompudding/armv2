@@ -130,7 +130,7 @@ We have a very simple format for the synapse binaries:
           4 + len |   Length of symbols
       4 + len + 4 |   symbols
 """
-    print(f'a {len(data)}')
+    print(f'a {len(data)} name={name}')
     data = pad(data, 4)
     symbols = pad(symbols, 4)
     #Pad the name out to 16 bytes

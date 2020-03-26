@@ -142,8 +142,6 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
         }
     }
 
-    printf("%s\n", tape_name);
-
     uint32_t load_addr = 0;
 
     result = tape_next_word( &load_addr );
@@ -184,7 +182,7 @@ void handle_command(char *command) {
         int result = load_tape(symbols_load_area, &entry_point);
         switch(result) {
         case READY:
-        case END_OF_TAPE:
+            //case END_OF_TAPE:
         {
             //The tape is loaded so let's clear the screen and jump to the tape
             void (*fn)(void) = entry_point;
