@@ -348,7 +348,7 @@ def DebugLog(message):
     message = str(threading.get_ident()) + ' ' + message
     with log_lock:
         if debugf == None:
-            debugf = open('/tmp/pyarmv2.log','wb')
+            debugf = open('/tmp/pyarmv2_p2.log','wb')
         if not message.endswith('\n'):
             message += '\n'
         debugf.write(message.encode('ascii'))
