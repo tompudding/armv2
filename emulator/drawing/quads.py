@@ -29,7 +29,7 @@ class ShapeBuffer(object):
         self.max_size     = size*self.num_points
         self.vacant = set()
 
-    def __next__(self):
+    def next(self):
         """
         Please can we have another quad? If some quads have been deleted and left a hole then we give
         those out first, otherwise we add one to the end.
@@ -150,7 +150,7 @@ class Shape(object):
 
     def __init__(self,source,vertex = None,tc = None,colour_info = None,index = None):
         if index == None:
-            self.index = next(source)
+            self.index = source.next()
         else:
             self.index = index
         self.source = source
