@@ -3,8 +3,8 @@ import numpy
 #import globals as globals
 #from rebellion.globals.types import Point
 
-import emulator.globals
-from emulator.globals.types import Point
+from .. import globals
+from ..globals.types import Point
 
 from . import opengl
 from . import constants

@@ -1,6 +1,7 @@
 import numpy
 
-from emulator.globals.types import Point
+from .. import globals
+from ..globals.types import Point
 
 class Sprite(object):
     """

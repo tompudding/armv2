@@ -6,8 +6,8 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GL.framebufferobjects import *
 
-import emulator.globals as globals
-from emulator.globals.types import Point
+from .. import globals
+from ..globals.types import Point
 
 #drawing modules
 from . import constants

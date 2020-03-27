@@ -6,8 +6,8 @@ from . import drawing
 import os
 import binascii
 import pygame
-import emulator.globals as globals
-from emulator.globals.types import Point
+from . import globals
+from .globals.types import Point
 from pygame.locals import *
 from optparse import OptionParser
 

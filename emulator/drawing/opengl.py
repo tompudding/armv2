@@ -6,8 +6,9 @@ from OpenGL.GLU import *
 from OpenGL.GL import shaders
 from OpenGL.GL.framebufferobjects import *
 
-import emulator.globals as globals
-from emulator.globals.types import Point
+from .. import globals
+from ..globals.types import Point
+
 
 import sys
 import time

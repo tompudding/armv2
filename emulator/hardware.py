@@ -10,9 +10,10 @@ import os
 import numpy
 from . import popcnt
 import wave
-import emulator.globals as globals
 import struct
-from emulator.globals.types import Point
+
+from . import globals
+from .globals.types import Point
 
 class Keyboard(armv2.Device):
     """
