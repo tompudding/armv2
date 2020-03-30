@@ -12,3 +12,4 @@ tapes/*.tape
 armv2.so
 libarmv2.a
 armv2.c
+__pycache__
