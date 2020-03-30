@@ -15,7 +15,7 @@ class Debugger(object):
     PORT         = 16705
     SYMBOLS_ADDR = 0x30000
 
-    def __init__(self,machine):
+    def __init__(self, machine, tapes=None):
         self.machine          = machine
         self.breakpoints      = {}
         self.next_breakpoint  = None
@@ -35,7 +35,10 @@ class Debugger(object):
                          messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
                          messages.Types.SYMBOL_DATA : self.handle_request_symbols,
         }
-        self.tapes = glob.glob(os.path.join('emulator','tapes','*.tape'))
+        if tapes is None:
+            self.tapes = glob.glob(os.path.join('emulator','tapes','*.tape'))
+        else:
+            self.tapes = tapes
         self.loaded_tape = None
         self.need_symbols = False
         self.machine.tape_drive.registerCallback(self.set_need_symbols)

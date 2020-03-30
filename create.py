@@ -4,6 +4,8 @@ import struct
 from elftools.elf.sections import SymbolTableSection
 from elftools.elf.elffile import ELFFile
 
+emulator_dir = os.path.dirname(os.path.realpath(__file__))
+
 class RelTypes:
     R_ARM_ABS32 = 2
     R_ARM_JUMP_SLOT = 0x16
@@ -162,7 +164,7 @@ def create_binary(header, elf, tape_name, boot=False, final=True):
         symbols = [c for c in get_symbols(elffile)]
         if not boot:
             #we'll also need symbols for the os
-            with open('build/os','rb') as os_f:
+            with open(os.path.join(emulator_dir,'build','os'),'rb') as os_f:
                 os_elf = ELFFile(os_f)
                 os_symbols = get_full_symbols(os_elf)
 

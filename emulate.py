@@ -24,12 +24,12 @@ def new_machine(boot_rom):
     return machine
 
 class Emulator(object):
-    def __init__(self,callback=None,boot_rom='build/boot.rom'):
+    def __init__(self, callback=None, boot_rom='build/boot.rom', tapes=None):
         self.last = 0
         self.boot_rom = boot_rom
         self.machine = new_machine(self.boot_rom)
         try:
-            self.dbg = debugger.Debugger(self.machine)
+            self.dbg = debugger.Debugger(self.machine, tapes)
         except:
             self.machine.Delete()
             raise
