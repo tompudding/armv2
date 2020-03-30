@@ -3,16 +3,13 @@ AR=ar
 CFLAGS=-std=gnu99 -Wall -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -O3 -fPIC
 AS=arm-none-eabi-as
 COPY=arm-none-eabi-objcopy
-TAPES_DIR  = tapes
 BUILD_DIR  = build
 TAPE_SRC := $(wildcard src/*.cpp)
 OBJ_FILES := $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
-TAPE_NAMES := guessing trivia werewolf adventure
-TAPES_BIN  = $(patsubst %, ${TAPES_DIR}/%.tape, ${TAPE_NAMES})
 ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc -Os
 .PRECIOUS: build/% #Don't delete our intermediate object files, they're useful for debugging
 
-all: armv2.so build/boot.rom src/tapes/build ${TAPES_BIN}
+all: armv2.so build/boot.rom
 
 armv2.so: libarmv2.a armv2.pyx carmv2.pxd
 	python setup.py build_ext --inplace
@@ -42,22 +39,12 @@ build/libc.a: src/libc/*.c src/libc/*.S | build
 	make -C src/libc
 	cp src/libc/build/libc.a build/libc.a
 
-${TAPES_DIR}/%.tape: src/tapes/build | ${TAPES_DIR}
-	python create.py -o $@ dummy_header src/tapes/build/$*.so
-
-src/tapes/build: | build/synapse.o build/libc.a
-	make -C src/tapes
-
 build:
 	mkdir -p $@
 
-${TAPES_DIR}: src/tapes/build
-	mkdir -p ${TAPES_DIR}
-
 clean:
-	rm -f armv2 ${TAPES_DIR}/*.tape boot.rom armtest step.o instructions.o init.o armv2.c popcnt.c armv2*.so popcnt*.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
+	rm -f armv2  boot.rom armtest step.o instructions.o init.o armv2.c popcnt.c armv2*.so popcnt*.so *~ libarmv2.a boot.bin boot.o mmu.o hw_manager.o *.pyc
 	make -C src/libc clean
-	make -C src/tapes clean
 	rm -rf build/temp*
 	rm -f build/*
 	rm -df build
