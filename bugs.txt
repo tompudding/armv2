@@ -1,2 +1,0 @@
- - Step-over doesn't work sometimes and ends up resuming
- - Going to 10000a0 in the data display causes a segfault

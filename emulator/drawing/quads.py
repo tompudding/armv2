@@ -67,11 +67,11 @@ class ShapeBuffer(object):
         self.vacant = set()
 
     def RemoveShape(self,index):
-        """
-        A quad is no longer needed. Because it can be in the middle of our nice block and we can't be spending serious
-        cycles moving everything, we just disable it by zeroing out it's indicies. This fragmentation has a cost in terms
-        of the number of quads we're going to be asking the graphics card to draw, but because the game is so simple I'm
-        hoping it won't ever be an issue
+        """A quad is no longer needed. Because it can be in the middle of our nice block and we can't be spending
+        serious cycles moving everything, we just disable it by zeroing out it's indicies. This fragmentation
+        has a cost in terms of the number of quads we're going to be asking the graphics card to draw, but
+        because the game is so simple I'm hoping it won't ever be an issue
+
         """
         self.vacant.add(index)
         for i in range(self.num_points):
@@ -90,11 +90,11 @@ class QuadBuffer(ShapeBuffer):
 
     def SortForDepth(self):
         depths = [(i,min(self.vertex_data[self.indices[i+j]][1] for j in range(4))) for i in range(0,self.current_size,4) if i not in self.vacant]
-        #The dotted textures are supposed to be drawn on top of the tiles, so they have their z coordinates added to
-        #max_world.y so they have the highest z values. However for draw order we don't want them drawn last else they'll
-        #mess up the occlude maps (they have no occlude component), so we mod everything by max_world.y to get them back in
-        #place
-        depths.sort(lambda x,y:cmp(y[1]%globals.tiles.max_world.y,x[1]%globals.tiles.max_world.y))
+        #The dotted textures are supposed to be drawn on top of the tiles, so they have their z coordinates
+        #added to max_world.y so they have the highest z values. However for draw order we don't want them
+        #drawn last else they'll mess up the occlude maps (they have no occlude component), so we mod
+        #everything by max_world.y to get them back in place
+        depths.sort(key=lambda x:x[1]%globals.tiles.max_world.y, reverse=True)
         #print depths[:100]
         pos = 0
         new_indices = numpy.zeros(self.size*self.num_points,numpy.uint32)
