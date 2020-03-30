@@ -644,6 +644,9 @@ class Display(armv2.Device):
     def end_frame(self):
         drawing.end_crt_frame(self.crt_buffer)
 
+    def draw_to_screen(self):
+        drawing.draw_crt_to_screen(self.crt_buffer)
+
 class Clock(armv2.Device):
     """
     A clock device

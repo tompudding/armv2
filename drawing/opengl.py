@@ -163,6 +163,9 @@ def new_crt_frame(crt_buffer):
     #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 def end_crt_frame(crt_buffer):
+    return
+
+def draw_crt_to_screen(crt_buffer):
     crt_shader.Use()
     glUniform1f(crt_shader.locations.global_time, globals.t/1000.0)
     crt_buffer.BindForReading(0)

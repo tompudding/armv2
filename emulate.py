@@ -134,6 +134,7 @@ class Emulator(object):
         self.dbg.machine.display.new_frame()
         self.dbg.machine.tape_drive.update()
         self.dbg.machine.display.end_frame()
+        self.dbg.machine.display.draw_to_screen()
         pygame.display.flip()
             #self.last = globals.t
 
