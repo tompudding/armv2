@@ -25,7 +25,7 @@ class colours:
         background = (0.25, 0.25, 0.875, 1)
 
 
-def Daylight(t):
+def daylight(t):
     # Direction will be
     r = 10
     b = math.pi * 3 / 8
@@ -44,7 +44,7 @@ def Daylight(t):
     return (-x, -y, -z), (r, g, b)
 
 
-def Nightlight(t):
+def nightlight(t):
     # Direction will be
 
     return (1, 3, -1), (0.25, 0.25, 0.4)

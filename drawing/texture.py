@@ -100,13 +100,13 @@ class RenderTarget(object):
             raise SystemExit
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
 
-    def Target(self):
+    def target(self):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
         if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
             print('crapso1')
             raise SystemExit
 
-    def Detarget(self):
+    def detarget(self):
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
 
 
@@ -152,23 +152,23 @@ class TextureAtlas(object):
                 self.subimages[subimage_name] = SubImage(
                     Point(float(x) / self.texture.width, float(y) / self.texture.height), (Point(w, h)))
 
-    def Subimage(self, name):
+    def subimage(self, name):
         name = '_'.join(name.split(os.path.sep))
         return self.subimages[name]
 
-    def TransformCoord(self, subimage, value):
+    def transform_coord(self, subimage, value):
         value[0] = subimage.pos.x + value[0] * (float(subimage.size.x) / self.texture.width)
         value[1] = subimage.pos.y + value[1] * (float(subimage.size.y) / self.texture.height)
 
-    def TransformCoords(self, subimage, tc):
+    def transform_coords(self, subimage, tc):
         subimage = '_'.join(subimage.split(os.path.sep))
         subimage = self.subimages[subimage]
         for i in range(len(tc)):
-            self.TransformCoord(subimage, tc[i])
+            self.transform_coord(subimage, tc[i])
 
     def texture_coords(self, subimage):
         full_tc = [[0, 0], [0, 1], [1, 1], [1, 0]]
-        self.TransformCoords(subimage, full_tc)
+        self.transform_coords(subimage, full_tc)
         return full_tc
 
 

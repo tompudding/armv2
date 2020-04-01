@@ -79,7 +79,7 @@ class AnimatedSprite(object):
         return self.get_frame(time).tex_coords
 
 
-class AnimatedSpriteContainer(dict):
+class animated_sprite_container(dict):
     """
     Contains all the sprites (directions and actions) for an animated object
     """
