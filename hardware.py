@@ -49,12 +49,12 @@ class Keyboard(armv2.Device):
         self.pos += 1
         if self.pos == len(self.ring_buffer):
             self.pos = 0
-        self.cpu.Interrupt(self.id, self.InterruptCodes.KEY_DOWN)
+        self.cpu.interrupt(self.id, self.InterruptCodes.KEY_DOWN)
 
     def key_up(self, key):
         armv2.debug_log('key up ' + str(key))
         self.key_state &= ~(1 << key)
-        self.cpu.Interrupt(self.id, self.InterruptCodes.KEY_UP)
+        self.cpu.interrupt(self.id, self.InterruptCodes.KEY_UP)
 
     def read_callback(self, addr, value):
         armv2.debug_log('keyboard reader %x %x\n' % (addr, value))
@@ -189,7 +189,7 @@ class TapeDrive(armv2.Device):
             q = drawing.Quad(self.quad_buffer)
             bl = Point(0, i * self.stripe_height)
             tr = Point(screen_width, (i + 1) * self.stripe_height)
-            q.SetVertices(bl, tr, 5)
+            q.set_vertices(bl, tr, 5)
             self.stripes.append([q])
 
         for i in range(num_t_stripes, num_t_stripes + num_l_stripes):
@@ -198,7 +198,7 @@ class TapeDrive(armv2.Device):
                 q = drawing.Quad(self.quad_buffer)
                 bl = Point(j * (screen_width - self.border_pixels), i * self.stripe_height)
                 tr = Point(bl.x + self.border_pixels, (i + 1) * self.stripe_height)
-                q.SetVertices(bl, tr, 5)
+                q.set_vertices(bl, tr, 5)
                 row.append(q)
             self.stripes.append(row)
 
@@ -207,7 +207,7 @@ class TapeDrive(armv2.Device):
             q = drawing.Quad(self.quad_buffer)
             bl = Point(0, row * self.stripe_height)
             tr = Point(screen_width, (row + 1) * self.stripe_height)
-            q.SetVertices(bl, tr, 5)
+            q.set_vertices(bl, tr, 5)
             self.stripes.append([q])
 
         for i, row in enumerate(self.stripes):
@@ -377,14 +377,14 @@ class TapeDrive(armv2.Device):
             #     self.last_byte_time = globals.t
             self.status = self.Codes.READY
             # time.sleep(0.001)
-            self.cpu.cpu.Interrupt(self.id, self.status)
+            self.cpu.cpu.interrupt(self.id, self.status)
 
         else:
             self.data_byte = 0
             self.status = self.Codes.END_OF_TAPE
             self.loading = False
             self.stop_playing()
-            self.cpu.cpu.Interrupt(self.id, self.status)
+            self.cpu.cpu.interrupt(self.id, self.status)
 
     def update(self):
 
@@ -491,7 +491,7 @@ class TapeDrive(armv2.Device):
                 else:
                     self.data_byte = 0
                     self.status = self.Codes.DRIVE_EMPTY
-                    self.cpu.cpu.Interrupt(self.id, self.status)
+                    self.cpu.cpu.interrupt(self.id, self.status)
             elif value == self.Codes.READY:
                 # power down
                 self.power_down()
@@ -566,7 +566,7 @@ class Display(armv2.Device):
                 y = self.height - 1 - (pos // self.width)
                 bl = Point(x * self.cell_size, y * self.cell_size)
                 tr = bl + Point(self.cell_size, self.cell_size)
-                quad.SetVertices(bl, tr, z)
+                quad.set_vertices(bl, tr, z)
 
         self.font_data = [0 for i in range(256)]
         self.letter_data = [0 for i in range(self.width * self.height)]
@@ -664,7 +664,7 @@ class Clock(armv2.Device):
         return 0
 
     def fired(self):
-        self.cpu.Interrupt(self.id, 0)
+        self.cpu.interrupt(self.id, 0)
 
 
 class MemPassthrough(object):
@@ -697,7 +697,7 @@ class Machine:
         self.cv           = threading.Condition(threading.Lock())
         self.mem          = MemPassthrough(self.cv, self.cpu.mem)
         self.memw         = MemPassthrough(self.cv, self.cpu.memw)
-        self.thread       = threading.Thread(target=self.threadMain)
+        self.thread       = threading.Thread(target=self.thread_main)
         self.tape_drive   = None
         self.status       = armv2.Status.OK
         self.thread.start()
@@ -738,7 +738,7 @@ class Machine:
             self.steps_to_run = 0
             self.cv.notify()
 
-    def threadMain(self):
+    def thread_main(self):
         try:
             with self.cv:
                 while self.running:
@@ -747,7 +747,7 @@ class Machine:
             # in case we exit this and leave running on (due to an exception say)
             self.running = False
 
-    def Step(self, num):
+    def step(self, num):
         with self.cv:
             self.steps_to_run = num
             self.cv.notify()
@@ -759,16 +759,16 @@ class Machine:
                 while self.running and (self.steps_to_run and self.status != armv2.Status.WAIT_FOR_INTERRUPT):
                     self.cv.wait(0.1)
                     # Keep interrupts pumping every now and again
-                    #self.cpu.Interrupt(6, 0)
+                    #self.cpu.interrupt(6, 0)
                 if not self.running:
                     break
                 return self.status
             # if we get here it's not running
             raise RuntimeError('Thread is not running!')
 
-    def AddHardware(self, device, name=None):
+    def add_hardware(self, device, name=None):
         with self.cv:
-            self.cpu.AddHardware(device)
+            self.cpu.add_hardware(device)
         self.hardware.append(device)
         if name != None:
             setattr(self, name, device)
@@ -783,10 +783,10 @@ class Machine:
         if self.tape_drive:
             self.tape_drive.delete()
 
-    def Interrupt(self, hw_id, code):
+    def interrupt(self, hw_id, code):
         # print 'Interrupting1'
         with self.cv:
-            self.cpu.Interrupt(hw_id, code)
+            self.cpu.interrupt(hw_id, code)
             # If the CPU is presently paused, it won't ever know it's received an interrupt, it needs to take one step
             # to take the exception
             if self.steps_to_run == 0:

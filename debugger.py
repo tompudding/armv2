@@ -252,9 +252,9 @@ class Debugger(object):
         result = None
         self.stopped = False
         status = self.step_num_internal(self.num_to_step, skip_breakpoint=explicit)
-        if armv2.Status.Breakpoint == status:
+        if armv2.Status.BREAKPOINT == status:
             print('**************** GOT BREAKPOINT **************')
-            self.Stop()
+            self.stop()
         #raise SystemExit('bob %d' % self.num_to_step)
 
     def wants_interrupt(self):

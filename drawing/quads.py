@@ -117,7 +117,7 @@ class ShadowQuadBuffer(QuadBuffer):
         # Now set the vertices for the next line ...
         bl = Point(0, row)
         tr = Point(globals.tactical_screen.x, row + 1)
-        light.SetVertices(bl, tr, 0)
+        light.set_vertices(bl, tr, 0)
         light.shadow_index = row
         return light
 

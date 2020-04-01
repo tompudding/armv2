@@ -160,8 +160,8 @@ class WordMemory(object):
 
 cdef class Device:
     id            = None
-    readCallback  = None
-    writeCallback = None
+    read_callback  = None
+    write_callback = None
     cdef carmv2.hardware_device *cdevice
 
     def __cinit__(self, *args, **kwargs):
@@ -178,34 +178,34 @@ cdef class Device:
 
     cdef uint32_t read(self,uint32_t addr, uint32_t value) nogil:
         with gil:
-            if self.readCallback:
-                return self.readCallback(addr,value)
+            if self.read_callback:
+                return self.read_callback(addr,value)
             return 0
 
     cdef uint32_t write(self,uint32_t addr, uint32_t value) nogil:
         with gil:
-            if self.writeCallback:
-                return self.writeCallback(int(addr),int(value))
+            if self.write_callback:
+                return self.write_callback(int(addr),int(value))
 
             return 0
 
     cdef uint32_t read_byte(self,uint32_t addr, uint32_t value) nogil:
         with gil:
-            if self.readByteCallback:
-                return self.readByteCallback(addr,value)
+            if self.read_byte_callback:
+                return self.read_byte_callback(addr,value)
             return 0
 
     cdef uint32_t write_byte(self,uint32_t addr, uint32_t value) nogil:
         with gil:
-            if self.writeByteCallback:
-                return self.writeByteCallback(int(addr),int(value))
+            if self.write_byte_callback:
+                return self.write_byte_callback(int(addr),int(value))
 
             return 0
 
     cdef uint32_t operation(self, uint32_t arg0, uint32_t arg1) nogil:
         with gil:
-            if self.operationCallback:
-                return self.operationCallback(int(arg0), int(arg1))
+            if self.operation_callback:
+                return self.operation_callback(int(arg0), int(arg1))
 
     def __dealloc__(self):
         if self.cdevice != NULL:
@@ -311,7 +311,7 @@ cdef class Armv2:
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
         if filename != None:
-            self.LoadROM(filename)
+            self.load_rom(filename)
 
     def load_rom(self, filename):
         result = carmv2.load_rom(self.cpu, filename.encode('ascii'))
