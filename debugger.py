@@ -51,7 +51,7 @@ class Debugger(object):
             self.num_to_step    = 0
             # stopped means that the debugger has halted execution and is waiting for input
             self.stopped        = False
-            # self.help_window.Draw()
+            # self.help_window.draw()
             self.update()
         except:
             self.exit()

@@ -119,7 +119,7 @@ class SubImage(object):
         self.pos  = pos
         self.size = size
 
-    def TextureCoordinates(self, left, right, top, bottom):
+    def texture_coordinates(self, left, right, top, bottom):
         left, right = [float(v) / self.size.x for v in (left, right)]
         top, bottom = [float(v) / self.size.y for v in (top, bottom)]
         return numpy.array(((left, 1 - bottom), (left, 1 - top), (right, 1 - top), (right, 1 - bottom)), numpy.float32)

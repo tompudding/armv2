@@ -33,7 +33,7 @@ class Emulator(object):
         try:
             self.dbg = debugger.Debugger(self.machine, tapes)
         except:
-            self.machine.Delete()
+            self.machine.delete()
             raise
 
     def __enter__(self):
@@ -56,7 +56,7 @@ class Emulator(object):
             self.dbg.exit()
             armv2.debug_log('deleting machine')
             try:
-                self.dbg.machine.Delete()
+                self.dbg.machine.delete()
             except:
                 pass
 

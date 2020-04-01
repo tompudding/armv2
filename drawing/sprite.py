@@ -10,7 +10,7 @@ class Sprite(object):
     can ask for the texture coordinates (of the main texture atlas) at a given time
     """
 
-    def TextureCoordinates(self, time):
+    def texture_coordinates(self, time):
         return NotImplemented
 
 
@@ -45,10 +45,10 @@ class StaticSprite(object):
         self.name          = name
         self.movement_cost = movement_cost
 
-    def GetFrame(self, time):
+    def get_frame(self, time):
         return self.frame
 
-    def TextureCoordinates(self, time):
+    def texture_coordinates(self, time):
         # This is a static sprite so just return the constant coords
         return self.frame.tex_coords
 
@@ -71,12 +71,12 @@ class AnimatedSprite(object):
     def AddFrame(self, frame):
         self.frames.append(frame)
 
-    def GetFrame(self, time):
+    def get_frame(self, time):
         frame_num = int(time / self.frame_duration) % len(self.frames)
         return self.frames[frame_num]
 
-    def TextureCoordinates(self, time):
-        return self.GetFrame(time).tex_coords
+    def texture_coordinates(self, time):
+        return self.get_frame(time).tex_coords
 
 
 class AnimatedSpriteContainer(dict):
