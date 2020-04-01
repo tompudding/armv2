@@ -20,21 +20,21 @@ class Debugger(object):
         self.machine          = machine
         self.breakpoints      = {}
         self.next_breakpoint  = None
-        self.handlers = {messages.Types.RESUME: self.handle_resume,
-                         messages.Types.STOP: self.handle_stop,
-                         messages.Types.STEP: self.handle_step,
-                         messages.Types.NEXT: self.handle_next,
-                         messages.Types.RESTART: self.handle_restart,
-                         messages.Types.SETBKPT: self.handle_set_breakpoint,
-                         messages.Types.UNSETBKPT: self.handle_unset_breakpoint,
-                         messages.Types.MEMWATCH: self.handle_memory_watch,
-                         messages.Types.UNWATCH: self.handle_memory_unwatch,
-                         messages.Types.CONNECT: self.handle_connect,
-                         messages.Types.DISASSEMBLY: self.handle_disassembly,
-                         messages.Types.TAPEREQUEST: self.handle_taperequest,
-                         messages.Types.TAPE_LOAD: self.handle_load_tape,
-                         messages.Types.TAPE_UNLOAD: self.handle_unload_tape,
-                         messages.Types.SYMBOL_DATA: self.handle_request_symbols,
+        self.handlers = {messages.Types.RESUME      : self.handle_resume,
+                         messages.Types.STOP        : self.handle_stop,
+                         messages.Types.STEP        : self.handle_step,
+                         messages.Types.NEXT        : self.handle_next,
+                         messages.Types.RESTART     : self.handle_restart,
+                         messages.Types.SETBKPT     : self.handle_set_breakpoint,
+                         messages.Types.UNSETBKPT   : self.handle_unset_breakpoint,
+                         messages.Types.MEMWATCH    : self.handle_memory_watch,
+                         messages.Types.UNWATCH     : self.handle_memory_unwatch,
+                         messages.Types.CONNECT     : self.handle_connect,
+                         messages.Types.DISASSEMBLY : self.handle_disassembly,
+                         messages.Types.TAPEREQUEST : self.handle_taperequest,
+                         messages.Types.TAPE_LOAD   : self.handle_load_tape,
+                         messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
+                         messages.Types.SYMBOL_DATA : self.handle_request_symbols,
                          }
         if tapes is None:
             self.tapes = glob.glob(os.path.join('emulator', 'tapes', '*.tape'))
@@ -42,7 +42,7 @@ class Debugger(object):
             self.tapes = tapes
         self.loaded_tape = None
         self.need_symbols = False
-        self.machine.tape_drive.registerCallback(self.set_need_symbols)
+        self.machine.tape_drive.register_callback(self.set_need_symbols)
         self.connection = messages.Server(port=self.PORT, callback=self.handle_message)
         self.connection.start()
         try:
@@ -52,7 +52,7 @@ class Debugger(object):
             # stopped means that the debugger has halted execution and is waiting for input
             self.stopped        = False
             # self.help_window.Draw()
-            self.Update()
+            self.update()
         except:
             self.exit()
             raise
@@ -66,27 +66,27 @@ class Debugger(object):
         return handler(message)
 
     def handle_resume(self, message):
-        self.Continue(explicit=True)
+        self.resume(explicit=True)
 
     def handle_stop(self, message):
-        self.Stop(send_message=False)
+        self.stop(send_message=False)
 
     def handle_step(self, message):
-        self.Step(explicit=True)
+        self.step(explicit=True)
 
     def handle_next(self, message):
-        self.Next(explicit=True)
+        self.next(explicit=True)
 
     def handle_restart(self, message):
         print('Got restart')
 
     def handle_set_breakpoint(self, message):
         print('Got set breakpoint')
-        self.AddBreakpoint(message.addr)
+        self.add_breakpoint(message.addr)
 
     def handle_unset_breakpoint(self, message):
         print('Got unset breakpoint')
-        self.RemoveBreakpoint(message.addr)
+        self.remove_breakpoint(message.addr)
 
     def handle_taperequest(self, message):
         if message.size:
@@ -97,11 +97,11 @@ class Debugger(object):
 
     def handle_load_tape(self, message):
         if message.num < len(self.tapes):
-            self.machine.tape_drive.loadTape(self.tapes[message.num])
+            self.machine.tape_drive.load_tape(self.tapes[message.num])
             self.loaded_tape = message.num
 
     def handle_unload_tape(self, message):
-        self.machine.tape_drive.unloadTape()
+        self.machine.tape_drive.unload_tape()
         self.loaded_tape = None
 
     def handle_request_symbols(self, message):
@@ -175,7 +175,7 @@ class Debugger(object):
         # pretend they just requested the symbols
         self.handle_request_symbols(self.symbols)
 
-    def AddBreakpoint(self, addr):
+    def add_breakpoint(self, addr):
         if addr & 3:
             raise ValueError()
         if addr in self.breakpoints:
@@ -186,19 +186,19 @@ class Debugger(object):
 
     def new_machine(self, machine):
         self.machine = machine
-        self.machine.tape_drive.registerCallback(self.set_need_symbols)
+        self.machine.tape_drive.register_callback(self.set_need_symbols)
         self.next_instruction = None
         for bkpt in self.breakpoints:
             self.breakpoints[bkpt] = self.machine.memw[bkpt]
             self.machine.memw[bkpt] = self.BKPT
         if self.loaded_tape is not None:
-            self.machine.tape_drive.loadTape(self.tapes[self.loaded_tape])
+            self.machine.tape_drive.load_tape(self.tapes[self.loaded_tape])
 
-    def RemoveBreakpoint(self, addr):
+    def remove_breakpoint(self, addr):
         self.machine.memw[addr] = self.breakpoints[addr]
         del self.breakpoints[addr]
 
-    def StepNumInternal(self, num, skip_breakpoint):
+    def step_num_internal(self, num, skip_breakpoint):
         # If we're at a breakpoint and we've been asked to continue, we step it once and then replace the breakpoint
         if num == 0:
             return None
@@ -208,24 +208,24 @@ class Debugger(object):
             old_pos = self.machine.pc
             print('boom doing replacement')
             self.machine.memw[self.machine.pc] = self.breakpoints[self.machine.pc]
-            status = self.machine.StepAndWait(1)
+            status = self.machine.step_and_wait(1)
             self.machine.memw[old_pos] = self.BKPT
             if num > 0:
                 num -= 1
         if num > 0:
-            status = self.machine.StepAndWait(num)
+            status = self.machine.step_and_wait(num)
 
-        # self.state_window.Update()
+        # self.state_window.update()
         if self.need_symbols:
             self.load_symbols()
         self.send_register_update()
         self.send_mem_update()
         return status
 
-    def Step(self, explicit=False):
-        return self.StepNumInternal(1, skip_breakpoint=explicit)
+    def step(self, explicit=False):
+        return self.step_num_internal(1, skip_breakpoint=explicit)
 
-    def Next(self, explicit=True):
+    def next(self, explicit=True):
         # Continue until we reach the next instruction. We implement this by adding a secret breakpoint
         # at the next instruction, then removing it the next time the machine stops
         if self.machine.pc in self.breakpoints:
@@ -235,23 +235,23 @@ class Debugger(object):
         print(hex(self.machine.pc), hex(word), disassemble.sets_lr(word))
         if not disassemble.sets_lr(word):
             # We can just step 1 instruction in this case
-            return self.Step(explicit)
+            return self.step(explicit)
 
         next_instruction = self.machine.pc + 4
         if next_instruction in self.breakpoints:
             # In this case we just allow a continue since it'll stop anyway
             print('blarg')
-            return self.Continue(explicit)
+            return self.resume(explicit)
 
         # OK so we're going to actually put the breakpoint in
         self.next_breakpoint = (next_instruction, self.machine.memw[next_instruction])
         self.machine.memw[next_instruction] = self.BKPT
-        return self.Continue(explicit)
+        return self.resume(explicit)
 
-    def Continue(self, explicit=False):
+    def resume(self, explicit=False):
         result = None
         self.stopped = False
-        status = self.StepNumInternal(self.num_to_step, skip_breakpoint=explicit)
+        status = self.step_num_internal(self.num_to_step, skip_breakpoint=explicit)
         if armv2.Status.Breakpoint == status:
             print('**************** GOT BREAKPOINT **************')
             self.Stop()
@@ -260,26 +260,26 @@ class Debugger(object):
     def wants_interrupt(self):
         return not self.stopped or self.machine.is_waiting()
 
-    def StepNum(self, num):
+    def step_num(self, num):
         self.num_to_step = num
         if not self.stopped:
             if self.machine.stepping:
                 return
             else:
-                return self.Continue()
+                return self.resume()
 
         #disassembly = disassemble.Disassemble(cpu.mem)
         # We're stopped, so display and wait for a keypress
-        self.Update()
+        self.update()
 
-    def Update(self):
+    def update(self):
         self.send_register_update()
         self.send_mem_update()
 
     def exit(self):
         self.connection.exit()
 
-    def Stop(self, send_message=True):
+    def stop(self, send_message=True):
         self.stopped = True
         if self.next_breakpoint is not None:
             next_instruction, word = self.next_breakpoint

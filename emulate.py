@@ -15,12 +15,12 @@ from optparse import OptionParser
 def new_machine(boot_rom):
     machine = hardware.Machine(cpu_size=1 << 21, cpu_rom=boot_rom)
     try:
-        machine.AddHardware(hardware.Keyboard(machine), name='keyboard')
-        machine.AddHardware(hardware.Display(machine, scale_factor=1), name='display')
-        machine.AddHardware(hardware.Clock(machine), name='clock')
-        machine.AddHardware(hardware.TapeDrive(machine), name='tape_drive')
+        machine.add_hardware(hardware.Keyboard(machine), name='keyboard')
+        machine.add_hardware(hardware.Display(machine, scale_factor=1), name='display')
+        machine.add_hardware(hardware.Clock(machine), name='clock')
+        machine.add_hardware(hardware.TapeDrive(machine), name='tape_drive')
     except:
-        machine.Delete()
+        machine.delete()
         raise
     return machine
 
@@ -42,7 +42,7 @@ class Emulator(object):
     def __exit__(self, *args):
         self.dbg.exit()
         try:
-            self.dbg.machine.Delete()
+            self.dbg.machine.delete()
         except:
             pass
 
@@ -54,7 +54,7 @@ class Emulator(object):
 
         finally:
             self.dbg.exit()
-            armv2.DebugLog('deleting machine')
+            armv2.debug_log('deleting machine')
             try:
                 self.dbg.machine.Delete()
             except:
@@ -69,7 +69,7 @@ class Emulator(object):
             return
         if key == ord('\r'):
             key = ord('\n')
-        self.dbg.machine.keyboard.KeyUp(key)
+        self.dbg.machine.keyboard.key_up(key)
 
     def key_down(self, event):
         if self.dbg.stopped:
@@ -80,13 +80,13 @@ class Emulator(object):
             return
         if key == ord('\r'):
             key = ord('\n')
-        self.dbg.machine.keyboard.KeyDown(key)
+        self.dbg.machine.keyboard.key_down(key)
 
     def restart(self):
         breakpoints = self.dbg.breakpoints
-        self.dbg.machine.Delete()
+        self.dbg.machine.delete()
         self.dbg.new_machine(new_machine(self.boot_rom))
-        self.dbg.Update()
+        self.dbg.update()
         self.dbg.load_symbols()
 
     def skip_loading(self):
@@ -97,7 +97,7 @@ class Emulator(object):
 
     def mainloop(self, callback):
         globals.t = pygame.time.get_ticks()
-        self.dbg.StepNum(self.dbg.FRAME_CYCLES)
+        self.dbg.step_num(self.dbg.FRAME_CYCLES)
         for event in pygame.event.get():
             if event.type == pygame.locals.QUIT:
                 return True
@@ -117,7 +117,7 @@ class Emulator(object):
                 if key == ord('\r'):
                     key = ord('\n')
                 if key < 256:
-                    self.dbg.machine.keyboard.KeyDown(key)
+                    self.dbg.machine.keyboard.key_down(key)
             elif event.type == pygame.locals.KEYUP:
                 key = event.key
                 try:
@@ -129,8 +129,8 @@ class Emulator(object):
                 if key == ord('\r'):
                     key = ord('\n')
                 if key < 256:
-                    self.dbg.machine.keyboard.KeyUp(key)
-        #elapsed = globals.t - self.last
+                    self.dbg.machine.keyboard.key_up(key)
+        # elapsed = globals.t - self.last
         # if 1 and elapsed > 20:
         drawing.opengl.clear_screen()
         self.dbg.machine.display.new_frame()
@@ -138,7 +138,7 @@ class Emulator(object):
         self.dbg.machine.display.end_frame()
         self.dbg.machine.display.draw_to_screen()
         pygame.display.flip()
-        #self.last = globals.t
+        # self.last = globals.t
 
         if callback:
             try:
@@ -164,5 +164,5 @@ def init(width, height, do_screen=True):
     #globals.screen.full_quad.SetVertices(globals.screen*0.5, globals.screen,0.01)
     if do_screen:
         screen = pygame.display.set_mode((width, height), pygame.OPENGL | pygame.DOUBLEBUF)
-    drawing.Init(width, height, hardware.Display.pixel_size)
-    drawing.InitDrawing()
+    drawing.init(width, height, hardware.Display.pixel_size)
+    drawing.init_drawing()

@@ -40,10 +40,10 @@ class Keyboard(armv2.Device):
         self.ring_buffer = [0 for i in range(self.ringbuffer_size)]
         self.pos = 0
         self.key_state = 0
-        armv2.DebugLog('keyboard keyboard keyboard!\n')
+        armv2.debug_log('keyboard keyboard keyboard!\n')
 
-    def KeyDown(self, key):
-        armv2.DebugLog('key down ' + str(key))
+    def key_down(self, key):
+        armv2.debug_log('key down ' + str(key))
         self.key_state |= (1 << key)
         self.ring_buffer[self.pos] = key
         self.pos += 1
@@ -51,13 +51,13 @@ class Keyboard(armv2.Device):
             self.pos = 0
         self.cpu.Interrupt(self.id, self.InterruptCodes.KEY_DOWN)
 
-    def KeyUp(self, key):
-        armv2.DebugLog('key up ' + str(key))
+    def key_up(self, key):
+        armv2.debug_log('key up ' + str(key))
         self.key_state &= ~(1 << key)
         self.cpu.Interrupt(self.id, self.InterruptCodes.KEY_UP)
 
-    def readCallback(self, addr, value):
-        armv2.DebugLog('keyboard reader %x %x\n' % (addr, value))
+    def read_callback(self, addr, value):
+        armv2.debug_log('keyboard reader %x %x\n' % (addr, value))
         if addr < self.ringbuffer_start:
             # It's a state request
             return (self.key_state >> (8 * addr) & 0xffffffff)
@@ -70,31 +70,31 @@ class Keyboard(armv2.Device):
 
         return 0
 
-    def readByteCallback(self, addr, value):
-        armv2.DebugLog('keyboard reader byte %x %x\n' % (addr, value))
+    def read_byte_callback(self, addr, value):
+        armv2.debug_log('keyboard reader byte %x %x\n' % (addr, value))
         if addr < self.ringbuffer_start:
             # It's a state request
             return (self.key_state >> (8 * addr) & 0xff)
         elif addr < self.ringbuffer_pos:
             pos = addr - self.ringbuffer_start
             out = self.ring_buffer[pos]
-            armv2.DebugLog('Read key data %d\n' % out)
+            armv2.debug_log('Read key data %d\n' % out)
             return out
         elif addr == self.ringbuffer_pos:
             return self.pos
         else:
             return 0
 
-    def writeCallback(self, addr, value):
-        armv2.DebugLog('keyboard writer %x %x\n' % (addr, value))
+    def write_callback(self, addr, value):
+        armv2.debug_log('keyboard writer %x %x\n' % (addr, value))
         return 0
 
-    def writeByteCallback(self, addr, value):
-        armv2.DebugLog('keyboard writer %x %x\n' % (addr, value))
+    def write_byte_callback(self, addr, value):
+        armv2.debug_log('keyboard writer %x %x\n' % (addr, value))
         return 0
 
 
-def SetPixels(pixels, word):
+def set_pixels(pixels, word):
     for j in range(64):
         # the next line is so obvious it doesn't need a comment
         pixels[j // 8][j % 8] = ((word >> j) & 1)
@@ -212,7 +212,7 @@ class TapeDrive(armv2.Device):
 
         for i, row in enumerate(self.stripes):
             for stripe in row:
-                stripe.SetColour(Display.Colours.YELLOW if i & 1 else Display.Colours.BLUE)
+                stripe.set_colour(Display.Colours.YELLOW if i & 1 else Display.Colours.BLUE)
 
     def start_playing(self):
         if not self.tape_sound:
@@ -234,8 +234,8 @@ class TapeDrive(armv2.Device):
         self.tape_sound.stop()
         self.playing = False
 
-    def loadTape(self, filename):
-        self.unloadTape()
+    def load_tape(self, filename):
+        self.unload_tape()
         self.data_blocks = []
         with open(filename, 'rb') as f:
             while True:
@@ -307,10 +307,10 @@ class TapeDrive(armv2.Device):
         self.tape_sound = pygame.sndarray.make_sound(samples)
         self.sample_rate = float(freq) / 1000
 
-    def registerCallback(self, callback):
+    def register_callback(self, callback):
         self.end_callback = callback
 
-    def unloadTape(self):
+    def unload_tape(self):
         if self.tape_name:
             self.data_blocks = []
             self.current_block = 0
@@ -327,7 +327,7 @@ class TapeDrive(armv2.Device):
         self.stop_playing()
         self.end_callback()
 
-    def readByteCallback(self, addr, value):
+    def read_byte_callback(self, addr, value):
         if addr == 0:
             # They want the current status
             return self.status
@@ -416,7 +416,7 @@ class TapeDrive(armv2.Device):
                 else:
                     colour = Display.Colours.RED
                 for q in stripes:
-                    q.SetColour(colour)
+                    q.set_colour(colour)
 
         else:
             # The stripes should be all the ones up to that position. If we don't have anything
@@ -448,14 +448,14 @@ class TapeDrive(armv2.Device):
                 steps = 1
 
                 for q in self.stripes[stripe_pos]:
-                    q.SetColour(colour)
+                    q.set_colour(colour)
 
                 # try:
                 #     for i in xrange(steps):
                 #         for q in self.stripes[stripe_pos + i]:
-                #             q.SetColour(Display.Colours.BLUE)
+                #             q.set_colour(Display.Colours.BLUE)
                 #         for q in self.stripes[stripe_pos + steps + i]:
-                #             q.SetColour(Display.Colours.YELLOW)
+                #             q.set_colour(Display.Colours.YELLOW)
                 # except IndexError:
                 #     #print 'ie',stripe_pos
                 #     break
@@ -464,9 +464,9 @@ class TapeDrive(armv2.Device):
                 #stripe_pos += steps*2
                 stripe_pos += 1
 
-        drawing.DrawNoTexture(self.quad_buffer)
+        drawing.draw_no_texture(self.quad_buffer)
 
-    def writeByteCallback(self, addr, value):
+    def write_byte_callback(self, addr, value):
         if addr == 0:
             # Trying to write to the read register. :(
             pass
@@ -500,7 +500,7 @@ class TapeDrive(armv2.Device):
             pass
         return 0
 
-    def Delete(self):
+    def delete(self):
         self.power_down()
 
 
@@ -576,13 +576,13 @@ class Display(armv2.Device):
         for pos in range(len(self.letter_data)):
             self.redraw(pos)
 
-    def readCallback(self, addr, value):
+    def read_callback(self, addr, value):
         # The display has a secret RNG, did you know that?
         if addr == self.letter_end:
             return int(random.getrandbits(32))
         if addr == self.letter_end + 4:
             return int(time.time())
-        bytes = [self.readByteCallback(addr + i, 0) for i in range(4)]
+        bytes = [self.read_byte_callback(addr + i, 0) for i in range(4)]
         return (bytes[0]) | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)
 
     def pixel_width(self):
@@ -591,19 +591,19 @@ class Display(armv2.Device):
     def pixel_height(self):
         return self.height * self.cell_size * self.scale_factor
 
-    def writeCallback(self, addr, value):
-        armv2.DebugLog('display write word %x %x\n' % (addr, value))
+    def write_callback(self, addr, value):
+        armv2.debug_log('display write word %x %x\n' % (addr, value))
         if addr == self.letter_end:
             random.seed(value)
             return 0
         for i in range(4):
             byte = value & 0xff
-            self.writeByteCallback(addr, byte)
+            self.write_byte_callback(addr, byte)
             addr += 1
             value >>= 8
         return 0
 
-    def readByteCallback(self, addr, value):
+    def read_byte_callback(self, addr, value):
         if addr < self.letter_start:
             # It's the palette
             return self.palette_data[addr]
@@ -611,8 +611,8 @@ class Display(armv2.Device):
             pos = addr - self.letter_start
             return self.letter_data[pos]
 
-    def writeByteCallback(self, addr, value):
-        #armv2.DebugLog('display write byte %x %x\n' % (addr,value))
+    def write_byte_callback(self, addr, value):
+        #armv2.debug_log('display write byte %x %x\n' % (addr,value))
         if addr < self.letter_start:
             # It's the palette
             pos = addr
@@ -635,16 +635,16 @@ class Display(armv2.Device):
         palette = self.palette_data[pos]
         back_colour = self.Colours.palette[(palette >> 4) & 0xf]
         fore_colour = self.Colours.palette[(palette) & 0xf]
-        self.back_quads[pos].SetColour(back_colour)
-        self.fore_quads[pos].SetColour(fore_colour)
-        tc = self.atlas.TextureCoords(chr(letter))
-        self.fore_quads[pos].SetTextureCoordinates(tc)
+        self.back_quads[pos].set_colour(back_colour)
+        self.fore_quads[pos].set_colour(fore_colour)
+        tc = self.atlas.texture_coords(chr(letter))
+        self.fore_quads[pos].set_texture_coordinates(tc)
 
     def new_frame(self):
         drawing.new_crt_frame(self.crt_buffer)
-        # self.crt_buffer.BindForWriting()
-        drawing.DrawNoTexture(self.back_quads_buffer)
-        drawing.DrawAll(self.fore_quads_buffer, self.atlas.texture)
+        # self.crt_buffer.bind_for_writing()
+        drawing.draw_no_texture(self.back_quads_buffer)
+        drawing.draw_all(self.fore_quads_buffer, self.atlas.texture)
 
     def end_frame(self):
         drawing.end_crt_frame(self.crt_buffer)
@@ -659,7 +659,7 @@ class Clock(armv2.Device):
     """
     id = 0x92d177b0
 
-    def operationCallback(self, arg0, arg1):
+    def operation_callback(self, arg0, arg1):
         pygame.time.set_timer(pygame.USEREVENT, arg0)
         return 0
 
@@ -699,7 +699,7 @@ class Machine:
         self.memw         = MemPassthrough(self.cv, self.cpu.memw)
         self.thread       = threading.Thread(target=self.threadMain)
         self.tape_drive   = None
-        self.status       = armv2.Status.Ok
+        self.status       = armv2.Status.OK
         self.thread.start()
 
     @property
@@ -727,14 +727,14 @@ class Machine:
         with self.cv:
             return self.cpu.pc
 
-    def threadMainLoop(self):
+    def thread_main_loop(self):
         while self.running and \
             ((self.steps_to_run == 0) or
-             (self.status == armv2.Status.WaitForInterrupt and not (self.cpu.pins & armv2.Pins.Interrupt))):
-            armv2.DebugLog('%d %d %x' % (self.steps_to_run, self.status, self.cpu.pins))
+             (self.status == armv2.Status.WAIT_FOR_INTERRUPT and not (self.cpu.pins & armv2.Pins.INTERRUPT))):
+            armv2.debug_log('%d %d %x' % (self.steps_to_run, self.status, self.cpu.pins))
             self.cv.wait(5)
             if self.steps_to_run > 0:
-                self.status = self.cpu.Step(self.steps_to_run)
+                self.status = self.cpu.step(self.steps_to_run)
             self.steps_to_run = 0
             self.cv.notify()
 
@@ -742,7 +742,7 @@ class Machine:
         try:
             with self.cv:
                 while self.running:
-                    self.threadMainLoop()
+                    self.thread_main_loop()
         finally:
             # in case we exit this and leave running on (due to an exception say)
             self.running = False
@@ -752,11 +752,11 @@ class Machine:
             self.steps_to_run = num
             self.cv.notify()
 
-    def StepAndWait(self, num):
-        self.Step(num)
+    def step_and_wait(self, num):
+        self.step(num)
         with self.cv:
             while self.running:
-                while self.running and (self.steps_to_run and self.status != armv2.Status.WaitForInterrupt):
+                while self.running and (self.steps_to_run and self.status != armv2.Status.WAIT_FOR_INTERRUPT):
                     self.cv.wait(0.1)
                     # Keep interrupts pumping every now and again
                     #self.cpu.Interrupt(6, 0)
@@ -773,15 +773,15 @@ class Machine:
         if name != None:
             setattr(self, name, device)
 
-    def Delete(self):
+    def delete(self):
         with self.cv:
             self.running = False
             self.cv.notify()
-        armv2.DebugLog('joining thread')
+        armv2.debug_log('joining thread')
         self.thread.join()
-        armv2.DebugLog('Killed')
+        armv2.debug_log('Killed')
         if self.tape_drive:
-            self.tape_drive.Delete()
+            self.tape_drive.delete()
 
     def Interrupt(self, hw_id, code):
         # print 'Interrupting1'
@@ -794,9 +794,9 @@ class Machine:
             self.cv.notify()
 
     def is_waiting(self):
-        return self.status == armv2.Status.WaitForInterrupt
+        return self.status == armv2.Status.WAIT_FOR_INTERRUPT
 
-    def Update(self):
+    def update(self):
 
         return
         # if self.tape_drive and self.tape_drive.loading:

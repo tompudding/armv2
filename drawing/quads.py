@@ -20,11 +20,11 @@ class ShapeBuffer(object):
     """
 
     def __init__(self, size):
-        self.vertex_data  = numpy.zeros((size * self.num_points, 3), numpy.float32)
-        self.tc_data      = numpy.zeros((size * self.num_points, 2), numpy.float32)
+        self.vertex_data = numpy.zeros((size * self.num_points, 3), numpy.float32)
+        self.tc_data     = numpy.zeros((size * self.num_points, 2), numpy.float32)
         self.colour_data = numpy.ones((size * self.num_points, 4),
                                       numpy.float32)  # RGBA default is white opaque
-        self.indices      = numpy.zeros(size * self.num_points, numpy.uint32)  # de
+        self.indices     = numpy.zeros(size * self.num_points, numpy.uint32)  # de
         self.size = size
         for i in range(size * self.num_points):
             self.indices[i] = i
@@ -69,7 +69,7 @@ class ShapeBuffer(object):
         self.colour_data = numpy.ones((self.max_size, 4), numpy.float32)  # RGBA default is white opaque
         self.vacant = set()
 
-    def RemoveShape(self, index):
+    def remove_shape(self, index):
         """A quad is no longer needed. Because it can be in the middle of our nice block and we can't be spending
         serious cycles moving everything, we just disable it by zeroing out it's indicies. This fragmentation
         has a cost in terms of the number of quads we're going to be asking the graphics card to draw, but
@@ -92,7 +92,7 @@ class QuadBuffer(ShapeBuffer):
         self.mouse_relative = mouse_relative
         super(QuadBuffer, self).__init__(size)
 
-    def SortForDepth(self):
+    def sort_for_depth(self):
         depths = [(i, min(self.vertex_data[self.indices[i + j]][1] for j in range(4)))
                   for i in range(0, self.current_size, 4) if i not in self.vacant]
         # The dotted textures are supposed to be drawn on top of the tiles, so they have their z coordinates
@@ -111,7 +111,7 @@ class QuadBuffer(ShapeBuffer):
 
 
 class ShadowQuadBuffer(QuadBuffer):
-    def NewLight(self):
+    def new_light(self):
         row = self.current_size / self.num_points
         light = Quad(self)
         # Now set the vertices for the next line ...
@@ -175,16 +175,16 @@ class Shape(object):
         self.deleted = False
         self.enabled = True
 
-    def Delete(self):
+    def delete(self):
         """
         This quad is done with permanently. We set a deleted flag to prevent us from accidentally
         trying to use it again, which since the underlying buffers could have been reassigned would cause
         some graphical mentalness
         """
-        self.source.RemoveShape(self.index)
+        self.source.remove_shape(self.index)
         self.deleted = True
 
-    def Disable(self):
+    def disable(self):
         """
         Temporarily don't draw this quad. We don't have a very nice way of doing this other
         than turning it into an invisible dot in the corner, but since graphics card power is
@@ -198,7 +198,7 @@ class Shape(object):
             for i in range(self.num_points):
                 self.vertex[i] = (0, 0, 0)
 
-    def Enable(self):
+    def enable(self):
         """
         Draw this quad again after it's been disabled
         """
@@ -210,7 +210,7 @@ class Shape(object):
                 self.vertex[i] = self.old_vertices[i]
             self.old_vertices = None
 
-    def SetVertices(self, bl, tr, z):
+    def set_vertices(self, bl, tr, z):
         if self.deleted:
             return
         self.setvertices(self.vertex, bl, tr, z)
@@ -219,7 +219,7 @@ class Shape(object):
             for i in range(self.num_points):
                 self.vertex[i] = (0, 0, 0)
 
-    def SetAllVertices(self, vertices, z):
+    def set_all_vertices(self, vertices, z):
         if self.deleted:
             return
         setallvertices(self, self.vertex, vertices, z)
@@ -228,10 +228,10 @@ class Shape(object):
             for i in range(self.num_points):
                 self.vertex[i] = (0, 0, 0)
 
-    def GetCentre(self):
+    def get_centre(self):
         return (Point(self.vertex[0][0], self.vertex[0][1]) + Point(self.vertex[2][0], self.vertex[2][1])) / 2
 
-    def Translate(self, amount):
+    def translate(self, amount):
         if self.old_vertices is not None:
             vertices = self.old_vertices
         else:
@@ -240,19 +240,19 @@ class Shape(object):
             vertices[i][0] -= amount[0]
             vertices[i][1] -= amount[1]
 
-    def SetColour(self, colour):
+    def set_colour(self, colour):
         if self.deleted:
             return
         self.setcolour(self.colour, colour)
 
-    def SetColours(self, colours):
+    def set_colours(self, colours):
         if self.deleted:
             return
         for current, target in zip(self.colour, colours):
             for i in range(self.num_points):
                 current[i] = target[i]
 
-    def SetTextureCoordinates(self, tc):
+    def set_texture_coordinates(self, tc):
         self.tc[0:self.num_points] = tc
 
 
@@ -316,40 +316,40 @@ class QuadBorder(object):
         self.quads = [Quad(source) for i in range(4)]
         self.line_width = line_width
         if colour:
-            self.SetColour(colour)
+            self.set_colour(colour)
 
-    def SetVertices(self, bl, tr):
+    def set_vertices(self, bl, tr):
         # top bar
-        self.quads[0].SetVertices(Point(bl.x, tr.y - self.line_width),
-                                  tr,
-                                  constants.DrawLevels.ui + 1)
+        self.quads[0].set_vertices(Point(bl.x, tr.y - self.line_width),
+                                   tr,
+                                   constants.DrawLevels.ui + 1)
         # right bar
-        self.quads[1].SetVertices(Point(tr.x - self.line_width, bl.y),
-                                  tr,
-                                  constants.DrawLevels.ui + 1)
+        self.quads[1].set_vertices(Point(tr.x - self.line_width, bl.y),
+                                   tr,
+                                   constants.DrawLevels.ui + 1)
 
         # bottom bar
-        self.quads[2].SetVertices(bl,
-                                  Point(tr.x, bl.y + self.line_width),
-                                  constants.DrawLevels.ui + 1)
+        self.quads[2].set_vertices(bl,
+                                   Point(tr.x, bl.y + self.line_width),
+                                   constants.DrawLevels.ui + 1)
 
         # left bar
-        self.quads[3].SetVertices(bl,
-                                  Point(bl.x + self.line_width, tr.y),
-                                  constants.DrawLevels.ui + 1)
+        self.quads[3].set_vertices(bl,
+                                   Point(bl.x + self.line_width, tr.y),
+                                   constants.DrawLevels.ui + 1)
 
-    def SetColour(self, colour):
+    def set_colour(self, colour):
         for quad in self.quads:
-            quad.SetColour(colour)
+            quad.set_colour(colour)
 
-    def Enable(self):
+    def enable(self):
         for quad in self.quads:
-            quad.Enable()
+            quad.enable()
 
-    def Disable(self):
+    def disable(self):
         for quad in self.quads:
-            quad.Disable()
+            quad.disable()
 
-    def Delete(self):
+    def delete(self):
         for quad in self.quads:
-            quad.Delete()
+            quad.delete()

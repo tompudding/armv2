@@ -10,28 +10,28 @@ MAX_26BIT          = 1<<26
 SWI_BREAKPOINT     = carmv2.SWI_BREAKPOINT
 
 class CpuExceptions:
-    Reset                = carmv2.EXCEPT_RST
-    UndefinedInstruction = carmv2.EXCEPT_UNDEFINED_INSTRUCTION
-    SoftwareInterrupt    = carmv2.EXCEPT_SOFTWARE_INTERRUPT
-    PrefetchAboprt       = carmv2.EXCEPT_PREFETCH_ABORT
-    DataAbort            = carmv2.EXCEPT_DATA_ABORT
-    Address              = carmv2.EXCEPT_ADDRESS
-    Irq                  = carmv2.EXCEPT_IRQ
-    Fiq                  = carmv2.EXCEPT_FIQ
-    Breakpoint           = carmv2.EXCEPT_BREAKPOINT
+    RESET                 = carmv2.EXCEPT_RST
+    UNDEFINED_INSTRUCTION = carmv2.EXCEPT_UNDEFINED_INSTRUCTION
+    SOFTWARE_INTERRUPT    = carmv2.EXCEPT_SOFTWARE_INTERRUPT
+    PREFETCH_ABOPRT       = carmv2.EXCEPT_PREFETCH_ABORT
+    DATA_ABORT            = carmv2.EXCEPT_DATA_ABORT
+    ADDRESS               = carmv2.EXCEPT_ADDRESS
+    IRQ                   = carmv2.EXCEPT_IRQ
+    FIQ                   = carmv2.EXCEPT_FIQ
+    BREAKPOINT            = carmv2.EXCEPT_BREAKPOINT
 
 class Status:
-    Ok               = carmv2.ARMV2STATUS_OK
-    InvalidCpuState  = carmv2.ARMV2STATUS_INVALID_CPUSTATE
-    MemoryError      = carmv2.ARMV2STATUS_MEMORY_ERROR
-    ValueError       = carmv2.ARMV2STATUS_VALUE_ERROR
-    IoError          = carmv2.ARMV2STATUS_IO_ERROR
-    Breakpoint       = carmv2.ARMV2STATUS_BREAKPOINT
-    WaitForInterrupt = carmv2.ARMV2STATUS_WAIT_FOR_INTERRUPT
+    OK                 = carmv2.ARMV2STATUS_OK
+    INVALID_CPU_STATE  = carmv2.ARMV2STATUS_INVALID_CPUSTATE
+    MEMORY_ERROR       = carmv2.ARMV2STATUS_MEMORY_ERROR
+    VALUE_ERROR        = carmv2.ARMV2STATUS_VALUE_ERROR
+    IO_ERROR           = carmv2.ARMV2STATUS_IO_ERROR
+    BREAKPOINT         = carmv2.ARMV2STATUS_BREAKPOINT
+    WAIT_FOR_INTERRUPT = carmv2.ARMV2STATUS_WAIT_FOR_INTERRUPT
 
 class Pins:
-    Interrupt     = carmv2.PIN_I
-    FastInterrupt = carmv2.PIN_F
+    INTERRUPT      = carmv2.PIN_I
+    FAST_INTERRUPT = carmv2.PIN_F
 
 def PAGEOF(addr):
     return addr>>carmv2.PAGE_SIZE_BITS
@@ -313,12 +313,12 @@ cdef class Armv2:
         if filename != None:
             self.LoadROM(filename)
 
-    def LoadROM(self, filename):
+    def load_rom(self, filename):
         result = carmv2.load_rom(self.cpu, filename.encode('ascii'))
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError(f'result {result}')
 
-    def Step(self,number = None):
+    def step(self,number = None):
         cdef uint32_t result
         cdef carmv2.armv2 *cpu = self.cpu
         cdef uint32_t instructions = -1 if number == None else number
@@ -327,7 +327,7 @@ cdef class Armv2:
         #right now can only return OK or BREAKPOINT, but we don't care either way...
         return result
 
-    def AddHardware(self,Device device,name = None):
+    def add_hardware(self,Device device,name = None):
         #FIXME: Does this do reference counting properly? We need it to increment, and we need a corresponding
         #decrement somewhere else in the code
         device.cdevice.extra = <void*>device
@@ -336,14 +336,14 @@ cdef class Armv2:
             raise ValueError()
         self.hardware.append(device)
 
-    def Interrupt(self, hw_id, code):
+    def interrupt(self, hw_id, code):
         result = carmv2.interrupt(self.cpu, <uint32_t>hw_id, <uint32_t>code)
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 
 debugf = None
 log_lock = threading.Lock()
-def DebugLog(message):
+def debug_log(message):
     global debugf
     message = str(threading.get_ident()) + ' ' + message
     with log_lock:

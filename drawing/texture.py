@@ -166,7 +166,7 @@ class TextureAtlas(object):
         for i in range(len(tc)):
             self.TransformCoord(subimage, tc[i])
 
-    def TextureCoords(self, subimage):
+    def texture_coords(self, subimage):
         full_tc = [[0, 0], [0, 1], [1, 1], [1, 0]]
         self.TransformCoords(subimage, full_tc)
         return full_tc

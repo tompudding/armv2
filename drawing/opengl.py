@@ -36,10 +36,10 @@ class ShaderData(object):
         self.dimensions = (0, 0, 0)
         self.dirname = os.path.dirname(os.path.realpath(__file__))
 
-    def Use(self):
+    def use(self):
         shaders.glUseProgram(self.program)
 
-    def Load(self, name, uniforms, attributes):
+    def load(self, name, uniforms, attributes):
         vertex_name, fragment_name = (os.path.join('shaders', '%s_%s.glsl' %
                                                    (name, typeof)) for typeof in ('vertex', 'fragment'))
         codes = []
@@ -77,13 +77,13 @@ class CrtBuffer(object):
 
     def __init__(self, width, height):
         self.fbo = glGenFramebuffers(1)
-        self.BindForWriting()
+        self.bind_for_writing()
         try:
-            self.InitBound(width, height)
+            self.init_bound(width, height)
         finally:
-            self.Unbind()
+            self.unbind()
 
-    def InitBound(self, width, height):
+    def init_bound(self, width, height):
         self.textures      = glGenTextures(self.NUM_TEXTURES)
         if self.NUM_TEXTURES == 1:
             # Stupid inconsistent interface
@@ -101,25 +101,25 @@ class CrtBuffer(object):
             glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 +
                                    i, GL_TEXTURE_2D, self.textures[i], 0)
 
-        #glBindTexture(GL_TEXTURE_2D, self.depth_texture)
-        #glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
-        #glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self.depth_texture, 0)
+        # glBindTexture(GL_TEXTURE_2D, self.depth_texture)
+        # glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
+        # glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self.depth_texture, 0)
         glDrawBuffers([GL_COLOR_ATTACHMENT0])
 
         if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
             print('crapso1')
             raise SystemExit
 
-    def BindForWriting(self):
+    def bind_for_writing(self):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.fbo)
 
-    def BindForReading(self, offset):
-        self.Unbind()
+    def bind_for_reading(self, offset):
+        self.unbind()
         for i, texture in enumerate(self.textures):
             glActiveTexture(GL_TEXTURE0 + i + offset)
             glBindTexture(GL_TEXTURE_2D, texture)
 
-    def Unbind(self):
+    def unbind(self):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
 
 
@@ -127,8 +127,8 @@ default_shader   = ShaderData()
 crt_shader       = ShaderData()
 
 
-def Init(w, h, pixel_size):
-    default_shader.Load('default',
+def init(w, h, pixel_size):
+    default_shader.load('default',
                         uniforms=('tex', 'translation', 'scale',
                                   'screen_dimensions',
                                   'using_textures'),
@@ -136,13 +136,13 @@ def Init(w, h, pixel_size):
                                     'tc_data',
                                     'colour_data'))
 
-    crt_shader.Load('crt',
+    crt_shader.load('crt',
                     uniforms=('tex', 'translation', 'scale',
                               'screen_dimensions', 'global_time'),
                     attributes=('vertex_data',
                                 'tc_data'))
 
-    #crt_buffer = CrtBuffer(*pixel_size)
+    # crt_buffer = CrtBuffer(*pixel_size)
 
     glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -160,8 +160,8 @@ def clear_screen():
 
 
 def new_crt_frame(crt_buffer):
-    default_shader.Use()
-    crt_buffer.BindForWriting()
+    default_shader.use()
+    crt_buffer.bind_for_writing()
     # glDepthMask(GL_TRUE)
     glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -176,9 +176,9 @@ def end_crt_frame(crt_buffer):
 
 
 def draw_crt_to_screen(crt_buffer):
-    crt_shader.Use()
+    crt_shader.use()
     glUniform1f(crt_shader.locations.global_time, globals.t / 1000.0)
-    crt_buffer.BindForReading(0)
+    crt_buffer.bind_for_reading(0)
     #glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glEnableVertexAttribArray(crt_shader.locations.vertex_data)
     glEnableVertexAttribArray(crt_shader.locations.tc_data)
@@ -191,26 +191,26 @@ def draw_crt_to_screen(crt_buffer):
                    GL_UNSIGNED_INT, globals.screen_quadbuffer.indices)
 
 
-def InitDrawing():
+def init_drawing():
     """
-    Should only need to be called once at the start (but after Init)
+    Should only need to be called once at the start (but after init)
     to enable the full client state. We turn off and on again where necessary, but
     generally try to keep them all on
     """
-    default_shader.Use()
+    default_shader.use()
     glUniform3f(default_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, 10)
     glUniform1i(default_shader.locations.tex, 0)
     glUniform2f(default_shader.locations.translation, 0, 0)
     glUniform2f(default_shader.locations.scale, 1, 1)
 
-    crt_shader.Use()
+    crt_shader.use()
     glUniform3f(crt_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, 10)
     glUniform1i(crt_shader.locations.tex, 0)
     glUniform2f(crt_shader.locations.translation, 0, 0)
     glUniform2f(crt_shader.locations.scale, 1, 1)
 
 
-def DrawAll(quad_buffer, texture):
+def draw_all(quad_buffer, texture):
     # This is a copy paste from the above function, but this is the inner loop of the program, and we need it to be fast.
     # I'm not willing to put conditionals around the normal lines, so I made a copy of the function without them
     glActiveTexture(GL_TEXTURE0)
@@ -233,7 +233,7 @@ def DrawAll(quad_buffer, texture):
     glDisableVertexAttribArray(default_shader.locations.colour_data)
 
 
-def DrawNoTexture(quad_buffer):
+def draw_no_texture(quad_buffer):
     glUniform1i(default_shader.locations.using_textures, 0)
 
     glEnableVertexAttribArray(default_shader.locations.vertex_data)
