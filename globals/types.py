@@ -84,7 +84,7 @@ class Point(object):
     def unit_vector(self):
         return self / self.length()
 
-    def DistanceHeuristic(self, other):
+    def distance_heuristic(self, other):
         # return (other-self).diaglength()
         diff = other - self
         return (abs(diff.x) + abs(diff.y)) * 20

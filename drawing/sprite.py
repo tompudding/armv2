@@ -68,7 +68,7 @@ class AnimatedSprite(object):
         self.frame_duration = float(1) / fps
         self.frames         = []
 
-    def AddFrame(self, frame):
+    def add_frame(self, frame):
         self.frames.append(frame)
 
     def get_frame(self, time):
