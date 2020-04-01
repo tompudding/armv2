@@ -1,3 +1,4 @@
+from scipy.signal import butter, lfilter
 import armv2
 import pygame
 import threading
@@ -14,6 +15,7 @@ import struct
 
 from . import globals
 from .globals.types import Point
+
 
 class Keyboard(armv2.Device):
     """
@@ -34,45 +36,45 @@ class Keyboard(armv2.Device):
         KEY_UP   = 1
 
     def __init__(self, cpu):
-        super(Keyboard,self).__init__(cpu)
+        super(Keyboard, self).__init__(cpu)
         self.ring_buffer = [0 for i in range(self.ringbuffer_size)]
         self.pos = 0
         self.key_state = 0
         armv2.DebugLog('keyboard keyboard keyboard!\n')
 
-    def KeyDown(self,key):
+    def KeyDown(self, key):
         armv2.DebugLog('key down ' + str(key))
-        self.key_state |= (1<<key)
+        self.key_state |= (1 << key)
         self.ring_buffer[self.pos] = key
         self.pos += 1
         if self.pos == len(self.ring_buffer):
             self.pos = 0
         self.cpu.Interrupt(self.id, self.InterruptCodes.KEY_DOWN)
 
-    def KeyUp(self,key):
+    def KeyUp(self, key):
         armv2.DebugLog('key up ' + str(key))
-        self.key_state &= ~(1<<key)
+        self.key_state &= ~(1 << key)
         self.cpu.Interrupt(self.id, self.InterruptCodes.KEY_UP)
 
-    def readCallback(self,addr,value):
-        armv2.DebugLog('keyboard reader %x %x\n' % (addr,value))
+    def readCallback(self, addr, value):
+        armv2.DebugLog('keyboard reader %x %x\n' % (addr, value))
         if addr < self.ringbuffer_start:
-            #It's a state request
-            return (self.key_state>>(8*addr)&0xffffffff)
+            # It's a state request
+            return (self.key_state >> (8 * addr) & 0xffffffff)
         elif addr < self.ringbuffer_pos:
             pos = addr - self.ringbuffer_start
             bytes = [self.ring_buffer[pos + i % len(self.ring_buffer)] for i in range(4)]
-            return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
+            return (bytes[0]) | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)
         elif addr == self.ringbuffer_pos:
             return self.pos
 
         return 0
 
-    def readByteCallback(self,addr,value):
-        armv2.DebugLog('keyboard reader byte %x %x\n' % (addr,value))
+    def readByteCallback(self, addr, value):
+        armv2.DebugLog('keyboard reader byte %x %x\n' % (addr, value))
         if addr < self.ringbuffer_start:
-            #It's a state request
-            return (self.key_state>>(8*addr)&0xff)
+            # It's a state request
+            return (self.key_state >> (8 * addr) & 0xff)
         elif addr < self.ringbuffer_pos:
             pos = addr - self.ringbuffer_start
             out = self.ring_buffer[pos]
@@ -83,20 +85,19 @@ class Keyboard(armv2.Device):
         else:
             return 0
 
-    def writeCallback(self,addr,value):
-        armv2.DebugLog('keyboard writer %x %x\n' % (addr,value))
+    def writeCallback(self, addr, value):
+        armv2.DebugLog('keyboard writer %x %x\n' % (addr, value))
         return 0
 
-    def writeByteCallback(self,addr,value):
-        armv2.DebugLog('keyboard writer %x %x\n' % (addr,value))
+    def writeByteCallback(self, addr, value):
+        armv2.DebugLog('keyboard writer %x %x\n' % (addr, value))
         return 0
 
-def SetPixels(pixels,word):
+
+def SetPixels(pixels, word):
     for j in range(64):
-        #the next line is so obvious it doesn't need a comment
-        pixels[j//8][j%8] = ((word>>j)&1)
-
-from scipy.signal import butter, lfilter
+        # the next line is so obvious it doesn't need a comment
+        pixels[j // 8][j % 8] = ((word >> j) & 1)
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
@@ -105,6 +106,7 @@ def butter_bandpass(lowcut, highcut, fs, order=5):
     high = highcut / nyq
     b, a = butter(order, [low, high], btype='band')
     return b, a
+
 
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
     b, a = butter_bandpass(lowcut, highcut, fs, order=order)
@@ -118,10 +120,12 @@ def butter_lowpass(cutoff, fs, order=5):
     b, a = butter(order, normal_cutoff, btype='low', analog=True)
     return b, a
 
+
 def butter_lowpass_filter(data, cutoff, fs, order=5):
     b, a = butter_lowpass(cutoff, fs, order=order)
     y = lfilter(b, a, data)
     return y
+
 
 class TapeDrive(armv2.Device):
     """A Tape Drive
@@ -139,7 +143,7 @@ class TapeDrive(armv2.Device):
     current position and power down, the user is done with it for now.
 
     """
-    id=0x2730eb6c
+    id = 0x2730eb6c
 
     stripe_height = 2
     border_pixels = 16
@@ -153,7 +157,7 @@ class TapeDrive(armv2.Device):
         READY       = 4
 
     def __init__(self, cpu):
-        super(TapeDrive,self).__init__(cpu)
+        super(TapeDrive, self).__init__(cpu)
         self.status     = self.Codes.NOT_READY
         self.data_byte  = 0
         self.tape_name  = None
@@ -173,18 +177,18 @@ class TapeDrive(armv2.Device):
 
         num_t_stripes = self.border_pixels // self.stripe_height
         num_l_stripes = (screen_height - (self.border_pixels * 2)) // self.stripe_height
-        num_stripes = 2*(num_t_stripes + num_l_stripes)
+        num_stripes = 2 * (num_t_stripes + num_l_stripes)
 
         print(num_stripes)
-        self.quad_buffer = drawing.QuadBuffer( num_stripes )
-        #Add the stripes as a tuple for each row. The first few will have just one in (for the top rows that
-        #go all the way across), then the middle lot will have 2, then the final sets will be one again
+        self.quad_buffer = drawing.QuadBuffer(num_stripes)
+        # Add the stripes as a tuple for each row. The first few will have just one in (for the top rows that
+        # go all the way across), then the middle lot will have 2, then the final sets will be one again
         self.stripes = []
-        #First the bottom
+        # First the bottom
         for i in range(num_t_stripes):
             q = drawing.Quad(self.quad_buffer)
-            bl = Point(0, i*self.stripe_height)
-            tr = Point(screen_width, (i+1) * self.stripe_height)
+            bl = Point(0, i * self.stripe_height)
+            tr = Point(screen_width, (i + 1) * self.stripe_height)
             q.SetVertices(bl, tr, 5)
             self.stripes.append([q])
 
@@ -192,8 +196,8 @@ class TapeDrive(armv2.Device):
             row = []
             for j in range(2):
                 q = drawing.Quad(self.quad_buffer)
-                bl = Point(j*(screen_width - self.border_pixels), i*self.stripe_height)
-                tr = Point(bl.x + self.border_pixels, (i+1) * self.stripe_height)
+                bl = Point(j * (screen_width - self.border_pixels), i * self.stripe_height)
+                tr = Point(bl.x + self.border_pixels, (i + 1) * self.stripe_height)
                 q.SetVertices(bl, tr, 5)
                 row.append(q)
             self.stripes.append(row)
@@ -201,14 +205,14 @@ class TapeDrive(armv2.Device):
         for i in range(num_t_stripes):
             row = num_t_stripes + num_l_stripes + i
             q = drawing.Quad(self.quad_buffer)
-            bl = Point(0, row*self.stripe_height)
-            tr = Point(screen_width, (row+1) * self.stripe_height)
+            bl = Point(0, row * self.stripe_height)
+            tr = Point(screen_width, (row + 1) * self.stripe_height)
             q.SetVertices(bl, tr, 5)
             self.stripes.append([q])
 
-        for i,row in enumerate(self.stripes):
+        for i, row in enumerate(self.stripes):
             for stripe in row:
-                stripe.SetColour(Display.Colours.YELLOW if i&1 else Display.Colours.BLUE)
+                stripe.SetColour(Display.Colours.YELLOW if i & 1 else Display.Colours.BLUE)
 
     def start_playing(self):
         if not self.tape_sound:
@@ -216,13 +220,13 @@ class TapeDrive(armv2.Device):
         self.skipped = False
         self.tape_sound.play()
         self.playing = True
-        #start time for each block...
+        # start time for each block...
         self.start_time = []
         last_end = globals.t
-        for i,times in enumerate(self.bit_times):
-            self.start_time.append( last_end + (i+1)*self.pilot_length * 1000 )
+        for i, times in enumerate(self.bit_times):
+            self.start_time.append(last_end + (i + 1) * self.pilot_length * 1000)
             last_end += times[-1]
-        print('st',globals.t,self.start_time)
+        print('st', globals.t, self.start_time)
 
     def stop_playing(self):
         if not self.tape_sound:
@@ -237,11 +241,11 @@ class TapeDrive(armv2.Device):
             while True:
                 word = f.read(4)
                 if len(word) != 4:
-                    #We're done
+                    # We're done
                     break
-                size = struct.unpack('>I',word)[0]
+                size = struct.unpack('>I', word)[0]
                 self.data_blocks.append(f.read(size))
-        #TODO: save tape position?
+        # TODO: save tape position?
         self.block_pos = 0
         self.current_block = 0
         #self.tape = open(filename, 'rb')
@@ -250,12 +254,12 @@ class TapeDrive(armv2.Device):
 
     def make_sound(self):
         freq, sample_size, num_channels = pygame.mixer.get_init()
-        tone_length = 4*float(freq) / 22050
+        tone_length = 4 * float(freq) / 22050
         clr_length = int(tone_length)
-        set_length = int(tone_length*2)
+        set_length = int(tone_length * 2)
 
-        #We'll want a pilot signal first as it will go before all data segments
-        num_pilot_samples = 22050*self.pilot_length
+        # We'll want a pilot signal first as it will go before all data segments
+        num_pilot_samples = 22050 * self.pilot_length
         pilot_samples = numpy.zeros(shape=num_pilot_samples, dtype='float64')
         popcnt.create_tone(pilot_samples, set_length)
 
@@ -270,21 +274,22 @@ class TapeDrive(armv2.Device):
             data = numpy.fromstring(block, dtype='uint32')
             set_bits = popcnt.count_array(data)
             clr_bits = (len(data) * 32) - set_bits
-            #The sigmals we're using are either 8 (4 on 4 off) or 16 samples at 22050 Hz, which is
-            #either 1378 or 2756 Hz
+            # The sigmals we're using are either 8 (4 on 4 off) or 16 samples at 22050 Hz, which is
+            # either 1378 or 2756 Hz
 
-            block_samples = 2*(set_bits*set_length + clr_bits*clr_length)
+            block_samples = 2 * (set_bits * set_length + clr_bits * clr_length)
             total_samples += block_samples
             total_samples += num_pilot_samples
 
             samples = numpy.zeros(shape=block_samples, dtype='float64')
-            #print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(block_samples) // freq)
-            #The position in samples that each byte starts
-            byte_samples = numpy.zeros(shape=len(data)*4, dtype='uint32')
-            #The number of milliseconds that each bit should
-            bit_times = numpy.zeros(shape=len(data)*4*8, dtype='uint32')
-            bits = numpy.zeros(shape=len(data)*4*9, dtype='uint8')
-            popcnt.create_samples(data, samples, byte_samples, bit_times, bits, clr_length, set_length, float(1000) / 22050)
+            # print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(block_samples) // freq)
+            # The position in samples that each byte starts
+            byte_samples = numpy.zeros(shape=len(data) * 4, dtype='uint32')
+            # The number of milliseconds that each bit should
+            bit_times = numpy.zeros(shape=len(data) * 4 * 8, dtype='uint32')
+            bits = numpy.zeros(shape=len(data) * 4 * 9, dtype='uint8')
+            popcnt.create_samples(data, samples, byte_samples, bit_times, bits,
+                                  clr_length, set_length, float(1000) / 22050)
             all_samples.append(pilot_samples)
             all_samples.append(samples)
             self.byte_samples.append(byte_samples)
@@ -292,11 +297,11 @@ class TapeDrive(armv2.Device):
             self.bits.append(bits)
 
         samples = numpy.concatenate(all_samples)
-        #bandpass filter it to make it less harsh
+        # bandpass filter it to make it less harsh
         samples = butter_bandpass_filter(samples, 500, 2700, freq).astype('int16')
 
         if num_channels != 1:
-            #Duplicate it into the required number of channels
+            # Duplicate it into the required number of channels
             samples = samples.repeat(num_channels).reshape(total_samples, num_channels)
 
         self.tape_sound = pygame.sndarray.make_sound(samples)
@@ -317,17 +322,17 @@ class TapeDrive(armv2.Device):
             self.tape_sound = None
 
     def power_down(self):
-        #We don't actually need to do any powering down, but alert any potential debugger that they can update
-        #their symbols
+        # We don't actually need to do any powering down, but alert any potential debugger that they can update
+        # their symbols
         self.stop_playing()
         self.end_callback()
 
-    def readByteCallback(self,addr,value):
+    def readByteCallback(self, addr, value):
         if addr == 0:
-            #They want the current status
+            # They want the current status
             return self.status
         elif addr == 1:
-            #They really shouldn't be reading this one
+            # They really shouldn't be reading this one
             return 0
         elif addr == 2:
             return self.data_byte
@@ -371,7 +376,7 @@ class TapeDrive(armv2.Device):
             #     self.tape_times.extend( [globals.t + int(i*float(elapsed)//8) for i in xrange(8)] )
             #     self.last_byte_time = globals.t
             self.status = self.Codes.READY
-            #time.sleep(0.001)
+            # time.sleep(0.001)
             self.cpu.cpu.Interrupt(self.id, self.status)
 
         else:
@@ -387,25 +392,25 @@ class TapeDrive(armv2.Device):
             return
 
         if self.status == self.Codes.NOT_READY:
-            #We're waiting, so check if it's time for the next byte
+            # We're waiting, so check if it's time for the next byte
             if self.is_byte_ready():
                 self.feed_byte()
 
         try:
             elapsed = globals.t - self.start_time[self.current_block]
         except IndexError:
-            #We reached the end of the tape
+            # We reached the end of the tape
             self.power_down()
             return
 
         if elapsed < 0:
-            #In this phase we do rolling bars of grey and red
+            # In this phase we do rolling bars of grey and red
             if not self.entered_pilot:
                 if self.end_callback:
                     self.end_callback()
                     self.entered_pilot = True
             pos = float(elapsed) / 20
-            for i,stripes in enumerate(self.stripes):
+            for i, stripes in enumerate(self.stripes):
                 if ((i + 8 - pos) % 12) >= 4:
                     colour = Display.Colours.MED_GREY
                 else:
@@ -414,8 +419,8 @@ class TapeDrive(armv2.Device):
                     q.SetColour(colour)
 
         else:
-            #The stripes should be all the ones up to that position. If we don't have anything
-            #Use zeroes
+            # The stripes should be all the ones up to that position. If we don't have anything
+            # Use zeroes
             self.entered_pilot = False
 
             if self.current_block >= len(self.data_blocks) or \
@@ -423,7 +428,7 @@ class TapeDrive(armv2.Device):
                     self.bit_times[self.current_block][self.current_bit] > elapsed:
                 return
 
-            #We've got some to show, how many
+            # We've got some to show, how many
             try:
                 while self.bit_times[self.current_block][self.current_bit] <= elapsed:
                     self.current_bit += 1
@@ -461,26 +466,25 @@ class TapeDrive(armv2.Device):
 
         drawing.DrawNoTexture(self.quad_buffer)
 
-
-    def writeByteCallback(self,addr,value):
+    def writeByteCallback(self, addr, value):
         if addr == 0:
-            #Trying to write to the read register. :(
+            # Trying to write to the read register. :(
             pass
         elif addr == 1:
             if value == self.Codes.NEXT_BYTE:
-                #They want the next byte, are we ready for them?
+                # They want the next byte, are we ready for them?
                 #self.loading = pygame.time.get_ticks()
 
                 if self.tape_name:
-                    #Have we progressed enough to give the next byte?
+                    # Have we progressed enough to give the next byte?
                     if not self.playing:
                         self.start_playing()
 
                     if self.is_byte_ready():
-                        #Great you can have a byte
+                        # Great you can have a byte
                         self.feed_byte()
                     else:
-                        #Not ready for one yet
+                        # Not ready for one yet
                         self.data_byte = 0
                         self.status = self.Codes.NOT_READY
 
@@ -489,15 +493,16 @@ class TapeDrive(armv2.Device):
                     self.status = self.Codes.DRIVE_EMPTY
                     self.cpu.cpu.Interrupt(self.id, self.status)
             elif value == self.Codes.READY:
-                #power down
+                # power down
                 self.power_down()
         elif addr == 2:
-            #Can't write to the data byte
+            # Can't write to the data byte
             pass
-        return 0;
+        return 0
 
     def Delete(self):
         self.power_down()
+
 
 class Display(armv2.Device):
     """
@@ -529,56 +534,56 @@ class Display(armv2.Device):
         LIGHT_BLUE  = (0, 136, 255, 255)
         LIGHT_GREY  = (187, 187, 187, 255)
 
-        palette = [ BLACK   , WHITE      , RED       , CYAN,
-                    VIOLET  , GREEN      , BLUE      , YELLOW,
-                    ORANGE  , BROWN      , LIGHT_RED , DARK_GREY,
-                    MED_GREY, LIGHT_GREEN, LIGHT_BLUE, LIGHT_GREY ]
-
+        palette = [BLACK, WHITE, RED, CYAN,
+                   VIOLET, GREEN, BLUE, YELLOW,
+                   ORANGE, BROWN, LIGHT_RED, DARK_GREY,
+                   MED_GREY, LIGHT_GREEN, LIGHT_BLUE, LIGHT_GREY]
 
     id = 0x9d99389e
     width  = 40
     height = 30
     cell_size = 8
-    pixel_size = (width*cell_size, height*cell_size)
+    pixel_size = (width * cell_size, height * cell_size)
     palette_start = 0
-    letter_start  = width*height
-    letter_end    = width*height*2
+    letter_start  = width * height
+    letter_end    = width * height * 2
+
     def __init__(self, cpu, scale_factor):
-        super(Display,self).__init__(cpu)
+        super(Display, self).__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
-        self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts','petscii.png'))
+        self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts', 'petscii.png'))
 
-        self.back_quads_buffer = drawing.QuadBuffer(self.width*self.height)
-        self.fore_quads_buffer = drawing.QuadBuffer(self.width*self.height)
-        self.back_quads = [drawing.Quad(self.back_quads_buffer) for i in range(self.width*self.height)]
-        self.fore_quads = [drawing.Quad(self.fore_quads_buffer) for i in range(self.width*self.height)]
+        self.back_quads_buffer = drawing.QuadBuffer(self.width * self.height)
+        self.fore_quads_buffer = drawing.QuadBuffer(self.width * self.height)
+        self.back_quads = [drawing.Quad(self.back_quads_buffer) for i in range(self.width * self.height)]
+        self.fore_quads = [drawing.Quad(self.fore_quads_buffer) for i in range(self.width * self.height)]
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
 
-        for z,quad_list in enumerate((self.back_quads,self.fore_quads)):
-            for pos,quad in enumerate(quad_list):
-                x = pos%self.width
+        for z, quad_list in enumerate((self.back_quads, self.fore_quads)):
+            for pos, quad in enumerate(quad_list):
+                x = pos % self.width
                 y = self.height - 1 - (pos // self.width)
-                bl = Point(x*self.cell_size, y*self.cell_size)
+                bl = Point(x * self.cell_size, y * self.cell_size)
                 tr = bl + Point(self.cell_size, self.cell_size)
                 quad.SetVertices(bl, tr, z)
 
         self.font_data = [0 for i in range(256)]
-        self.letter_data = [0 for i in range(self.width*self.height)]
-        self.palette_data = [0 for i in range(self.width*self.height)]
+        self.letter_data = [0 for i in range(self.width * self.height)]
+        self.palette_data = [0 for i in range(self.width * self.height)]
 
-        #initialise the whole screen
+        # initialise the whole screen
         for pos in range(len(self.letter_data)):
             self.redraw(pos)
 
-    def readCallback(self,addr,value):
-        #The display has a secret RNG, did you know that?
+    def readCallback(self, addr, value):
+        # The display has a secret RNG, did you know that?
         if addr == self.letter_end:
             return int(random.getrandbits(32))
         if addr == self.letter_end + 4:
             return int(time.time())
         bytes = [self.readByteCallback(addr + i, 0) for i in range(4)]
-        return (bytes[0]) | (bytes[1]<<8) | (bytes[2]<<16) | (bytes[3]<<24)
+        return (bytes[0]) | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)
 
     def pixel_width(self):
         return self.width * self.cell_size * self.scale_factor
@@ -586,50 +591,50 @@ class Display(armv2.Device):
     def pixel_height(self):
         return self.height * self.cell_size * self.scale_factor
 
-    def writeCallback(self,addr,value):
-        armv2.DebugLog('display write word %x %x\n' % (addr,value))
+    def writeCallback(self, addr, value):
+        armv2.DebugLog('display write word %x %x\n' % (addr, value))
         if addr == self.letter_end:
             random.seed(value)
             return 0
         for i in range(4):
-            byte = value&0xff
-            self.writeByteCallback(addr,byte)
+            byte = value & 0xff
+            self.writeByteCallback(addr, byte)
             addr += 1
             value >>= 8
         return 0
 
-    def readByteCallback(self,addr,value):
+    def readByteCallback(self, addr, value):
         if addr < self.letter_start:
-            #It's the palette
+            # It's the palette
             return self.palette_data[addr]
         elif addr < self.letter_end:
             pos = addr - self.letter_start
             return self.letter_data[pos]
 
-    def writeByteCallback(self,addr,value):
+    def writeByteCallback(self, addr, value):
         #armv2.DebugLog('display write byte %x %x\n' % (addr,value))
         if addr < self.letter_start:
-            #It's the palette
+            # It's the palette
             pos = addr
             if value == self.palette_data[pos]:
-                #no change, ignore
+                # no change, ignore
                 return 0
             self.palette_data[pos] = value
             self.redraw(pos)
         elif addr < self.letter_end:
             pos = addr - self.letter_start
             if value == self.letter_data[pos]:
-                #no change, ignore
+                # no change, ignore
                 return 0
             self.letter_data[pos] = value
             self.redraw(pos)
         return 0
 
-    def redraw(self,pos):
+    def redraw(self, pos):
         letter = self.letter_data[pos]
         palette = self.palette_data[pos]
-        back_colour = self.Colours.palette[(palette>>4)&0xf]
-        fore_colour = self.Colours.palette[(palette)&0xf]
+        back_colour = self.Colours.palette[(palette >> 4) & 0xf]
+        fore_colour = self.Colours.palette[(palette) & 0xf]
         self.back_quads[pos].SetColour(back_colour)
         self.fore_quads[pos].SetColour(fore_colour)
         tc = self.atlas.TextureCoords(chr(letter))
@@ -637,7 +642,7 @@ class Display(armv2.Device):
 
     def new_frame(self):
         drawing.new_crt_frame(self.crt_buffer)
-        #self.crt_buffer.BindForWriting()
+        # self.crt_buffer.BindForWriting()
         drawing.DrawNoTexture(self.back_quads_buffer)
         drawing.DrawAll(self.fore_quads_buffer, self.atlas.texture)
 
@@ -647,11 +652,13 @@ class Display(armv2.Device):
     def draw_to_screen(self):
         drawing.draw_crt_to_screen(self.crt_buffer)
 
+
 class Clock(armv2.Device):
     """
     A clock device
     """
     id = 0x92d177b0
+
     def operationCallback(self, arg0, arg1):
         pygame.time.set_timer(pygame.USEREVENT, arg0)
         return 0
@@ -661,35 +668,36 @@ class Clock(armv2.Device):
 
 
 class MemPassthrough(object):
-    def __init__(self,cv,accessor):
+    def __init__(self, cv, accessor):
         self.cv = cv
         self.accessor = accessor
 
-    def __getitem__(self,index):
+    def __getitem__(self, index):
         with self.cv:
             return self.accessor.__getitem__(index)
 
-    def __setitem__(self,index,values):
+    def __setitem__(self, index, values):
         with self.cv:
-            return self.accessor.__setitem__(index,values)
+            return self.accessor.__setitem__(index, values)
 
     def __len__(self):
         with self.cv:
             return self.accessor.__len__()
 
+
 class Machine:
-    def __init__(self,cpu_size,cpu_rom):
+    def __init__(self, cpu_size, cpu_rom):
         self.rom_filename = cpu_rom
-        self.cpu          = armv2.Armv2(size = cpu_size,filename = cpu_rom)
+        self.cpu          = armv2.Armv2(size=cpu_size, filename=cpu_rom)
         self.hardware     = []
         self.running      = True
         self.steps_to_run = 0
-        #I'm not sure why I need a regular lock here rather than the default (A RLock), but with the default
-        #I get weird deadlocks on KeyboardInterrupt
+        # I'm not sure why I need a regular lock here rather than the default (A RLock), but with the default
+        # I get weird deadlocks on KeyboardInterrupt
         self.cv           = threading.Condition(threading.Lock())
-        self.mem          = MemPassthrough(self.cv,self.cpu.mem)
-        self.memw         = MemPassthrough(self.cv,self.cpu.memw)
-        self.thread       = threading.Thread(target = self.threadMain)
+        self.mem          = MemPassthrough(self.cv, self.cpu.mem)
+        self.memw         = MemPassthrough(self.cv, self.cpu.memw)
+        self.thread       = threading.Thread(target=self.threadMain)
         self.tape_drive   = None
         self.status       = armv2.Status.Ok
         self.thread.start()
@@ -700,7 +708,7 @@ class Machine:
             return self.cpu.regs
 
     @regs.setter
-    def regs(self,value):
+    def regs(self, value):
         with self.cv:
             self.cpu.regs = value
 
@@ -721,9 +729,9 @@ class Machine:
 
     def threadMainLoop(self):
         while self.running and \
-              ((self.steps_to_run == 0) or\
-               (self.status == armv2.Status.WaitForInterrupt and not (self.cpu.pins & armv2.Pins.Interrupt))):
-            armv2.DebugLog('%d %d %x' % (self.steps_to_run,self.status,self.cpu.pins))
+            ((self.steps_to_run == 0) or
+             (self.status == armv2.Status.WaitForInterrupt and not (self.cpu.pins & armv2.Pins.Interrupt))):
+            armv2.DebugLog('%d %d %x' % (self.steps_to_run, self.status, self.cpu.pins))
             self.cv.wait(5)
             if self.steps_to_run > 0:
                 self.status = self.cpu.Step(self.steps_to_run)
@@ -736,34 +744,34 @@ class Machine:
                 while self.running:
                     self.threadMainLoop()
         finally:
-            #in case we exit this and leave running on (due to an exception say)
+            # in case we exit this and leave running on (due to an exception say)
             self.running = False
 
-    def Step(self,num):
+    def Step(self, num):
         with self.cv:
             self.steps_to_run = num
             self.cv.notify()
 
-    def StepAndWait(self,num):
+    def StepAndWait(self, num):
         self.Step(num)
         with self.cv:
             while self.running:
                 while self.running and (self.steps_to_run and self.status != armv2.Status.WaitForInterrupt):
                     self.cv.wait(0.1)
-                    #Keep interrupts pumping every now and again
+                    # Keep interrupts pumping every now and again
                     #self.cpu.Interrupt(6, 0)
                 if not self.running:
                     break
                 return self.status
-            #if we get here it's not running
+            # if we get here it's not running
             raise RuntimeError('Thread is not running!')
 
-    def AddHardware(self,device,name = None):
+    def AddHardware(self, device, name=None):
         with self.cv:
             self.cpu.AddHardware(device)
         self.hardware.append(device)
         if name != None:
-            setattr(self,name,device)
+            setattr(self, name, device)
 
     def Delete(self):
         with self.cv:
@@ -776,11 +784,11 @@ class Machine:
             self.tape_drive.Delete()
 
     def Interrupt(self, hw_id, code):
-        #print 'Interrupting1'
+        # print 'Interrupting1'
         with self.cv:
             self.cpu.Interrupt(hw_id, code)
-            #If the CPU is presently paused, it won't ever know it's received an interrupt, it needs to take one step
-            #to take the exception
+            # If the CPU is presently paused, it won't ever know it's received an interrupt, it needs to take one step
+            # to take the exception
             if self.steps_to_run == 0:
                 self.steps_to_run = 1
             self.cv.notify()
