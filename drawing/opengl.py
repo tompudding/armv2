@@ -13,6 +13,7 @@ from ..globals.types import Point
 import sys
 import time
 from . import constants
+import drawing
 
 numpymodule.NumpyHandler.ERROR_ON_COPY = True
 
@@ -68,6 +69,9 @@ class ShaderData(object):
     def fragment_shader_attrib_binding(self):
         pass
 
+class FBOTexture(drawing.texture.Texture):
+    def __init__(self,n):
+        self.texture = n
 
 class CrtBuffer(object):
     TEXTURE_TYPE_SHADOW = 0
@@ -82,6 +86,7 @@ class CrtBuffer(object):
             self.init_bound(width, height)
         finally:
             self.unbind()
+        self.texture = FBOTexture(self.textures[0])
 
     def init_bound(self, width, height):
         self.textures      = glGenTextures(self.NUM_TEXTURES)
