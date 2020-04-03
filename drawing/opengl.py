@@ -13,7 +13,7 @@ from ..globals.types import Point
 import sys
 import time
 from . import constants
-import drawing
+from . import texture
 
 numpymodule.NumpyHandler.ERROR_ON_COPY = True
 
@@ -69,7 +69,7 @@ class ShaderData(object):
     def fragment_shader_attrib_binding(self):
         pass
 
-class FBOTexture(drawing.texture.Texture):
+class FBOTexture(texture.Texture):
     def __init__(self,n):
         self.texture = n
 

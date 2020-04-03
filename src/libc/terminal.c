@@ -21,7 +21,7 @@ bool word_wrap = true;
 bool in_word = false;
 int word_start = 0;
 
-void set_screen_data(uint32_t normal, uint32_t inverted, size_t border_size) 
+void set_screen_data(uint32_t normal, uint32_t inverted, size_t border_size)
 {
     os_normal   = normal;
     os_inverted = inverted;
@@ -35,14 +35,14 @@ void toggle_pos(size_t pos)
     *p = ((*p & 0xf0) >> 4) | ((*p & 0x0f) << 4);
 }
 
-void clear_screen(enum colours background, enum colours foreground) 
+void clear_screen(enum colours background, enum colours foreground)
 {
     uint8_t palette_byte = background << 4 | foreground;
     memset(palette_data, palette_byte, WIDTH*HEIGHT);
     memset(letter_data, 0, WIDTH*HEIGHT);
 }
 
-void clear_screen_with_border(uint32_t normal, uint32_t inverted, size_t border_size) 
+void clear_screen_with_border(uint32_t normal, uint32_t inverted, size_t border_size)
 {
     int i;
     //set the top border
@@ -62,7 +62,7 @@ void clear_screen_with_border(uint32_t normal, uint32_t inverted, size_t border_
     memset(letter_data, 0, WIDTH*HEIGHT);
 }
 
-void clear_screen_default() 
+void clear_screen_default()
 {
     clear_screen_with_border(os_normal, os_inverted, os_border_size);
 }
@@ -91,7 +91,7 @@ void newline(int reset_square)
     }
 }
 
-void process_string(char *s) 
+void process_string(char *s)
 {
     while(*s) {
         process_char(*s++);
@@ -134,7 +134,7 @@ void recreate_word_start() {
     }
 }
 
-void process_char(uint8_t c) 
+void process_char(uint8_t c)
 {
     if(isprint(c)) {
         if(isspace(c)) {
@@ -160,7 +160,7 @@ void process_char(uint8_t c)
             os_cursor_pos += width;
         }
 
-        //We're not word wrapping for some reason. 
+        //We're not word wrapping for some reason.
         size_t line_pos;
         *(palette_data+os_cursor_pos) = os_normal;
         letter_data[os_cursor_pos++] = c;
@@ -179,7 +179,7 @@ void process_char(uint8_t c)
             //backspace
             size_t old_pos = os_cursor_pos;
             os_cursor_pos = prev_pos(os_cursor_pos);
-           
+
             if(old_pos != os_cursor_pos) {
                 palette_data[old_pos] = os_normal;
                 letter_data[os_cursor_pos] = ' ';
@@ -189,7 +189,7 @@ void process_char(uint8_t c)
     }
 }
 
-int tty_write(const char *s, size_t cnt) 
+int tty_write(const char *s, size_t cnt)
 {
     for(size_t i = 0; i < cnt; i++) {
         process_char(s[i]);
@@ -198,7 +198,7 @@ int tty_write(const char *s, size_t cnt)
     return (int)cnt;
 }
 
-int tty_read(char *s, size_t cnt) 
+int tty_read(char *s, size_t cnt)
 {
     size_t num_read = 0;
     static bool init = false;

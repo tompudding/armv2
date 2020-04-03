@@ -127,7 +127,7 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
     uint32_t entry_point = 0;
     char tape_name[TAPE_NAME_LEN];
 
-    printf("Loading tape : ");
+    printf("\n\n\n   Loading tape ");
 
     enum tape_codes result = tape_next_word( &entry_point );
 
@@ -150,7 +150,7 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
         return result;
     }
 
-    printf("Loading at %08x\n", load_addr);
+    printf("at %08x\n", load_addr);
     bool final = false;
 
     result = load_tape_data( (void*)load_addr, &final );
