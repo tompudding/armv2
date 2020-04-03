@@ -7,13 +7,13 @@ import string
 import glob
 from . import messages
 import struct
+import random
 from pygame.locals import *
 
 
 class Debugger(object):
     BKPT         = 0xef000000 | armv2.SWI_BREAKPOINT
     FRAME_CYCLES = 66666
-    PORT         = 16705
     SYMBOLS_ADDR = 0x30000
 
     def __init__(self, machine, tapes=None):
@@ -43,7 +43,18 @@ class Debugger(object):
         self.loaded_tape = None
         self.need_symbols = False
         self.machine.tape_drive.register_callback(self.set_need_symbols)
-        self.connection = messages.Server(port=self.PORT, callback=self.handle_message)
+        for port_trial in range(10):
+            self.port = random.randint(0x400, 0x10000)
+            print(f'Trying port {self.port}')
+            try:
+                self.connection = messages.Server(port=self.port, callback=self.handle_message)
+                print(f'Success with port {self.port}')
+                break
+            except OSError:
+                continue
+        else:
+            raise
+
         self.connection.start()
         try:
             self.load_symbols()
