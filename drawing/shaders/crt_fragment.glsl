@@ -34,7 +34,7 @@ void main()
     uv = curve( uv );
     vec3 oricol = texture2D( tex, vec2(q.x,q.y) ).xyz;
     vec3 col;
-    float x = 0.01;// sin(0.3*global_time+uv.y*21.0)*sin(0.7*global_time+uv.y*29.0)*sin(0.3+0.33*global_time+uv.y*31.0)*0.0017;
+    float x = 0.00;// sin(0.3*global_time+uv.y*21.0)*sin(0.7*global_time+uv.y*29.0)*sin(0.3+0.33*global_time+uv.y*31.0)*0.0017;
 
     col.r = texture2D(tex,vec2(x+uv.x+0.001,uv.y+0.001)).x+0.05;
     col.g = texture2D(tex,vec2(x+uv.x+0.000,uv.y-0.002)).y+0.05;
