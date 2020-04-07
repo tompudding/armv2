@@ -169,6 +169,7 @@ class TapeDrive(armv2.Device):
         self.loading   = False
         self.end_callback = None
         self.skipped = False
+        self.open = False
         self.lock = threading.Lock()
         self.current_bit = 0
 
