@@ -9,14 +9,14 @@ from . import messages
 import struct
 import random
 from pygame.locals import *
-
+from . import tapes
 
 class Debugger(object):
     BKPT         = 0xef000000 | armv2.SWI_BREAKPOINT
     FRAME_CYCLES = 66666
     SYMBOLS_ADDR = 0x30000
 
-    def __init__(self, machine, tapes=None):
+    def __init__(self, machine, tape_list=None):
         self.machine          = machine
         self.breakpoints      = {}
         self.next_breakpoint  = None
@@ -36,10 +36,12 @@ class Debugger(object):
                          messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
                          messages.Types.SYMBOL_DATA : self.handle_request_symbols,
                          }
-        if tapes is None:
+
+        if tape_list is None:
             self.tapes = glob.glob(os.path.join('emulator', 'tapes', '*.tape'))
         else:
-            self.tapes = tapes
+            self.tapes = tape_list
+        self.tapes = [tapes.ProgramTape(fname) for fname in self.tapes]
         self.loaded_tape = None
         self.need_symbols = False
         self.machine.tape_drive.register_callback(self.set_need_symbols)

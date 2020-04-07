@@ -151,7 +151,7 @@ class TapeReply(TapesView):
 
     def to_binary(self):
         first = super(TapeReply, self).to_binary()
-        return first + struct.pack('>I', self.max) + b'\x00'.join((tape.encode('ascii') for tape in self.tape_list))
+        return first + struct.pack('>I', self.max) + b'\x00'.join((tape.name.encode('ascii') for tape in self.tape_list))
 
     @staticmethod
     def from_binary(data):

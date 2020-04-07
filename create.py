@@ -1,6 +1,8 @@
 import os
 import sys
 import struct
+import tapes
+import configparser
 from elftools.elf.sections import SymbolTableSection
 from elftools.elf.elffile import ELFFile
 
@@ -154,7 +156,7 @@ We have a very simple format for the synapse binaries:
     return out
 
 
-def to_tape_format(data_blocks):
+def to_binary_format(data_blocks):
     """
     This is a very simple format that wraps up data blocks that should be joined by a pilot sound when put on tape
     """
@@ -163,6 +165,11 @@ def to_tape_format(data_blocks):
         out.extend(struct.pack('>I', len(block)) + block)
     return out
 
+def to_tape_format(binary, name):
+    config = configparser.ConfigParser()
+    config[tapes.Tape.metadata_section] = {'name':name}
+    tape = tapes.Tape(filename=None, data=binary, info=config)
+    return tape.to_binary()
 
 def create_binary(header, elf, tape_name, boot=False, final=True):
     elf_data = load(elf)
@@ -258,7 +265,11 @@ if __name__ == '__main__':
             blocks.insert(0, create_binary(args.header, loading_name,
                                            args.name + ' loader', boot=args.boot, final=False))
         # If we're making a tape wrap it up in the tape format
-        binary = to_tape_format(blocks)
+        binary = to_binary_format(blocks)
+
+        final_output = to_tape_format(binary, args.name)
+    else:
+        final_output = binary
 
     with open(args.output, 'wb') as f:
-        f.write(binary)
+        f.write(final_output)
