@@ -140,6 +140,7 @@ class TapeDrive(armv2.Device):
         self.open          = False
         self.lock          = threading.Lock()
         self.current_bit   = 0
+        self.paused        = False
         freq, sample_size, num_channels = pygame.mixer.get_init()
         self.sample_rate = float(freq) / 1000
 
