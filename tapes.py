@@ -60,6 +60,7 @@ class Tape(object):
         #   - info.cfg  # metatdata about the tape
         #   - image.png # tape image
         self._sound = None
+        self.pause_bits = [0 for i in range(1024)]
 
         if filename is None:
             assert(data is not None)
@@ -96,10 +97,8 @@ class Tape(object):
 
     def play_sound(self):
         self.sound.play()
-        print('sound play!')
 
     def stop_sound(self):
-        print('sound stop!')
         self.sound.stop()
         #As we might want to resume playing, we rebuild the sound from the current position
         self.build_sound()
@@ -192,7 +191,6 @@ class ProgramTape(Tape):
 
     def build_sound(self):
         offset = int(self.position * self.sample_rate)
-        print(f'{self.position=} {len(self.samples)=} {offset=}')
         self.sound = pygame.sndarray.make_sound(self.samples[offset:])
 
     def byte_ready(self):
@@ -203,8 +201,6 @@ class ProgramTape(Tape):
         pos_sample = pos * self.sample_rate
         target_sample = self.byte_samples[self.current_block][self.block_pos]
         ready = pos_sample > target_sample
-        if ready:
-            print(f'Byte ready, {pos=} {pos_sample=} {target_sample=}')
         return ready
 
     def get_byte(self):
@@ -219,12 +215,8 @@ class ProgramTape(Tape):
         return c
 
     def update(self, elapsed, paused, num_required):
-        if paused:
-            self.pause_time += elapsed
-            return
-
-        self.position += elapsed
-        print(f'Update! {self.position=} {self.start_time[self.current_block]=}')
+        if not paused:
+            self.position += elapsed
 
         if self.current_block >= len(self.data_blocks) or \
            self.current_bit >= len(self.bit_times[self.current_block]):
@@ -232,6 +224,9 @@ class ProgramTape(Tape):
 
         if self.position < self.start_time[self.current_block]:
             return None
+
+        if paused:
+            return self.pause_bits[:num_required]
 
         # We've got some to show, how many
         pos = self.position - self.block_start - self.pilot_length*1000

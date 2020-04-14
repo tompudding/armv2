@@ -191,7 +191,8 @@ class TapeDrive(armv2.Device):
     def start_playing(self):
         if not self.tape:
             return
-        self.tape.play_sound()
+        if not self.paused:
+            self.tape.play_sound()
         self.skipped = False
         self.playing = True
         self.start_time = globals.t
@@ -200,10 +201,22 @@ class TapeDrive(armv2.Device):
     def stop_playing(self):
         if not self.tape:
             return
-        self.tape.stop_sound()
+        if not self.paused:
+            self.tape.stop_sound()
         self.playing = False
         self.start_time  = None
         self.last_time = None
+
+
+    def pause(self):
+        self.paused = True
+        if self.playing:
+            self.tape.stop_sound()
+
+    def unpause(self):
+        self.paused = False
+        if self.playing:
+            self.tape.play_sound()
 
     def load_tape(self, tape):
         self.unload_tape()
@@ -318,7 +331,7 @@ class TapeDrive(armv2.Device):
                     self.end_callback()
                     self.entered_pilot = True
 
-            if self.playing:
+            if self.playing and not self.paused:
                 pos = float(globals.t - self.start_time) / 20
                 colours = (Display.Colours.MED_GREY, Display.Colours.RED)
             else:
