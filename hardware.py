@@ -140,11 +140,14 @@ class TapeDrive(armv2.Device):
         self.open          = False
         self.lock          = threading.Lock()
         self.paused        = False
+        self.rewinding     = None
+        self.fast_forwarding = None
         self.loading       = False
         freq, sample_size, num_channels = pygame.mixer.get_init()
         self.sample_rate = float(freq) / 1000
         self.start_time  = None
         self.last_time   = None
+        self.wind_time   = None
 
 
         screen_width  = self.cpu.display.pixel_width()
@@ -217,6 +220,25 @@ class TapeDrive(armv2.Device):
         self.paused = False
         if self.playing:
             self.tape.play_sound()
+
+    def rewind(self, callback):
+        #TODO: Base this on the current position and the tape length
+        if not self.tape:
+            callback()
+            return
+        duration = 1000
+        self.wind_time = globals.t + duration
+        self.rewinding = callback
+        self.fast_forwarding = None
+
+    def fast_forward(self, callback):
+        if not self.tape:
+            callback()
+            return
+        duration = 1000
+        self.wind_time = globals.t + duration
+        self.fast_forwarding = callback
+        self.rewinding = None
 
     def load_tape(self, tape):
         self.unload_tape()
@@ -302,6 +324,23 @@ class TapeDrive(armv2.Device):
             self.cpu.cpu.interrupt(self.id, self.status)
 
     def update(self):
+
+        if self.rewinding:
+            if globals.t >= self.wind_time:
+                self.rewinding()
+                self.rewinding = None
+                self.wind_time = None
+                if self.tape:
+                    self.tape.rewind()
+            return
+
+        if self.fast_forwarding:
+            if globals.t >= self.wind_time:
+                self.fast_forwarding()
+                self.fast_forwarding = None
+                if self.tape:
+                    self.tape.fast_forward()
+            return
 
         try:
             if self.playing:

@@ -129,6 +129,22 @@ class ProgramTape(Tape):
         self.build_samples()
         self.build_sound()
 
+    def rewind(self):
+        self.position = 0
+        self.current_block = 0
+        self.current_bit = 0
+        self.block_pos = 0
+        self.block_start = 0
+        self.build_sound()
+
+    def fast_forward(self):
+        self.position = self.end_time
+        self.current_block = len(self.data_blocks)
+        self.current_bit = len(self.bit_times[self.current_block])
+        self.block_pos = len(self.data_blocks[self.current_block])
+        self.block_start = self.end_time
+        self.build_sound()
+
     def build_samples(self):
         freq, sample_size, num_channels = pygame.mixer.get_init()
         tone_length = 4 * float(freq) / 22050
@@ -188,6 +204,7 @@ class ProgramTape(Tape):
         for i, times in enumerate(self.bit_times):
             self.start_time.append(last_end + (i + 1) * self.pilot_length * 1000)
             last_end += times[-1]
+        self.end_time = last_end
 
     def build_sound(self):
         offset = int(self.position * self.sample_rate)
