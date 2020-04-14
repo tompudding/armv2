@@ -141,8 +141,11 @@ class TapeDrive(armv2.Device):
         self.lock          = threading.Lock()
         self.current_bit   = 0
         self.paused        = False
+        self.loading       = False
         freq, sample_size, num_channels = pygame.mixer.get_init()
         self.sample_rate = float(freq) / 1000
+        self.start_time  = None
+
 
         screen_width  = self.cpu.display.pixel_width()
         screen_height = self.cpu.display.pixel_height()
@@ -230,6 +233,7 @@ class TapeDrive(armv2.Device):
         # We don't actually need to do any powering down, but alert any potential debugger that they can update
         # their symbols
         self.stop_playing()
+        self.loading = False
         if self.end_callback is not None:
             self.end_callback()
 
@@ -249,7 +253,7 @@ class TapeDrive(armv2.Device):
             self.skipped = True
 
     def is_byte_ready(self):
-        if not self.tape:
+        if not self.tape or not self.playing:
             return False
         if self.current_block >= len(self.tape.data_blocks) or self.skipped:
             return True
@@ -299,7 +303,7 @@ class TapeDrive(armv2.Device):
 
     def update(self):
 
-        if not self.playing:
+        if not self.loading:
             return
 
         if self.status == self.Codes.NOT_READY:
@@ -308,7 +312,10 @@ class TapeDrive(armv2.Device):
                 self.feed_byte()
 
         try:
-            elapsed = globals.t - self.start_time[self.current_block]
+            if self.start_time:
+                elapsed = globals.t - self.start_time[self.current_block]
+            else:
+                elapsed = -globals.t
         except IndexError:
             # We reached the end of the tape
             self.power_down()
@@ -320,12 +327,18 @@ class TapeDrive(armv2.Device):
                 if self.end_callback:
                     self.end_callback()
                     self.entered_pilot = True
+
+            if self.playing:
+                colours = (Display.Colours.MED_GREY, Display.Colours.RED)
+            else:
+                colours = (Display.Colours.RED, Display.Colours.RED)
+
             pos = float(elapsed) / 20
             for i, stripes in enumerate(self.stripes):
                 if ((i + 8 - pos) % 12) >= 4:
-                    colour = Display.Colours.MED_GREY
+                    colour = colours[0]
                 else:
-                    colour = Display.Colours.RED
+                    colour = colours[1]
                 for q in stripes:
                     q.set_colour(colour)
 
@@ -388,8 +401,9 @@ class TapeDrive(armv2.Device):
 
                 if self.tape:
                     # Have we progressed enough to give the next byte?
-                    if not self.playing:
-                        self.start_playing()
+                    #if not self.playing:
+                    #    self.start_playing()
+                    self.loading = True
 
                     if self.is_byte_ready():
                         # Great you can have a byte
