@@ -139,12 +139,12 @@ class TapeDrive(armv2.Device):
         self.skipped       = False
         self.open          = False
         self.lock          = threading.Lock()
-        self.current_bit   = 0
         self.paused        = False
         self.loading       = False
         freq, sample_size, num_channels = pygame.mixer.get_init()
         self.sample_rate = float(freq) / 1000
         self.start_time  = None
+        self.last_time   = None
 
 
         screen_width  = self.cpu.display.pixel_width()
@@ -191,30 +191,26 @@ class TapeDrive(armv2.Device):
     def start_playing(self):
         if not self.tape:
             return
-        self.tape.sound.play()
+        self.tape.play_sound()
         self.skipped = False
         self.playing = True
-
-        # start time for each block...
-        self.start_time = []
-        last_end = globals.t
-        for i, times in enumerate(self.tape.bit_times):
-            self.start_time.append(last_end + (i + 1) * self.tape.pilot_length * 1000)
-            last_end += times[-1]
-        print('st', globals.t, self.start_time)
+        self.start_time = globals.t
+        self.last_time = self.start_time
 
     def stop_playing(self):
         if not self.tape:
             return
-        self.tape.sound.stop()
+        self.tape.stop_sound()
         self.playing = False
+        self.start_time  = None
+        self.last_time = None
 
     def load_tape(self, tape):
         self.unload_tape()
         self.tape = tape
 
-        self.block_pos = 0
-        self.current_block = 0
+        #self.tape.block_pos = 0
+        #self.tape.current_block = 0
         #self.tape = open(filename, 'rb')
         #self.tape_name = filename
 
@@ -223,9 +219,9 @@ class TapeDrive(armv2.Device):
 
     def unload_tape(self):
         if self.tape:
-            self.current_block = 0
-            self.current_bit = 0
-            self.block_pos = 0
+            #self.tape.current_block = 0
+            #self.tape.current_bit = 0
+            #self.block_pos = 0
             self.tape = None
             self.stop_playing()
 
@@ -255,24 +251,15 @@ class TapeDrive(armv2.Device):
     def is_byte_ready(self):
         if not self.tape or not self.playing:
             return False
-        if self.current_block >= len(self.tape.data_blocks) or self.skipped:
-            return True
 
-        elapsed = globals.t - self.start_time[self.current_block]
-
-        return elapsed * self.sample_rate > self.tape.byte_samples[self.current_block][self.block_pos]
+        return self.tape.byte_ready() or self.skipped
 
     def feed_byte(self):
         try:
             if not self.tape or self.open:
                 raise IndexError
 
-            c = self.tape.data_blocks[self.current_block][self.block_pos]
-            self.block_pos += 1
-            if self.block_pos >= len(self.tape.data_blocks[self.current_block]):
-                self.current_block += 1
-                self.block_pos = 0
-                self.current_bit = 0
+            c = self.tape.get_byte()
         except IndexError:
             c = None
 
@@ -303,6 +290,19 @@ class TapeDrive(armv2.Device):
 
     def update(self):
 
+        try:
+            if self.playing:
+                wall_elapsed = globals.t - self.last_time
+                self.last_time = globals.t
+                bits = self.tape.update(wall_elapsed, self.paused, len(self.stripes))
+                #elapsed = globals.t - self.start_time[self.tape.current_block]
+            else:
+                bits = None
+        except IndexError:
+            # We reached the end of the tape
+            self.power_down()
+            return
+
         if not self.loading:
             return
 
@@ -311,17 +311,7 @@ class TapeDrive(armv2.Device):
             if self.is_byte_ready():
                 self.feed_byte()
 
-        try:
-            if self.start_time:
-                elapsed = globals.t - self.start_time[self.current_block]
-            else:
-                elapsed = -globals.t
-        except IndexError:
-            # We reached the end of the tape
-            self.power_down()
-            return
-
-        if elapsed < 0:
+        if bits is None:
             # In this phase we do rolling bars of grey and red
             if not self.entered_pilot:
                 if self.end_callback:
@@ -329,11 +319,12 @@ class TapeDrive(armv2.Device):
                     self.entered_pilot = True
 
             if self.playing:
+                pos = float(globals.t - self.start_time) / 20
                 colours = (Display.Colours.MED_GREY, Display.Colours.RED)
             else:
+                pos = 0
                 colours = (Display.Colours.RED, Display.Colours.RED)
 
-            pos = float(elapsed) / 20
             for i, stripes in enumerate(self.stripes):
                 if ((i + 8 - pos) % 12) >= 4:
                     colour = colours[0]
@@ -347,23 +338,15 @@ class TapeDrive(armv2.Device):
             # Use zeroes
             self.entered_pilot = False
 
-            if self.current_block >= len(self.tape.data_blocks) or \
-                    self.current_bit >= len(self.tape.bit_times[self.current_block]) or \
-                    self.tape.bit_times[self.current_block][self.current_bit] > elapsed:
+            if len(bits) == 0:
+                #The tape returns a set of empty bits when it's done
                 return
-
-            # We've got some to show, how many
-            try:
-                while self.tape.bit_times[self.current_block][self.current_bit] <= elapsed:
-                    self.current_bit += 1
-            except IndexError:
-                self.current_bit = len(self.tape.bit_times[self.current_block])
 
             stripe_pos = 0
             bit_pos = 0
             while stripe_pos < len(self.stripes):
                 try:
-                    bit = self.tape.bits[self.current_block][self.current_bit + bit_pos]
+                    bit = bits[bit_pos]
                 except IndexError:
                     bit = 0
 
