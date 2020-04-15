@@ -8,6 +8,7 @@ import numpy
 import io
 import struct
 import traceback
+import globals
 try:
     from . import popcnt
 except ImportError:
@@ -112,7 +113,6 @@ class ProgramTape(Tape):
         self.current_block = 0
         self.current_bit = 0
         self.block_pos = 0
-        self.block_start = 0
 
         super(ProgramTape, self).__init__(filename)
         self.data_blocks = []
@@ -128,13 +128,14 @@ class ProgramTape(Tape):
 
         self.build_samples()
         self.build_sound()
+        self.block_start = self.preamble_len
 
     def rewind(self):
         self.position = 0
         self.current_block = 0
         self.current_bit = 0
         self.block_pos = 0
-        self.block_start = 0
+        self.block_start = self.preamble_len
         self.build_sound()
 
     def fast_forward(self):
@@ -156,12 +157,19 @@ class ProgramTape(Tape):
         pilot_samples = numpy.zeros(shape=num_pilot_samples, dtype='float64')
         popcnt.create_tone(pilot_samples, set_length)
 
+        # And before the first pilot segment, we want some tape noise to sell the illusion
+        raw_samples = globals.sounds.noise.get_raw()
+        #That's a bytes object
+
         self.byte_samples = []
         self.bit_times    = []
         self.bits         = []
 
-        all_samples = []
-        total_samples = 0
+        all_samples = [numpy.frombuffer(raw_samples, dtype='int16')]
+        total_samples = len(all_samples[0])
+
+        self.noise_len = (1000*total_samples) / freq
+        self.preamble_len = self.noise_len + self.pilot_length*1000
 
         for block in self.data_blocks:
             data = numpy.fromstring(block, dtype='uint32')
@@ -200,21 +208,25 @@ class ProgramTape(Tape):
 
         # start time for each block...
         self.start_time = []
-        last_end = 0
+        last_end = self.preamble_len
         for i, times in enumerate(self.bit_times):
-            self.start_time.append(last_end + (i + 1) * self.pilot_length * 1000)
-            last_end += times[-1]
-        self.end_time = last_end + (i + 1) * self.pilot_length * 1000
+            self.start_time.append(last_end)
+            last_end += times[-1] + (self.pilot_length * 1000)
+        self.end_time = last_end
 
     def build_sound(self):
         offset = int(self.position * self.sample_rate)
         self.sound = pygame.sndarray.make_sound(self.samples[offset:])
+        self.sound.set_volume(0.2)
 
     def byte_ready(self):
         if self.current_block >= len(self.data_blocks):
             return True
 
-        pos = self.position - self.block_start - self.pilot_length*1000
+        if self.position < self.start_time[self.current_block]:
+            return False
+
+        pos = self.position - self.block_start
         pos_sample = pos * self.sample_rate
         target_sample = self.byte_samples[self.current_block][self.block_pos]
         ready = pos_sample > target_sample
@@ -227,7 +239,7 @@ class ProgramTape(Tape):
             self.current_block += 1
             self.block_pos = 0
             self.current_bit = 0
-            self.block_start = self.position
+            self.block_start = self.start_time[self.current_block]
 
         return c
 
@@ -237,19 +249,28 @@ class ProgramTape(Tape):
 
         if self.current_block >= len(self.data_blocks) or \
            self.current_bit >= len(self.bit_times[self.current_block]):
-            return []
+            return None, TapeStage.no_data
+
+        if self.position < self.noise_len:
+            return None, TapeStage.no_tone
 
         if self.position < self.start_time[self.current_block]:
-            return None
+            return None, TapeStage.tone
 
         if paused:
-            return self.pause_bits[:num_required]
+            return self.pause_bits[:num_required], TapeStage.data
 
         # We've got some to show, how many
-        pos = self.position - self.block_start - self.pilot_length*1000
+        pos = self.position - self.block_start
         try:
             while self.bit_times[self.current_block][self.current_bit] <= pos:
                 self.current_bit += 1
         except IndexError:
             self.current_bit = len(self.bit_times[self.current_block])
-        return self.bits[self.current_block][self.current_bit:self.current_bit + num_required]
+        return self.bits[self.current_block][self.current_bit:self.current_bit + num_required], TapeStage.data
+
+class TapeStage:
+    no_data = 0
+    no_tone = 1
+    tone = 2
+    data = 3

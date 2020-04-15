@@ -10,7 +10,7 @@ from . import globals
 from .globals.types import Point
 from pygame.locals import *
 from optparse import OptionParser
-
+from . import sounds
 
 def new_machine(boot_rom):
     machine = hardware.Machine(cpu_size=1 << 21, cpu_rom=boot_rom)
@@ -150,6 +150,7 @@ def init(width, height, do_screen=True):
     pygame.display.set_caption('Synapse')
     # pygame.mouse.set_visible(0)
     pygame.key.set_repeat(500, 50)
+    globals.sounds = sounds.Sounds()
     globals.screen = Point(width, height)
     globals.dirs = globals.types.Directories('resource')
     globals.screen_quadbuffer     = drawing.QuadBuffer(16)

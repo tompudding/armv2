@@ -13,7 +13,7 @@ import struct
 
 from . import globals
 from .globals.types import Point
-
+import armv2_emulator
 
 class Keyboard(armv2.Device):
     """
@@ -349,10 +349,11 @@ class TapeDrive(armv2.Device):
             if self.playing:
                 wall_elapsed = globals.t - self.last_time
                 self.last_time = globals.t
-                bits = self.tape.update(wall_elapsed, self.paused, len(self.stripes))
+                bits, stage = self.tape.update(wall_elapsed, self.paused, len(self.stripes))
                 #elapsed = globals.t - self.start_time[self.tape.current_block]
             else:
                 bits = None
+                stage = armv2_emulator.tapes.TapeStage.no_data
         except IndexError:
             # We reached the end of the tape
             self.power_down()
@@ -373,7 +374,7 @@ class TapeDrive(armv2.Device):
                     self.end_callback()
                     self.entered_pilot = True
 
-            if self.playing and not self.paused:
+            if self.playing and not self.paused and stage is armv2_emulator.tapes.TapeStage.tone:
                 pos = float(globals.t - self.start_time) / 20
                 colours = (Display.Colours.MED_GREY, Display.Colours.RED)
             else:
