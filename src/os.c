@@ -127,7 +127,7 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
     uint32_t entry_point = 0;
     char tape_name[TAPE_NAME_LEN];
 
-    printf("\n\n\n   Loading tape ");
+    printf("\n\n\n   Press PLAY on tape ");
 
     enum tape_codes result = tape_next_word( &entry_point );
 

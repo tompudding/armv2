@@ -232,24 +232,35 @@ class ProgramTape(Tape):
         pos_sample = pos * self.sample_rate
         target_sample = self.byte_samples[self.current_block][self.block_pos]
         if pos_sample > target_sample + self.cache_samples:
-            self.trim_cache()
+            self.trim_cache(pos)
         ready = pos_sample > target_sample
 
         return ready
 
-    def trim_cache(self):
+    def trim_cache(self, pos):
         print('Trim cache')
+        pos_sample = pos * self.sample_rate
+
+        while pos_sample > self.byte_samples[self.current_block][self.block_pos] + self.cache_samples:
+            self.block_pos += 1
+            if self.block_pos >= len(self.byte_samples[self.current_block]):
+                self.advance_block()
+                return
+
 
     def get_byte(self):
         c = self.data_blocks[self.current_block][self.block_pos]
         self.block_pos += 1
         if self.block_pos >= len(self.data_blocks[self.current_block]):
-            self.current_block += 1
-            self.block_pos = 0
-            self.current_bit = 0
-            self.block_start = self.start_time[self.current_block]
+            self.advance_block()
 
         return c
+
+    def advance_block(self):
+        self.current_block += 1
+        self.block_pos = 0
+        self.current_bit = 0
+        self.block_start = self.start_time[self.current_block]
 
     def update(self, elapsed, paused, num_required):
         if not paused:
@@ -271,17 +282,12 @@ class ProgramTape(Tape):
         if self.current_bit >= len(self.bit_times[self.current_block]):
             diff = self.position - self.block_start - self.bit_times[self.current_block][-1]
             if diff > 100:
-                self.current_block += 1
-                self.block_pos = 0
-                self.current_bit = 0
-                self.block_start = self.start_time[self.current_block]
+                self.advance_block()
 
         if self.position < self.noise_len:
-            print('Noise')
             return None, TapeStage.no_tone
 
         if self.position < self.start_time[self.current_block]:
-            print('Tone')
             return None, TapeStage.tone
 
         if paused:
