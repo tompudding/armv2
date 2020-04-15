@@ -362,16 +362,17 @@ class TapeDrive(armv2.Device):
         if not self.loading:
             return
 
-        if self.status == self.Codes.NOT_READY:
+        if self.entered_pilot and self.status == self.Codes.NOT_READY:
             # We're waiting, so check if it's time for the next byte
             if self.is_byte_ready():
                 self.feed_byte()
 
-        if bits is None:
+        if bits is None or not self.entered_pilot:
             # In this phase we do rolling bars of grey and red
-            if not self.entered_pilot:
+            if bits is None and not self.entered_pilot:
                 if self.end_callback:
                     self.end_callback()
+                if stage == armv2_emulator.tapes.TapeStage.tone:
                     self.entered_pilot = True
 
             if self.playing and not self.paused and stage is armv2_emulator.tapes.TapeStage.tone:
@@ -392,7 +393,7 @@ class TapeDrive(armv2.Device):
         else:
             # The stripes should be all the ones up to that position. If we don't have anything
             # Use zeroes
-            self.entered_pilot = False
+            #self.entered_pilot = False
 
             if len(bits) == 0:
                 #The tape returns a set of empty bits when it's done

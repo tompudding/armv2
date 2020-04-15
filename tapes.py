@@ -106,6 +106,7 @@ class Tape(object):
 
 
 class ProgramTape(Tape):
+    cache_seconds = 1
     def __init__(self, filename):
 
         #Position in the tape in milliseconds
@@ -205,6 +206,7 @@ class ProgramTape(Tape):
             # Duplicate it into the required number of channels
             self.samples = self.samples.repeat(num_channels).reshape(total_samples, num_channels)
         self.sample_rate = float(freq) / 1000
+        self.cache_samples = self.cache_seconds * freq
 
         # start time for each block...
         self.start_time = []
@@ -229,8 +231,14 @@ class ProgramTape(Tape):
         pos = self.position - self.block_start
         pos_sample = pos * self.sample_rate
         target_sample = self.byte_samples[self.current_block][self.block_pos]
+        if pos_sample > target_sample + self.cache_samples:
+            self.trim_cache()
         ready = pos_sample > target_sample
+
         return ready
+
+    def trim_cache(self):
+        print('Trim cache')
 
     def get_byte(self):
         c = self.data_blocks[self.current_block][self.block_pos]
@@ -247,14 +255,33 @@ class ProgramTape(Tape):
         if not paused:
             self.position += elapsed
 
-        if self.current_block >= len(self.data_blocks) or \
-           self.current_bit >= len(self.bit_times[self.current_block]):
+        # The update function is mainly to return to the display a set of bits it should use to draw its
+        # coloured bars. If we don't have any bits we also tell it if we're playing a tone so it can draw cool
+        # red and gret bars.
+        #
+        # Actual delivery of data is handled by byte_ready() and get_byte(). If you call get_byte() without
+        # calling byte_ready it will just return all the bytes for you as fast as you want them (to facilitate
+        # skipping the loading), but one thing we need to do is to handle the other case; when a caller is not
+        # calling get_byte() while we're playing. If after we've been playing for a minute and the cpu asks
+        # what our byte is we shouldn't give them the whole thing, we need to cut off ones that are too
+
+        if self.current_block >= len(self.data_blocks):
             return None, TapeStage.no_data
 
+        if self.current_bit >= len(self.bit_times[self.current_block]):
+            diff = self.position - self.block_start - self.bit_times[self.current_block][-1]
+            if diff > 100:
+                self.current_block += 1
+                self.block_pos = 0
+                self.current_bit = 0
+                self.block_start = self.start_time[self.current_block]
+
         if self.position < self.noise_len:
+            print('Noise')
             return None, TapeStage.no_tone
 
         if self.position < self.start_time[self.current_block]:
+            print('Tone')
             return None, TapeStage.tone
 
         if paused:
