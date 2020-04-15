@@ -240,6 +240,9 @@ class TapeDrive(armv2.Device):
         self.fast_forwarding = callback
         self.rewinding = None
 
+    def stop_winding(self):
+        self.rewinding = self.fast_forwarding = self.wind_time = None
+
     def load_tape(self, tape):
         self.unload_tape()
         self.tape = tape
