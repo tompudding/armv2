@@ -525,6 +525,7 @@ class Display(armv2.Device):
         self.back_quads = [drawing.Quad(self.back_quads_buffer) for i in range(self.width * self.height)]
         self.fore_quads = [drawing.Quad(self.fore_quads_buffer) for i in range(self.width * self.height)]
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
+        self.powered_on = True
 
         for z, quad_list in enumerate((self.back_quads, self.fore_quads)):
             for pos, quad in enumerate(quad_list):
@@ -541,6 +542,9 @@ class Display(armv2.Device):
         # initialise the whole screen
         for pos in range(len(self.letter_data)):
             self.redraw(pos)
+
+    def power_down(self):
+        self.powered_on = False
 
     def read_callback(self, addr, value):
         # The display has a secret RNG, did you know that?
@@ -609,8 +613,9 @@ class Display(armv2.Device):
     def new_frame(self):
         drawing.new_crt_frame(self.crt_buffer)
         # self.crt_buffer.bind_for_writing()
-        drawing.draw_no_texture(self.back_quads_buffer)
-        drawing.draw_all(self.fore_quads_buffer, self.atlas.texture)
+        if self.powered_on:
+            drawing.draw_no_texture(self.back_quads_buffer)
+            drawing.draw_all(self.fore_quads_buffer, self.atlas.texture)
 
     def end_frame(self):
         drawing.end_crt_frame(self.crt_buffer)

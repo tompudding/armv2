@@ -194,7 +194,7 @@ void handle_command(char *command) {
             printf("Tape drive empty\n");
             break;
         default:
-            printf("Tape drive error\n");
+            printf("Tape drive error %d\n", result);
             break;
         }
 

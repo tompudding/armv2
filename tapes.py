@@ -249,18 +249,23 @@ class ProgramTape(Tape):
 
 
     def get_byte(self):
-        c = self.data_blocks[self.current_block][self.block_pos]
-        self.block_pos += 1
-        if self.block_pos >= len(self.data_blocks[self.current_block]):
-            self.advance_block()
-
+        try:
+            c = self.data_blocks[self.current_block][self.block_pos]
+            self.block_pos += 1
+            if self.block_pos >= len(self.data_blocks[self.current_block]):
+                self.advance_block()
+        except IndexError:
+            c = None
         return c
 
     def advance_block(self):
         self.current_block += 1
         self.block_pos = 0
         self.current_bit = 0
-        self.block_start = self.start_time[self.current_block]
+        if self.current_block < len(self.start_time):
+            self.block_start = self.start_time[self.current_block]
+        else:
+            self.block_start = self.position
 
     def update(self, elapsed, paused, num_required):
         if not paused:
@@ -283,6 +288,8 @@ class ProgramTape(Tape):
             diff = self.position - self.block_start - self.bit_times[self.current_block][-1]
             if diff > 100:
                 self.advance_block()
+            else:
+                return None, TapeStage.no_data
 
         if self.position < self.noise_len:
             return None, TapeStage.no_tone

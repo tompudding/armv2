@@ -84,10 +84,9 @@ class Emulator(object):
             self.dbg.step_num(num)
 
     def draw(self):
-        if self.powered_on:
-            self.machine.display.new_frame()
-            self.machine.tape_drive.update()
-            self.machine.display.end_frame()
+        self.machine.display.new_frame()
+        self.machine.tape_drive.update()
+        self.machine.display.end_frame()
 
     def restart(self):
         #breakpoints = self.dbg.breakpoints
@@ -100,6 +99,8 @@ class Emulator(object):
         #self.dbg.update()
         if self.machine.tape_drive:
             self.machine.tape_drive.power_down()
+        if self.machine.display:
+            self.machine.display.power_down()
         self.powered_on = False
 
     def power_on(self):
