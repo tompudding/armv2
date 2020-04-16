@@ -31,20 +31,25 @@ class Debugger(object):
                          messages.Types.UNWATCH     : self.handle_memory_unwatch,
                          messages.Types.CONNECT     : self.handle_connect,
                          messages.Types.DISASSEMBLY : self.handle_disassembly,
-                         messages.Types.TAPEREQUEST : self.handle_taperequest,
-                         messages.Types.TAPE_LOAD   : self.handle_load_tape,
-                         messages.Types.TAPE_UNLOAD : self.handle_unload_tape,
                          messages.Types.SYMBOL_DATA : self.handle_request_symbols,
                          }
 
-        if tape_list is None:
-            self.tapes = glob.glob(os.path.join('emulator', 'tapes', '*.tape'))
-        else:
-            self.tapes = tape_list
-        self.tapes = [tapes.ProgramTape(fname) for fname in self.tapes]
-        self.loaded_tape = None
         self.need_symbols = False
         self.machine.tape_drive.register_callback(self.set_need_symbols)
+        self.connection = None
+        try:
+            self.load_symbols()
+            self.mem_watches = {}
+            self.num_to_step    = 0
+            # stopped means that the debugger has halted execution and is waiting for input
+            self.stopped        = False
+            # self.help_window.draw()
+            self.update()
+        except:
+            self.exit()
+            raise
+
+    def start_listening(self):
         for port_trial in range(10):
             self.port = random.randint(0x400, 0x10000)
             print(f'Trying port {self.port}')
@@ -58,17 +63,7 @@ class Debugger(object):
             raise
 
         self.connection.start()
-        try:
-            self.load_symbols()
-            self.mem_watches = {}
-            self.num_to_step    = 0
-            # stopped means that the debugger has halted execution and is waiting for input
-            self.stopped        = False
-            # self.help_window.draw()
-            self.update()
-        except:
-            self.exit()
-            raise
+
 
     def handle_message(self, message):
         try:
@@ -101,24 +96,9 @@ class Debugger(object):
         print('Got unset breakpoint')
         self.remove_breakpoint(message.addr)
 
-    def handle_taperequest(self, message):
-        if message.size:
-            tape_list = self.tapes[message.start: message.start + message.size]
-            if tape_list:
-                self.connection.send(messages.TapeReply(
-                    message.id, message.start, tape_list, len(self.tapes)))
-
-    def handle_load_tape(self, message):
-        if message.num < len(self.tapes):
-            self.machine.tape_drive.load_tape(self.tapes[message.num])
-            self.loaded_tape = message.num
-
-    def handle_unload_tape(self, message):
-        self.machine.tape_drive.unload_tape()
-        self.loaded_tape = None
-
     def handle_request_symbols(self, message):
-        self.connection.send(self.symbols)
+        if self.connection:
+            self.connection.send(self.symbols)
 
     def handle_memory_watch(self, message):
         self.mem_watches[message.id] = message
@@ -133,7 +113,6 @@ class Debugger(object):
     def handle_connect(self, message):
         # On connect we send an initial update
         self.send_register_update()
-        # self.send_tapes()
 
     def handle_disassembly(self, message):
         start = message.start
@@ -148,6 +127,8 @@ class Debugger(object):
         self.connection.send(messages.DisassemblyViewReply(start, mem, lines))
 
     def send_register_update(self):
+        if not self.connection:
+            return
         self.connection.send(messages.MachineState(self.machine.regs,
                                                    self.machine.mode,
                                                    self.machine.pc,
@@ -204,8 +185,6 @@ class Debugger(object):
         for bkpt in self.breakpoints:
             self.breakpoints[bkpt] = self.machine.memw[bkpt]
             self.machine.memw[bkpt] = self.BKPT
-        if self.loaded_tape is not None:
-            self.machine.tape_drive.load_tape(self.tapes[self.loaded_tape])
 
     def remove_breakpoint(self, addr):
         self.machine.memw[addr] = self.breakpoints[addr]
@@ -290,7 +269,8 @@ class Debugger(object):
         self.send_mem_update()
 
     def exit(self):
-        self.connection.exit()
+        if self.connection:
+            self.connection.exit()
 
     def stop(self, send_message=True):
         self.stopped = True
