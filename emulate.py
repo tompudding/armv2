@@ -12,15 +12,13 @@ from pygame.locals import *
 from optparse import OptionParser
 from . import sounds
 
-def new_machine(boot_rom, tape_drive=None):
+def new_machine(boot_rom):
     machine = hardware.Machine(cpu_size=1 << 21, cpu_rom=boot_rom)
     try:
         machine.add_hardware(hardware.Keyboard(machine), name='keyboard')
         machine.add_hardware(hardware.Display(machine, scale_factor=1), name='display')
         machine.add_hardware(hardware.Clock(machine), name='clock')
-        if tape_drive is None:
-            tape_drive = hardware.TapeDrive(machine)
-        machine.add_hardware(tape_drive, name='tape_drive')
+        machine.add_hardware(hardware.TapeDrive(machine), name='tape_drive')
     except:
         machine.delete()
         raise
@@ -105,10 +103,11 @@ class Emulator(object):
 
     def power_on(self):
         old_machine = self.machine
-        self.machine = new_machine(self.boot_rom, old_machine.tape_drive)
+        self.machine = new_machine(self.boot_rom)
         # The new machine has something in common with the old; the state of its hardware. Copying the
         # hardware devices across seems to have some issues that I can't be bothered to resolve, so cheat and
         # copy the state of those things with state (like the tape drive) across manually
+        self.machine.tape_drive.copy_from(old_machine.tape_drive)
         old_machine.delete()
         #FIXME: Handle taking ownership of the hardware properly
         self.dbg.new_machine(self.machine)

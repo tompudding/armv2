@@ -148,6 +148,7 @@ class TapeDrive(armv2.Device):
         self.start_time  = None
         self.last_time   = None
         self.wind_time   = None
+        self.pause_start = None
 
 
         screen_width  = self.cpu.display.pixel_width()
@@ -191,6 +192,26 @@ class TapeDrive(armv2.Device):
             for stripe in row:
                 stripe.set_colour(Display.Colours.YELLOW if i & 1 else Display.Colours.BLUE)
 
+    def copy_from(self, other):
+        self.status = other.status
+        self.tape          = other.tape
+        self.entered_pilot = other.entered_pilot
+        self.running       = other.running
+        self.playing       = other.playing
+        self.loading       = other.loading
+        self.end_callback  = other.end_callback
+        self.skipped       = other.skipped
+        self.open          = other.open
+        self.paused        = other.paused
+        self.rewinding     = other.rewinding
+        self.fast_forwarding = other.fast_forwarding
+        self.loading       = other.loading
+        self.pause_start    = other.pause_start
+
+        self.start_time  = other.start_time
+        self.last_time   = other.last_time
+        self.wind_time   = other.wind_time
+
 
     def start_playing(self):
         if not self.tape:
@@ -214,13 +235,25 @@ class TapeDrive(armv2.Device):
 
     def pause(self):
         self.paused = True
+        self.pause_start = globals.t
         if self.playing:
             self.tape.stop_sound()
 
     def unpause(self):
+
+        if self.rewinding or self.fast_forwarding:
+            self.wind_time += self.pause_time
         self.paused = False
+        self.pause_start = None
+
         if self.playing:
             self.tape.play_sound()
+
+    @property
+    def pause_time(self):
+        if not self.paused:
+            return 0
+        return globals.t - self.pause_start
 
     def rewind(self, callback):
         #TODO: Base this on the current position and the tape length
@@ -330,7 +363,7 @@ class TapeDrive(armv2.Device):
     def update(self):
 
         if self.rewinding:
-            if globals.t >= self.wind_time:
+            if globals.t >= self.wind_time + self.pause_time:
                 self.rewinding()
                 self.rewinding = None
                 self.wind_time = None
@@ -339,7 +372,7 @@ class TapeDrive(armv2.Device):
             return
 
         if self.fast_forwarding:
-            if globals.t >= self.wind_time:
+            if globals.t >= self.wind_time + self.pause_time:
                 self.fast_forwarding()
                 self.fast_forwarding = None
                 if self.tape:
