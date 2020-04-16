@@ -191,6 +191,7 @@ class TapeDrive(armv2.Device):
             for stripe in row:
                 stripe.set_colour(Display.Colours.YELLOW if i & 1 else Display.Colours.BLUE)
 
+
     def start_playing(self):
         if not self.tape:
             return
@@ -735,8 +736,9 @@ class Machine:
         with self.cv:
             self.cpu.add_hardware(device)
         self.hardware.append(device)
-        if name != None:
+        if name is not None:
             setattr(self, name, device)
+            setattr(device, 'name', name)
 
     def delete(self):
         with self.cv:

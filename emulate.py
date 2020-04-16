@@ -12,13 +12,15 @@ from pygame.locals import *
 from optparse import OptionParser
 from . import sounds
 
-def new_machine(boot_rom):
+def new_machine(boot_rom, tape_drive=None):
     machine = hardware.Machine(cpu_size=1 << 21, cpu_rom=boot_rom)
     try:
         machine.add_hardware(hardware.Keyboard(machine), name='keyboard')
         machine.add_hardware(hardware.Display(machine, scale_factor=1), name='display')
         machine.add_hardware(hardware.Clock(machine), name='clock')
-        machine.add_hardware(hardware.TapeDrive(machine), name='tape_drive')
+        if tape_drive is None:
+            tape_drive = hardware.TapeDrive(machine)
+        machine.add_hardware(tape_drive, name='tape_drive')
     except:
         machine.delete()
         raise
@@ -29,6 +31,7 @@ class Emulator(object):
     def __init__(self, callback=None, boot_rom='build/boot.rom', tapes=None):
         self.last = 0
         self.boot_rom = boot_rom
+        self.powered_on = True
         self.machine = new_machine(self.boot_rom)
         try:
             self.dbg = debugger.Debugger(self.machine, tapes)
@@ -76,12 +79,41 @@ class Emulator(object):
             key = ord('\n')
         self.dbg.machine.keyboard.key_down(key)
 
+    def step_num(self, num):
+        if self.powered_on:
+            self.dbg.step_num(num)
+
+    def draw(self):
+        if self.powered_on:
+            self.machine.display.new_frame()
+            self.machine.tape_drive.update()
+            self.machine.display.end_frame()
+
     def restart(self):
-        breakpoints = self.dbg.breakpoints
-        self.dbg.machine.delete()
-        self.dbg.new_machine(new_machine(self.boot_rom))
+        #breakpoints = self.dbg.breakpoints
+        self.power_off()
+        self.power_on()
+
+    def power_off(self):
+        #self.machine.delete()
+        #self.machine = None
+        #self.dbg.update()
+        if self.machine.tape_drive:
+            self.machine.tape_drive.power_down()
+        self.powered_on = False
+
+    def power_on(self):
+        old_machine = self.machine
+        self.machine = new_machine(self.boot_rom, old_machine.tape_drive)
+        # The new machine has something in common with the old; the state of its hardware. Copying the
+        # hardware devices across seems to have some issues that I can't be bothered to resolve, so cheat and
+        # copy the state of those things with state (like the tape drive) across manually
+        old_machine.delete()
+        #FIXME: Handle taking ownership of the hardware properly
+        self.dbg.new_machine(self.machine)
         self.dbg.update()
         self.dbg.load_symbols()
+        self.powered_on = True
 
     def skip_loading(self):
         self.dbg.machine.tape_drive.skip_loading()
