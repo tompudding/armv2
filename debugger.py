@@ -64,6 +64,9 @@ class Debugger(object):
 
         self.connection.start()
 
+    def stop_listening(self):
+        self.connection.exit()
+        self.connection = None
 
     def handle_message(self, message):
         try:
