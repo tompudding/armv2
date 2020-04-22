@@ -51,7 +51,7 @@ class Debugger(object):
 
     def start_listening(self):
         for port_trial in range(10):
-            self.port = random.randint(0x400, 0x10000)
+            self.port = 4141#random.randint(0x400, 0x10000)
             print(f'Trying port {self.port}')
             try:
                 self.connection = messages.Server(port=self.port, callback=self.handle_message)
@@ -140,6 +140,8 @@ class Debugger(object):
 
     def send_mem_update(self):
         for message in self.mem_watches.values():
+            if not self.connection:
+                return
             data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
             self.connection.send(messages.MemViewReply(message.id, message.watch_start, data))
 
