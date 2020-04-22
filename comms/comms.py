@@ -13,12 +13,9 @@ class Types:
     DISCONNECT      = 2
     MAX             = 3
 
-class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+class BaseHandler(object):
     select_timeout = 0.5
     total_timeout = 1.0
-    #This needs overriding
-    message_factory = None
-
     def read_message(self):
         ready = select.select([self.request], [], [], self.select_timeout)
         if ready[0]:
@@ -49,14 +46,24 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         try:
             self.data = b''
             self.needed = None
-            while not self.server.done:
+            self.server.comms.set_connected(self.request)
+            while not self.server.comms.done:
                 self.read_message()
         except socket.error as e:
             print('Got socket error')
             self.server.comms.disconnect()
 
-def get_factory_class(factory):
-    class temp(ThreadedTCPRequestHandler):
+
+class ThreadedTCPRequestHandler(BaseHandler, socketserver.BaseRequestHandler):
+    select_timeout = 0.5
+    total_timeout = 1.0
+    #This needs overriding
+    message_factory = None
+    debuf = False
+
+
+def get_factory_class(inc, factory):
+    class temp(inc):
         message_factory = factory
     return temp
 
@@ -70,11 +77,11 @@ class Comms(object):
         self.port = port
         self.callback = callback
         self.connected = False
-        self.server = ThreadedTCPServer(('0.0.0.0', self.port), get_factory_class(self.message_factory))
+        self.socket = None
+        self.server = ThreadedTCPServer(('0.0.0.0', self.port), get_factory_class(ThreadedTCPRequestHandler, self.message_factory))
         self.server.comms = self
-        self.server.done = False
+        self.done = False
         self.thread = threading.Thread(target=self.server.serve_forever)
-        self.send_socket = None
 
     def start(self):
         self.thread.start()
@@ -87,27 +94,21 @@ class Comms(object):
     def __exit__(self, type, value, tb):
         self.exit()
 
-    def connect(self, host, port):
-        self.remote_host = host
-        self.remote_port = port
-        if self.send_socket:
-            self.send_socket.close()
-
-        self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.send_socket.connect((self.remote_host, self.remote_port))
+    def set_connected(self, socket):
+        self.socket = socket
         self.connected = True
 
     def disconnect(self):
-        if self.send_socket:
-            self.send_socket.close()
-            self.send_socket = None
+        if self.socket:
+            self.socket.close()
+            self.socket = None
             self.connected = False
 
     def send(self, message):
         if self.connected:
             try:
                 m = message.to_binary()
-                self.send_socket.send(struct.pack('>I', len(m)) + m)
+                self.socket.send(struct.pack('>I', len(m)) + m)
             except socket.error:
                 self.connected = False
                 print('got disconnected')
@@ -121,9 +122,10 @@ class Comms(object):
 
     def exit(self):
         self.disconnect()
-        self.server.done = True
-        self.server.shutdown()
-        self.server.server_close()
+        if self.server:
+            self.done = True
+            self.server.shutdown()
+            self.server.server_close()
         print('joining thread')
         self.thread.join()
         print('joined')
@@ -135,20 +137,62 @@ class Server(Comms):
             self.connect(message.host, message.port)
         super(Server, self).handle(message)
 
+    def connect(self, host, port):
+        pass
+
+class Wrapper(object):
+    def __init__(self, comms):
+        self.comms = comms
 
 class Client(Comms):
     reconnect_interval = 0.1
 
     def __init__(self, host, port, callback):
-        super(Client, self).__init__(port=0, callback=callback)
-        self.host, self.port = self.server.server_address
+        #super(Client, self).__init__(port=0, callback=callback)
+        # Clients still need a thread for listening to server responses and acting on them, but they don't
+        # need a separate socket
+        self.callback = callback
+        self.server = None
+        self.host = host
+        self.port = port
         self.host = '127.0.0.1'
         self.remote_host = host
         self.remote_port = port
+        self.socket = None
         self.connected = False
         self.done = False
         self.cv = threading.Condition()
         self.connect_thread = threading.Thread(target=self.connect_thread_main)
+        if callback:
+            self.thread = threading.Thread(target=self.listen_main)
+
+    def listen_main(self):
+        self.handler = get_factory_class(BaseHandler, self.message_factory)()
+
+        while not self.done:
+            with self.cv:
+                while not self.done and not self.connected:
+                    self.cv.wait()
+
+            while not self.done and self.connected:
+                self.handler.request = self.socket
+                self.handler.server = Wrapper(self)
+                self.handler.handle()
+
+    def connect(self, host, port):
+        self.remote_host = host
+        self.remote_port = port
+        if self.socket:
+            self.socket.close()
+
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((self.remote_host, self.remote_port))
+        self.connected = True
+        with self.cv:
+            self.cv.notify()
+
+    def set_connected(self, socket):
+        print('Yo set connected',socket, self.socket)
 
     def connect_thread_main(self):
         while not self.done:

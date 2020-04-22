@@ -442,4 +442,7 @@ class Client(Factory, comms.Client):
 
 
 class Server(Factory, comms.Server):
-    pass
+    def handle(self, message):
+        if message.type == Types.CONNECT:
+            self.connect(message.host, message.port)
+        super(Server, self).handle(message)
