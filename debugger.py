@@ -5,7 +5,7 @@ import pygame
 import os
 import string
 import glob
-from . import messages
+from .comms import custom as messages
 import struct
 import random
 from pygame.locals import *

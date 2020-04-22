@@ -1,3 +1,3 @@
 from . import globals
-from . import drawing, messages
+from . import drawing, comms
 from .emulate import init, Emulator
