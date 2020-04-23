@@ -412,7 +412,46 @@ messages_by_type = {Types.CONNECT: Handshake,
                     Types.NEXT: Next,
                     }
 
-class Factory(object):
+class BaseHandler(object):
+    select_timeout = 0.5
+    total_timeout = 1.0
+    def read_message(self):
+        ready = select.select([self.request], [], [], self.select_timeout)
+        if ready[0]:
+            new_data = self.request.recv(1024)
+            if not new_data:
+                raise socket.error()
+            self.process_data(new_data)
+
+    def set_needed(self):
+        self.needed = None
+        if len(self.data) > 4:
+            self.needed = struct.unpack('>I', self.data[:4])[0]
+            self.data = self.data[4:]
+            # print 'Got needed %d' % self.needed
+
+    def process_data(self, data):
+        self.data = self.data + data
+        if self.needed == None:
+            self.set_needed()
+        while self.needed != None and len(self.data) >= self.needed:
+            message = self.message_factory(self.data[:self.needed])
+            self.data = self.data[self.needed:]
+            self.set_needed()
+            if message:
+                self.server.comms.handle(message)
+
+    def handle(self):
+        try:
+            print('Handling message!')
+            self.data = b''
+            self.needed = None
+            self.server.comms.set_connected(self.request)
+            while not self.server.comms.done:
+                self.read_message()
+        except socket.error as e:
+            print('Got socket error')
+            self.server.comms.disconnect()
 
     def message_factory(self, data):
         type = struct.unpack('>I', data[:4])[0]
@@ -423,7 +462,9 @@ class Factory(object):
         except Error as e:
             print('Error (%s) while receiving message of type %d' % (e, type))
 
-class Client(Factory, comms.Client):
+
+class Client(comms.Client):
+    factory_class = BaseHandler
     def initiate_connection(self):
         try:
             self.connect(self.remote_host, self.remote_port)
@@ -445,7 +486,8 @@ class Client(Factory, comms.Client):
         self.callback(Disconnect())
 
 
-class Server(Factory, comms.Server):
+class Server(comms.Server):
+    factory_class = BaseHandler
     def handle(self, message):
         if message.type.value == Types.CONNECT:
             self.connect(message.host, message.port)

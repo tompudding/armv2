@@ -11,58 +11,17 @@ import enum
 class Types(enum.IntEnum):
     pass
 
-class BaseHandler(object):
+
+
+class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     select_timeout = 0.5
     total_timeout = 1.0
-    def read_message(self):
-        ready = select.select([self.request], [], [], self.select_timeout)
-        if ready[0]:
-            new_data = self.request.recv(1024)
-            if not new_data:
-                raise socket.error()
-            self.process_data(new_data)
-
-    def set_needed(self):
-        self.needed = None
-        if len(self.data) > 4:
-            self.needed = struct.unpack('>I', self.data[:4])[0]
-            self.data = self.data[4:]
-            # print 'Got needed %d' % self.needed
-
-    def process_data(self, data):
-        self.data = self.data + data
-        if self.needed == None:
-            self.set_needed()
-        while self.needed != None and len(self.data) >= self.needed:
-            message = self.message_factory(self.data[:self.needed])
-            self.data = self.data[self.needed:]
-            self.set_needed()
-            if message:
-                self.server.comms.handle(message)
-
-    def handle(self):
-        try:
-            self.data = b''
-            self.needed = None
-            self.server.comms.set_connected(self.request)
-            while not self.server.comms.done:
-                self.read_message()
-        except socket.error as e:
-            print('Got socket error')
-            self.server.comms.disconnect()
-
-
-class ThreadedTCPRequestHandler(BaseHandler, socketserver.BaseRequestHandler):
-    select_timeout = 0.5
-    total_timeout = 1.0
-    #This needs overriding
-    message_factory = None
     debuf = False
 
 
 def get_factory_class(inc, factory):
-    class temp(inc):
-        message_factory = factory
+    class temp(factory, inc):
+        pass
     return temp
 
 class ThreadedTCPServer(socketserver.TCPServer):
@@ -70,13 +29,12 @@ class ThreadedTCPServer(socketserver.TCPServer):
 
 
 class Comms(object):
-    message_factory = None
     def __init__(self, port, callback):
         self.port = port
         self.callback = callback
         self.connected = False
         self.socket = None
-        self.server = ThreadedTCPServer(('0.0.0.0', self.port), get_factory_class(ThreadedTCPRequestHandler, self.message_factory))
+        self.server = ThreadedTCPServer(('0.0.0.0', self.port), get_factory_class(ThreadedTCPRequestHandler, self.factory_class))
         self.server.comms = self
         self.done = False
         self.thread = threading.Thread(target=self.server.serve_forever)
@@ -139,6 +97,7 @@ class Wrapper(object):
 
 class Client(Comms):
     reconnect_interval = 0.1
+    factory_class = None
 
     def __init__(self, host, port, callback):
         #super(Client, self).__init__(port=0, callback=callback)
@@ -160,7 +119,7 @@ class Client(Comms):
             self.thread = threading.Thread(target=self.listen_main)
 
     def listen_main(self):
-        self.handler = get_factory_class(BaseHandler, self.message_factory)()
+        self.handler = self.factory_class()
 
         while not self.done:
             with self.cv:
