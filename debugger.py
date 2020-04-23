@@ -5,8 +5,8 @@ import pygame
 import os
 import string
 import glob
-#from .comms import gdb as messages
-from .comms import custom as messages
+from .comms import gdb as messages
+#from .comms import custom as messages
 import struct
 import random
 from pygame.locals import *
@@ -21,19 +21,7 @@ class Debugger(object):
         self.machine          = machine
         self.breakpoints      = {}
         self.next_breakpoint  = None
-        self.handlers = {messages.Types.RESUME      : self.handle_resume,
-                         messages.Types.STOP        : self.handle_stop,
-                         messages.Types.STEP        : self.handle_step,
-                         messages.Types.NEXT        : self.handle_next,
-                         messages.Types.RESTART     : self.handle_restart,
-                         messages.Types.SETBKPT     : self.handle_set_breakpoint,
-                         messages.Types.UNSETBKPT   : self.handle_unset_breakpoint,
-                         messages.Types.MEMWATCH    : self.handle_memory_watch,
-                         messages.Types.UNWATCH     : self.handle_memory_unwatch,
-                         messages.Types.CONNECT     : self.handle_connect,
-                         messages.Types.DISASSEMBLY : self.handle_disassembly,
-                         messages.Types.SYMBOL_DATA : self.handle_request_symbols,
-                         }
+        self.handlers = {messages.Types.STOP : self.handle_stop}
 
         self.need_symbols = False
         self.machine.tape_drive.register_callback(self.set_need_symbols)
@@ -71,7 +59,7 @@ class Debugger(object):
 
     def handle_message(self, message):
         try:
-            handler = self.handlers[message.type.value]
+            handler = self.handlers[message.type]
         except KeyError:
             print('Ooops got unknown message type', message.type)
             return
@@ -82,6 +70,7 @@ class Debugger(object):
 
     def handle_stop(self, message):
         self.stop(send_message=False)
+        self.connection.send(messages.StopReply())
 
     def handle_step(self, message):
         self.step(explicit=True)
@@ -109,7 +98,7 @@ class Debugger(object):
         if message.size:
             # They want something now too
             data = self.machine.mem[message.start:message.start + message.size]
-            self.connection.send(messages.MemViewReply(message.id, message.start, data))
+            #self.connection.send(messages.MemViewReply(message.id, message.start, data))
 
     def handle_memory_unwatch(self, message):
         del self.mem_watches[message.id]
@@ -128,23 +117,23 @@ class Debugger(object):
                                              self.symbols))
         lines = [ins.ToString() for ins in dis]
         mem   = self.machine.mem[start:end]
-        self.connection.send(messages.DisassemblyViewReply(start, mem, lines))
+        #self.connection.send(messages.DisassemblyViewReply(start, mem, lines))
 
     def send_register_update(self):
         if not self.connection:
             return
-        self.connection.send(messages.MachineState(self.machine.regs,
-                                                   self.machine.mode,
-                                                   self.machine.pc,
-                                                   self.machine.is_waiting(),
-                                                   ))
+        #self.connection.send(messages.MachineState(self.machine.regs,
+        #                                           self.machine.mode,
+        #                                           self.machine.pc,
+        #                                           self.machine.is_waiting(),
+        #                                           ))
 
     def send_mem_update(self):
         for message in self.mem_watches.values():
             if not self.connection:
                 return
             data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
-            self.connection.send(messages.MemViewReply(message.id, message.watch_start, data))
+            #self.connection.send(messages.MemViewReply(message.id, message.watch_start, data))
 
     def set_need_symbols(self):
         self.need_symbols = True
@@ -171,9 +160,9 @@ class Debugger(object):
             name = ''.join(name)
             symbols.append((value, name))
 
-        self.symbols = messages.Symbols(symbols)
+        #self.symbols = messages.Symbols(symbols)
         # pretend they just requested the symbols
-        self.handle_request_symbols(self.symbols)
+        #self.handle_request_symbols(self.symbols)
 
     def add_breakpoint(self, addr):
         if addr & 3:
@@ -287,4 +276,5 @@ class Debugger(object):
             self.machine.memw[next_instruction] = word
             self.next_breakpoint = None
         if send_message:
-            self.connection.send(messages.Stop())
+            #self.connection.send(messages.Stop())
+            pass

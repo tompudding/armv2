@@ -65,7 +65,20 @@ class Types(enum.Enum):
     ADD_ACCESS_WP   = 'z4'
     DEL_ACCESS_WP   = 'Z4'
     UNKNOWN         = '\x00'
+    STOP            = '\x03'
 
+
+
+def checksum(bytes):
+    checksum = 0
+
+    for byte in bytes:
+        checksum = (checksum + byte) & 0xff
+
+    return checksum
+
+def format_gdb_message(bytes):
+    return b'$' + bytes + b'#' + f'{checksum(bytes):02x}'.encode('ascii')
 
 
 class Message(object):
@@ -74,14 +87,135 @@ class Message(object):
     def to_binary(self):
         return struct.pack('>I', self.type)
 
+class Stop(Message):
+    type = Types.STOP
+
+class OK(Message):
+    def to_binary(self):
+        return format_gdb_message(b'OK')
+
+class StopReply(Message):
+    def to_binary(self):
+        return format_gdb_message(b'S02')
+
 
 messages_by_type = {}
 
-class Factory(object):
+class BaseHandler(object):
+    select_timeout = 0.5
+    total_timeout = 1.0
+    escape = ord('}')
+    acks = set((ord('+'),ord('-')))
+    ack = b'+'
+    bad_ack = b'-'
+    ignored_but_ok = set(v for v in b'H?')
+    def read_message(self):
+        ready = select.select([self.request], [], [], self.select_timeout)
+        if ready[0]:
+            new_data = self.request.recv(1024)
+            if not new_data:
+                raise socket.error()
+            self.process_data(new_data)
+
+    def set_needed(self):
+        self.needed = None
+        if len(self.data) > 4:
+            self.needed = struct.unpack('>I', self.data[:4])[0]
+            self.data = self.data[4:]
+            # print 'Got needed %d' % self.needed
+
+    def process_data(self, data):
+        self.data = self.data + data
+        #GDB packets start with a dollar and end with a hash followed by two bytes of checksum
+        #We can split based on un-escaped dollars
+        messages = []
+        message = bytearray()
+        pos = 0
+        print('data',self.data)
+        while pos < len(self.data):
+            byte = self.data[pos]
+            #+ and - bytes are allowed between messages, they are acknowledgements that we can ignore
+            if byte in self.acks and len(message) == 0:
+                #ignore!
+                pos += 1
+                continue
+            if byte == ord('$') and len(message) > 0 and self.data[pos - 1] != self.escape:
+                messages.append(message)
+                message = bytearray()
+                pos += 1
+                continue
+            #It wasn't the first byte, maybe it's a hash at the end?
+            if byte == ord('#') and pos > 0 and self.data[pos-1] != self.escape and pos < len(self.data) - 2:
+                messages.append(message + self.data[pos:pos+3])
+                message = []
+                pos += 3
+            else:
+                message.append(byte)
+
+            pos += 1
+
+        if message == b'\x03':
+            #They asked for an interruption. It doesn't have the same format as anything else of course
+            messages.append(message)
+        print(message)
+        print(messages)
+        self.data = self.data[pos:]
+
+        for message in messages:
+            print(f'{message=}')
+            self.request.send(self.ack)
+            if message:
+                m = self.message_factory(message)
+                if m:
+                    self.server.comms.handle(m)
+
+    def handle(self):
+        try:
+            print('Handling message!')
+            self.data = b''
+            self.needed = None
+            self.server.comms.set_connected(self.request)
+            while not self.server.comms.done:
+                self.read_message()
+        except socket.error as e:
+            print('Got socket error')
+            self.server.comms.disconnect()
+
+    def handle_query(self, data):
+        if data.startswith(b'qSupported'):
+            #It wants to know what we support
+            m = format_gdb_message(b'qSupported:swbreak+;hwbreak+;PacketSize=1024')
+            print('clonk',m)
+            #self.request.send(b'+')
+            self.request.send(m)
+        elif data == b'qC':
+            self.request.send(format_gdb_message(b''))
+        else:
+            print('Unknown message',data)
 
     def message_factory(self, data):
-        print('Received message',data)
-        return None
+        #First we need to check the checksum
+        if data == b'\x03':
+            #Special interrupt message
+            return Stop()
+        csum = checksum(data[1:-3])
+        message_csum = int(data[-2:],16)
+        if data[0] != ord('$') or csum != message_csum:
+            print('Checksum mismatch {csum=} {message_csum=}')
+            self.request.send(self.bad_ack)
+            return
+
+        data = data[1:-3]
+
+        #It looks good, we need to decided what to do based on the first byte
+        if data[0] == ord('q'):
+            # This is query stuff about the debugger which we can handle without needing to bother the actual
+            # emulator
+            return self.handle_query(data)
+        elif data[0] in self.ignored_but_ok:
+            #I don't really know why it's sending this
+            self.request.send(format_gdb_message(b'OK'))
+
         #type = struct.unpack('>I', data[:4])[0]
         #try:
         #    return messages_by_type[type].from_binary(data[4:])
@@ -89,8 +223,11 @@ class Factory(object):
         #    print('Unknown message type %d' % type)
         #except Error as e:
         #    print('Error (%s) while receiving message of type %d' % (e, type))
+        return None
 
-class Client(Factory, comms.Client):
+
+class Client(comms.Client):
+    factory_class = BaseHandler
     def initiate_connection(self):
         try:
             self.connect(self.remote_host, self.remote_port)
@@ -112,8 +249,7 @@ class Client(Factory, comms.Client):
         self.callback(Disconnect())
 
 
-class Server(Factory, comms.Server):
+class Server(comms.Server):
+    factory_class = BaseHandler
     def handle(self, message):
-        if message.type == Types.CONNECT:
-            self.connect(message.host, message.port)
         super(Server, self).handle(message)

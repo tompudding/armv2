@@ -64,7 +64,8 @@ class Comms(object):
         if self.connected:
             try:
                 m = message.to_binary()
-                self.socket.send(struct.pack('>I', len(m)) + m)
+                print('send message',m)
+                self.socket.send(m)
             except socket.error:
                 self.connected = False
                 print('got disconnected')
