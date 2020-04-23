@@ -6,12 +6,10 @@ import select
 import struct
 import bisect
 import traceback
+import enum
 
-class Types:
-    UNKNOWN         = 0
-    CONNECT         = 1
-    DISCONNECT      = 2
-    MAX             = 3
+class Types(enum.IntEnum):
+    pass
 
 class BaseHandler(object):
     select_timeout = 0.5
@@ -132,11 +130,6 @@ class Comms(object):
 
 
 class Server(Comms):
-    def handle(self, message):
-        if message.type == Types.CONNECT:
-            self.connect(message.host, message.port)
-        super(Server, self).handle(message)
-
     def connect(self, host, port):
         pass
 

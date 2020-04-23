@@ -12,24 +12,28 @@ class Error(Exception):
 
 
 class Types(comms.Types):
-    STOP            = comms.Types.MAX +  0
-    RESUME          = comms.Types.MAX +  1
-    STEP            = comms.Types.MAX +  2
-    RESTART         = comms.Types.MAX +  3
-    SETBKPT         = comms.Types.MAX +  4
-    UNSETBKPT       = comms.Types.MAX +  5
-    MEMDATA         = comms.Types.MAX +  6
-    MEMWATCH        = comms.Types.MAX +  7
-    UNWATCH         = comms.Types.MAX +  8
-    STATE           = comms.Types.MAX +  9
-    DISASSEMBLY     = comms.Types.MAX + 10
-    DISASSEMBLYDATA = comms.Types.MAX + 11
-    TAPEREQUEST     = comms.Types.MAX + 12
-    TAPE_LIST       = comms.Types.MAX + 13
-    TAPE_LOAD       = comms.Types.MAX + 14
-    TAPE_UNLOAD     = comms.Types.MAX + 15
-    SYMBOL_DATA     = comms.Types.MAX + 16
-    NEXT            = comms.Types.MAX + 17
+    STOP            =  0
+    RESUME          =  1
+    STEP            =  2
+    RESTART         =  3
+    SETBKPT         =  4
+    UNSETBKPT       =  5
+    MEMDATA         =  6
+    MEMWATCH        =  7
+    UNWATCH         =  8
+    STATE           =  9
+    DISASSEMBLY     = 10
+    DISASSEMBLYDATA = 11
+    TAPEREQUEST     = 12
+    TAPE_LIST       = 13
+    TAPE_LOAD       = 14
+    TAPE_UNLOAD     = 15
+    SYMBOL_DATA     = 16
+    NEXT            = 17
+    CONNECT         = 18
+    DISCONNECT      = 19
+    UNKNOWN         = 20
+
 
 
 class DynamicObject(object):
@@ -40,7 +44,7 @@ class Message(object):
     type = Types.UNKNOWN
 
     def to_binary(self):
-        return struct.pack('>I', self.type)
+        return struct.pack('>I', self.type.value)
 
 
 class Handshake(Message):
@@ -443,6 +447,6 @@ class Client(Factory, comms.Client):
 
 class Server(Factory, comms.Server):
     def handle(self, message):
-        if message.type == Types.CONNECT:
+        if message.type.value == Types.CONNECT:
             self.connect(message.host, message.port)
         super(Server, self).handle(message)

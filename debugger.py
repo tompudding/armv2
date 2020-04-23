@@ -5,6 +5,7 @@ import pygame
 import os
 import string
 import glob
+#from .comms import gdb as messages
 from .comms import custom as messages
 import struct
 import random
@@ -70,7 +71,7 @@ class Debugger(object):
 
     def handle_message(self, message):
         try:
-            handler = self.handlers[message.type]
+            handler = self.handlers[message.type.value]
         except KeyError:
             print('Ooops got unknown message type', message.type)
             return
