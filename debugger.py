@@ -25,6 +25,8 @@ class Debugger(object):
         self.handlers = {messages.Types.STOP : self.handle_stop,
                          messages.Types.READ_REGISTERS : self.handle_get_regs,
                          messages.Types.READ_REGISTER : self.handle_get_reg,
+                         messages.Types.WRITE_REGISTERS : self.handle_set_regs,
+                         messages.Types.WRITE_REGISTER : self.handle_set_reg,
                          messages.Types.READ_MEM : self.handle_read_mem,
                          messages.Types.STEP : self.handle_step,
         }
@@ -133,6 +135,25 @@ class Debugger(object):
                                                      self.machine.cpsr,
                                                      self.machine.pc_value
         ))
+
+    def handle_set_regs(self, message):
+        for i,reg in message.regs:
+            self.machine.regs[i] = reg
+
+        self.machine.regs[15] = message.pc | message.cpsr
+        self.connection.send(messages.OK())
+
+    def handle_set_reg(self, message):
+        print('SETREG')
+        if message.register < 15:
+            self.machine.regs[message.register] = message.value
+
+        elif message.register == 15:
+            self.machine.regs[message.register] = message.value | (self.machine.regs[15] & 0xfc000003)
+
+        elif message.register == 25:
+            self.machine.regs[message.register] = message.value | (self.machine.regs[15] & 0x03ffffff)
+        self.connection.send(messages.OK())
 
     def handle_get_reg(self, message):
         if not self.connection:

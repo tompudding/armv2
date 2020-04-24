@@ -103,6 +103,7 @@ class OK(Message):
     def to_binary(self):
         return format_gdb_message(b'OK')
 
+
 class StopReply(Message):
     def __init__(self, data=None):
         if data is None:
@@ -113,20 +114,59 @@ class StopReply(Message):
     def to_binary(self):
         return format_gdb_message(b'S%02x' % self.signal)
 
+
 class GetRegisters(Message):
     type = Types.READ_REGISTERS
     def to_binary(self):
         return format_gdb_message(b'g')
 
-class GetRegister(Message):
-    type = Types.READ_REGISTER
+
+class SetRegisters(Message):
+    type = Types.WRITE_REGISTERS
+
     def __init__(self, data):
-        self.register = int(data[1:],16)
+        words = [byte_swap(int(data[i:i+8],16)) for i in range(1, len(data), 8)]
+        self.regs = words[:15]
+        self.pc = words[15]
+        self.fps = words[24]
+        self.cpsr = words[25]
+
     def to_binary(self):
         return format_gdb_message(b'g')
 
+
+class OK(EmptyMessage):
+
+    def to_binary(self):
+        return format_gdb_message(b'OK')
+
+
+class GetRegister(Message):
+    type = Types.READ_REGISTER
+
+    def __init__(self, data):
+        self.register = int(data[1:],16)
+
+    def to_binary(self):
+        return format_gdb_message(b'g')
+
+
+class SetRegister(Message):
+    type = Types.WRITE_REGISTER
+
+    def __init__(self, data):
+        data = data[1:]
+        reg, value = data.split(b'=')
+        self.register = int(reg,16)
+        self.value = byte_swap(int(value, 16))
+
+    def to_binary(self):
+        return format_gdb_message(b'g')
+
+
 class Step(Message):
     type = Types.STEP
+
     def __init__(self, data):
         try:
             self.addr = int(data[1:],16)
@@ -136,7 +176,9 @@ class Step(Message):
     def to_binary(self):
         return format_gdb_message(b'g')
 
+
 class ReadMemory(Message):
+
     type = Types.READ_MEM
     def __init__(self, data):
         self.start, self.length = (int(v,16) for v in data[1:].split(b','))
@@ -189,13 +231,15 @@ class BaseHandler(object):
 
     def __init__(self, *args, **kwargs):
         self.handlers = {
-            format_type(Types.QUERY)          : self.handle_query,
-            format_type(Types.READ_REGISTERS) : instantiate(GetRegisters),
-            format_type(Types.READ_MEM)       : instantiate(ReadMemory),
-            format_type(Types.READ_REGISTER)  : instantiate(GetRegister),
-            ord('v') : self.handle_extended,
-            format_type(Types.STEP)           : instantiate(Step),
-            format_type(Types.DETACH)         : self.detach,
+            format_type(Types.QUERY)           : self.handle_query,
+            format_type(Types.READ_REGISTERS)  : instantiate(GetRegisters),
+            format_type(Types.WRITE_REGISTERS) : instantiate(SetRegisters),
+            format_type(Types.READ_MEM)        : instantiate(ReadMemory),
+            format_type(Types.READ_REGISTER)   : instantiate(GetRegister),
+            format_type(Types.WRITE_REGISTER)  : instantiate(SetRegister),
+            ord('v')                           : self.handle_extended,
+            format_type(Types.STEP)            : instantiate(Step),
+            format_type(Types.DETACH)          : self.detach,
         }
         for byte in self.ignored_but_ok:
             self.handlers[byte] = self.handle_ignored
