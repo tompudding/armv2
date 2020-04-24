@@ -21,7 +21,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
 def get_factory_class(inc, factory):
     class temp(factory, inc):
-        pass
+        def __init__(self, *args, **kwargs):
+            #How do I get super to call both parent classes? I'm too tired to figure this out today
+            factory.__init__(self, *args, **kwargs)
+            inc.__init__(self, *args, **kwargs)
+            #super().__init__(*args, **kwargs)
+
     return temp
 
 class ThreadedTCPServer(socketserver.TCPServer):

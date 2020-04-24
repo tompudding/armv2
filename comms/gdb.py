@@ -80,35 +80,107 @@ def checksum(bytes):
 def format_gdb_message(bytes):
     return b'$' + bytes + b'#' + f'{checksum(bytes):02x}'.encode('ascii')
 
+def byte_swap(n):
+    return ((n & 0xff) << 24) | ((n & 0xff00) << 8) | ((n & 0xff0000) >> 8) | ((n & 0xff000000) >> 24)
 
 class Message(object):
     type = Types.UNKNOWN
 
+    def __init__(self, data):
+        self.data = data
+
     def to_binary(self):
         return struct.pack('>I', self.type)
 
-class Stop(Message):
+class EmptyMessage(Message):
+    def __init__(self):
+        pass
+
+class Stop(EmptyMessage):
     type = Types.STOP
 
 class OK(Message):
     def to_binary(self):
         return format_gdb_message(b'OK')
 
-class StopReply(Message):
+class StopReply(EmptyMessage):
     def to_binary(self):
         return format_gdb_message(b'S02')
 
+class GetRegisters(Message):
+    type = Types.READ_REGISTERS
+    def to_binary(self):
+        return format_gdb_message(b'g')
+
+class GetRegister(Message):
+    type = Types.READ_REGISTER
+    def __init__(self, data):
+        self.register = int(data[1:],16)
+    def to_binary(self):
+        return format_gdb_message(b'g')
+
+class ReadMemory(Message):
+    type = Types.READ_MEM
+    def __init__(self, data):
+        self.start, self.length = (int(v,16) for v in data[1:].split(b','))
+        self.end = self.start + self.length
+
+    def to_binary(self):
+        return format_gdb_message(b'g')
+
+class RegisterValues(Message):
+    type = Types.UNKNOWN
+
+    def __init__(self, regs, mode, pc):
+        #There are 8 floating point registers gdb expects, and they're 12 bytes! Then an "fps" register
+        self.registers = [regs[i] for i in range(16)] + [0,mode]
+
+    def to_binary(self):
+        regs = ''.join((f'{byte_swap(reg):08x}' for reg in self.registers)).encode('ascii')
+        return format_gdb_message(regs)
+
+class RegisterValue(RegisterValues):
+    def __init__(self, register):
+        self.registers = [register]
+
+class Memory(Message):
+    type = Types.UNKNOWN
+
+    def to_binary(self):
+        data = ''.join((f'{byte:02x}' for byte in self.data)).encode('ascii')
+        return format_gdb_message(data)
 
 messages_by_type = {}
+
+def format_type(t):
+    return t.value.encode('ascii')[0]
+
+def instantiate(cls):
+    def do_instantiate(data):
+        return cls(data)
+
+    return do_instantiate
 
 class BaseHandler(object):
     select_timeout = 0.5
     total_timeout = 1.0
     escape = ord('}')
-    acks = set((ord('+'),ord('-')))
+    acks = set(v for v in b'+-')
     ack = b'+'
     bad_ack = b'-'
     ignored_but_ok = set(v for v in b'H?')
+
+    def __init__(self, *args, **kwargs):
+        self.handlers = {
+            format_type(Types.QUERY)          : self.handle_query,
+            format_type(Types.READ_REGISTERS) : instantiate(GetRegisters),
+            format_type(Types.READ_MEM)       : instantiate(ReadMemory),
+            format_type(Types.READ_REGISTER)  : instantiate(GetRegister),
+        }
+        for byte in self.ignored_but_ok:
+            self.handlers[byte] = self.handle_ignored
+        super().__init__(*args, **kwargs)
+
     def read_message(self):
         ready = select.select([self.request], [], [], self.select_timeout)
         if ready[0]:
@@ -182,6 +254,7 @@ class BaseHandler(object):
             self.server.comms.disconnect()
 
     def handle_query(self, data):
+        print('handle query')
         if data.startswith(b'qSupported'):
             #It wants to know what we support
             m = format_gdb_message(b'qSupported:swbreak+;hwbreak+;PacketSize=1024')
@@ -192,6 +265,13 @@ class BaseHandler(object):
             self.request.send(format_gdb_message(b''))
         else:
             print('Unknown message',data)
+
+    def handle_get_reg(self, data):
+        return GetRegisters()
+
+    def handle_ignored(self, data):
+        print('Handle ignored')
+        self.request.send(format_gdb_message(b'OK'))
 
     def message_factory(self, data):
         #First we need to check the checksum
@@ -207,14 +287,15 @@ class BaseHandler(object):
 
         data = data[1:-3]
 
-        #It looks good, we need to decided what to do based on the first byte
-        if data[0] == ord('q'):
-            # This is query stuff about the debugger which we can handle without needing to bother the actual
-            # emulator
-            return self.handle_query(data)
-        elif data[0] in self.ignored_but_ok:
-            #I don't really know why it's sending this
-            self.request.send(format_gdb_message(b'OK'))
+        try:
+            handler = self.handlers[data[0]]
+        except KeyError:
+            #send some sort of error?
+            print('No jim',self.handlers,data[0])
+            return
+
+        return handler(data)
+
 
         #type = struct.unpack('>I', data[:4])[0]
         #try:

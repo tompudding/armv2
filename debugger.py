@@ -21,7 +21,11 @@ class Debugger(object):
         self.machine          = machine
         self.breakpoints      = {}
         self.next_breakpoint  = None
-        self.handlers = {messages.Types.STOP : self.handle_stop}
+        self.handlers = {messages.Types.STOP : self.handle_stop,
+                         messages.Types.READ_REGISTERS : self.handle_get_regs,
+                         messages.Types.READ_REGISTER : self.handle_get_reg,
+                         messages.Types.READ_MEM : self.handle_read_mem,
+        }
 
         self.need_symbols = False
         self.machine.tape_drive.register_callback(self.set_need_symbols)
@@ -119,20 +123,43 @@ class Debugger(object):
         mem   = self.machine.mem[start:end]
         #self.connection.send(messages.DisassemblyViewReply(start, mem, lines))
 
-    def send_register_update(self):
+    def handle_get_regs(self, message):
         if not self.connection:
             return
-        #self.connection.send(messages.MachineState(self.machine.regs,
-        #                                           self.machine.mode,
-        #                                           self.machine.pc,
-        #                                           self.machine.is_waiting(),
-        #                                           ))
+        self.connection.send(messages.RegisterValues(self.machine.regs,
+                                                     self.machine.mode,
+                                                     self.machine.pc
+        ))
+
+    def handle_get_reg(self, message):
+        if not self.connection:
+            return
+        if message.register < 16:
+            register = self.machine.regs[message.register]
+        elif message.register == 24:
+            #This is fps. wtf is fps?
+            register = 0
+        elif message.register == 25:
+            register = self.machine.mode
+        else:
+            register = 0
+
+        self.connection.send(messages.RegisterValue(register))
+
+    def handle_read_mem(self, message):
+        if not self.connection:
+            return
+        self.connection.send(messages.Memory(self.machine.mem[message.start:message.end]))
 
     def send_mem_update(self):
         for message in self.mem_watches.values():
             if not self.connection:
                 return
             data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
+            a = 4
+            while '-' != a:
+                a = self.connection.recv(1)
+                print('wait',a)
             #self.connection.send(messages.MemViewReply(message.id, message.watch_start, data))
 
     def set_need_symbols(self):
@@ -205,7 +232,7 @@ class Debugger(object):
         # self.state_window.update()
         if self.need_symbols:
             self.load_symbols()
-        self.send_register_update()
+        #self.send_register_update()
         self.send_mem_update()
         return status
 
@@ -260,8 +287,9 @@ class Debugger(object):
         self.update()
 
     def update(self):
-        self.send_register_update()
-        self.send_mem_update()
+        #self.send_register_update()
+        #self.send_mem_update()
+        pass
 
     def exit(self):
         if self.connection:
