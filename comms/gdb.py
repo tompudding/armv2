@@ -83,6 +83,18 @@ def format_gdb_message(bytes):
 def byte_swap(n):
     return ((n & 0xff) << 24) | ((n & 0xff00) << 8) | ((n & 0xff0000) >> 8) | ((n & 0xff000000) >> 24)
 
+def unescape(data):
+    out = []
+    pos = 0
+    while pos < len(data):
+        if data[pos] == BaseHandler.escape and pos + 1 < len(data) and data[pos+1] in b'#$}':
+            out.append(data[pos+1:pos+1+1])
+            pos += 2
+        else:
+            out.append(data[pos:pos+1])
+            pos += 1
+    return b''.join(out)
+
 class Message(object):
     type = Types.UNKNOWN
 
@@ -209,6 +221,29 @@ class ReadMemory(Message):
     def to_binary(self):
         return format_gdb_message(b'g')
 
+class WriteMemory(Message):
+    type = Types.WRITE_MEM
+
+    def __init__(self, data):
+        data = data[1:]
+        params,data = data.split(b':')
+        self.start,self.length = (int(v,16) for v in params.split(b','))
+        self.end = self.start + self.length
+        self.data = [int(data[i:i+2],16) for i in range(0, len(data), 2)]
+        print(f'YOYO {self.start=:x} {self.end=:x} {len(self.data)=:x}')
+
+class WriteMemoryBinary(Message):
+    type = Types.WRITE_MEM
+
+    def __init__(self, data):
+        data = data[1:]
+        params,data = data.split(b':')
+        self.start,self.length = (int(v,16) for v in params.split(b','))
+        self.end = self.start + self.length
+        self.data = unescape(data)
+        print(f'POGO {self.start=:x} {self.end=:x} {len(self.data)=:x}')
+
+
 class RegisterValues(Message):
     type = Types.UNKNOWN
 
@@ -257,6 +292,8 @@ class BaseHandler(object):
             format_type(Types.READ_REGISTERS)  : instantiate(GetRegisters),
             format_type(Types.WRITE_REGISTERS) : instantiate(SetRegisters),
             format_type(Types.READ_MEM)        : instantiate(ReadMemory),
+            format_type(Types.WRITE_MEM)       : instantiate(WriteMemory),
+            format_type(Types.WRITE_MEM_BIN)   : instantiate(WriteMemoryBinary),
             format_type(Types.READ_REGISTER)   : instantiate(GetRegister),
             format_type(Types.WRITE_REGISTER)  : instantiate(SetRegister),
             ord('v')                           : self.handle_extended,

@@ -31,6 +31,7 @@ class Debugger(object):
                          messages.Types.STEP : self.handle_step,
                          messages.Types.CONTINUE : self.handle_continue,
                          messages.Types.CONTINUE_SIGNAL : self.handle_continue,
+                         messages.Types.WRITE_MEM : self.handle_write_mem,
         }
 
         self.need_symbols = False
@@ -178,6 +179,12 @@ class Debugger(object):
         if not self.connection:
             return
         self.connection.send(messages.Memory(self.machine.mem[message.start:message.end]))
+
+    def handle_write_mem(self, message):
+        self.machine.mem[message.start:message.end] = message.data
+        if not self.connection:
+            return
+        self.connection.send(messages.OK())
 
     def send_mem_update(self):
         for message in self.mem_watches.values():

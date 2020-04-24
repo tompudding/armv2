@@ -113,8 +113,9 @@ class ByteMemory(object):
             indices = (index,)
             values  = (values,)
         try:
-            for i,v in itertools.izip_longest(indices,values):
-                self.setter(i,ord(v))
+            for i,v in itertools.zip_longest(indices,values):
+                debug_log(f'Write v={v} to i={i}')
+                self.setter(i,v)
         except TypeError:
             raise ValueError('Wrong values sequence length')
 
