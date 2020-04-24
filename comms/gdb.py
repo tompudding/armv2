@@ -195,9 +195,11 @@ class BaseHandler(object):
             format_type(Types.READ_REGISTER)  : instantiate(GetRegister),
             ord('v') : self.handle_extended,
             format_type(Types.STEP)           : instantiate(Step),
+            format_type(Types.DETACH)         : self.detach,
         }
         for byte in self.ignored_but_ok:
             self.handlers[byte] = self.handle_ignored
+        self.done = False
         super().__init__(*args, **kwargs)
 
     def read_message(self):
@@ -207,13 +209,6 @@ class BaseHandler(object):
             if not new_data:
                 raise socket.error()
             self.process_data(new_data)
-
-    def set_needed(self):
-        self.needed = None
-        if len(self.data) > 4:
-            self.needed = struct.unpack('>I', self.data[:4])[0]
-            self.data = self.data[4:]
-            # print 'Got needed %d' % self.needed
 
     def process_data(self, data):
         self.data = self.data + data
@@ -266,11 +261,18 @@ class BaseHandler(object):
             self.data = b''
             self.needed = None
             self.server.comms.set_connected(self.request)
-            while not self.server.comms.done:
+            while not self.server.comms.done and not self.done:
                 self.read_message()
+            print('done')
+            self.request.close()
         except socket.error as e:
             print('Got socket error')
             self.server.comms.disconnect()
+
+    def detach(self, data):
+        self.request.send(format_gdb_message(b'OK'))
+        print('Detach!')
+        self.done = True
 
     def handle_query(self, data):
         print('handle query')
