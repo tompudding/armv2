@@ -150,6 +150,28 @@ class GetRegister(Message):
     def to_binary(self):
         return format_gdb_message(b'g')
 
+class Continue(Message):
+    type = Types.CONTINUE
+
+    def __init__(self, data):
+        try:
+            self.addr = int(data[1:],16)
+        except ValueError:
+            self.addr = None
+
+class ContinueSignal(Message):
+    type = Types.CONTINUE_SIGNAL
+
+    def __init__(self, data):
+        data = data[1:]
+        if b';' in data:
+            signal, addr = data.split(b';')
+        else:
+            addr = None
+
+        self.signal = int(signal,16)
+        self.addr = None if addr is None else int(addr,16)
+
 
 class SetRegister(Message):
     type = Types.WRITE_REGISTER
@@ -240,6 +262,8 @@ class BaseHandler(object):
             ord('v')                           : self.handle_extended,
             format_type(Types.STEP)            : instantiate(Step),
             format_type(Types.DETACH)          : self.detach,
+            format_type(Types.CONTINUE)        : instantiate(Continue),
+            format_type(Types.CONTINUE_SIGNAL) : instantiate(ContinueSignal),
         }
         for byte in self.ignored_but_ok:
             self.handlers[byte] = self.handle_ignored

@@ -29,6 +29,8 @@ class Debugger(object):
                          messages.Types.WRITE_REGISTER : self.handle_set_reg,
                          messages.Types.READ_MEM : self.handle_read_mem,
                          messages.Types.STEP : self.handle_step,
+                         messages.Types.CONTINUE : self.handle_continue,
+                         messages.Types.CONTINUE_SIGNAL : self.handle_continue,
         }
 
         self.need_symbols = False
@@ -73,7 +75,7 @@ class Debugger(object):
             return
         return handler(message)
 
-    def handle_resume(self, message):
+    def handle_continue(self, message):
         self.resume(explicit=True)
 
     def handle_stop(self, message):
@@ -144,7 +146,6 @@ class Debugger(object):
         self.connection.send(messages.OK())
 
     def handle_set_reg(self, message):
-        print('SETREG')
         if message.register < 15:
             self.machine.regs[message.register] = message.value
 
