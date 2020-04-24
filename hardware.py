@@ -731,6 +731,17 @@ class Machine:
         with self.cv:
             return self.cpu.pc
 
+    @property
+    def pc_value(self):
+        with self.cv:
+            return self.cpu.pc & 0x03fffffc
+
+    @property
+    def cpsr(self):
+        mode = self.mode
+        cpsr = self.regs[15] & 0xfc000000
+        return mode | cpsr
+
     def thread_main_loop(self):
         while self.running and \
             ((self.steps_to_run == 0) or

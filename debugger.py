@@ -9,6 +9,7 @@ from .comms import gdb as messages
 #from .comms import custom as messages
 import struct
 import random
+import signal
 from pygame.locals import *
 from . import tapes
 
@@ -25,6 +26,7 @@ class Debugger(object):
                          messages.Types.READ_REGISTERS : self.handle_get_regs,
                          messages.Types.READ_REGISTER : self.handle_get_reg,
                          messages.Types.READ_MEM : self.handle_read_mem,
+                         messages.Types.STEP : self.handle_step,
         }
 
         self.need_symbols = False
@@ -74,10 +76,11 @@ class Debugger(object):
 
     def handle_stop(self, message):
         self.stop(send_message=False)
-        self.connection.send(messages.StopReply())
+        self.connection.send(messages.StopReply(signal.SIGINT))
 
     def handle_step(self, message):
         self.step(explicit=True)
+        self.connection.send(messages.StopReply(signal.SIGTRAP))
 
     def handle_next(self, message):
         self.next(explicit=True)
@@ -127,20 +130,23 @@ class Debugger(object):
         if not self.connection:
             return
         self.connection.send(messages.RegisterValues(self.machine.regs,
-                                                     self.machine.mode,
-                                                     self.machine.pc
+                                                     self.machine.cpsr,
+                                                     self.machine.pc_value
         ))
 
     def handle_get_reg(self, message):
         if not self.connection:
             return
-        if message.register < 16:
+        if message.register < 15:
             register = self.machine.regs[message.register]
+        elif message.register == 15:
+            #They want the pc
+            register = self.machine.pc_value
         elif message.register == 24:
             #This is fps. wtf is fps?
             register = 0
         elif message.register == 25:
-            register = self.machine.mode
+            register = self.machine.cpsr
         else:
             register = 0
 
@@ -156,10 +162,6 @@ class Debugger(object):
             if not self.connection:
                 return
             data = self.machine.mem[message.watch_start:message.watch_start + message.watch_size]
-            a = 4
-            while '-' != a:
-                a = self.connection.recv(1)
-                print('wait',a)
             #self.connection.send(messages.MemViewReply(message.id, message.watch_start, data))
 
     def set_need_symbols(self):

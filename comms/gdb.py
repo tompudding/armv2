@@ -5,6 +5,7 @@ import time
 import select
 import struct
 import bisect
+import signal
 import enum
 from . import comms
 
@@ -41,8 +42,7 @@ class Types(enum.Enum):
     BACK_SEARCH     = 't'
     THREAD_QUERY    = 'T'
     ATTACH          = 'vAttach'
-    CONTINUE_ACTION = 'vCont'
-    CONT_GET_ACTION = 'vCont;'
+    CONTINUE_ACTION = 'vCont?'
     CTRL_C          = 'vCtrlC'
     FILE_OPERATION  = 'vFile'
     FLASH_ERASE     = 'vFlashErase'
@@ -103,9 +103,15 @@ class OK(Message):
     def to_binary(self):
         return format_gdb_message(b'OK')
 
-class StopReply(EmptyMessage):
+class StopReply(Message):
+    def __init__(self, data=None):
+        if data is None:
+            data = signal.SIGINT
+
+        self.signal = int(data)
+
     def to_binary(self):
-        return format_gdb_message(b'S02')
+        return format_gdb_message(b'S%02x' % self.signal)
 
 class GetRegisters(Message):
     type = Types.READ_REGISTERS
@@ -116,6 +122,17 @@ class GetRegister(Message):
     type = Types.READ_REGISTER
     def __init__(self, data):
         self.register = int(data[1:],16)
+    def to_binary(self):
+        return format_gdb_message(b'g')
+
+class Step(Message):
+    type = Types.STEP
+    def __init__(self, data):
+        try:
+            self.addr = int(data[1:],16)
+        except ValueError:
+            self.addr = None
+
     def to_binary(self):
         return format_gdb_message(b'g')
 
@@ -133,7 +150,7 @@ class RegisterValues(Message):
 
     def __init__(self, regs, mode, pc):
         #There are 8 floating point registers gdb expects, and they're 12 bytes! Then an "fps" register
-        self.registers = [regs[i] for i in range(16)] + [0,mode]
+        self.registers = [regs[i] for i in range(15)] + [pc,0,mode]
 
     def to_binary(self):
         regs = ''.join((f'{byte_swap(reg):08x}' for reg in self.registers)).encode('ascii')
@@ -176,6 +193,8 @@ class BaseHandler(object):
             format_type(Types.READ_REGISTERS) : instantiate(GetRegisters),
             format_type(Types.READ_MEM)       : instantiate(ReadMemory),
             format_type(Types.READ_REGISTER)  : instantiate(GetRegister),
+            ord('v') : self.handle_extended,
+            format_type(Types.STEP)           : instantiate(Step),
         }
         for byte in self.ignored_but_ok:
             self.handlers[byte] = self.handle_ignored
@@ -265,6 +284,11 @@ class BaseHandler(object):
             self.request.send(format_gdb_message(b''))
         else:
             print('Unknown message',data)
+
+    def handle_extended(self, data):
+        if data.startswith(b'vCont?'):
+            self.request.send(format_gdb_message(b''))
+
 
     def handle_get_reg(self, data):
         return GetRegisters()
