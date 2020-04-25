@@ -75,11 +75,12 @@ cdef extern from "armv2.h":
         uint32_t actual[NUMREGS]
         uint32_t *effective[NUM_EFFECTIVE_REGS]
 
-    ctypedef void (*access_callback_t)(uint32_t)
-    ctypedef void (*operation_callback_t)(uint32_t)
+    ctypedef uint32_t (*access_callback_t)(void *, uint32_t, uint32_t)
+    ctypedef uint32_t (*operation_callback_t)(void *, uint32_t, uint32_t)
 
     struct page_info:
         uint32_t *memory
+        void *mapped_device;
         access_callback_t read_callback
         access_callback_t write_callback
         access_callback_t read_byte_callback

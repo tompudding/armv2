@@ -181,6 +181,7 @@ class Debugger(object):
         self.connection.send(messages.Memory(self.machine.mem[message.start:message.end]))
 
     def handle_write_mem(self, message):
+        print(f'JOJO {message.start=:x} {message.end=:x} {len(message.data)=:x}')
         self.machine.mem[message.start:message.end] = message.data
         if not self.connection:
             return

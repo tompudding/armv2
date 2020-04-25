@@ -106,18 +106,20 @@ class ByteMemory(object):
             return bytearray(self.getter(index) for index in indices)
 
     def __setitem__(self,index,values):
+        debug_log(f'Write_entry v={values} to i={index}')
         if isinstance(index,slice):
             indices = index.indices(MAX_26BIT)
             indices = xrange(*indices)
         else:
             indices = (index,)
             values  = (values,)
-        try:
-            for i,v in itertools.zip_longest(indices,values):
-                debug_log(f'Write v={v} to i={i}')
-                self.setter(i,v)
-        except TypeError:
-            raise ValueError('Wrong values sequence length')
+        #try:
+        debug_log(f'Write v={values} to i={indices}')
+        for i,v in itertools.zip_longest(indices,values):
+            debug_log(f'Write v={v} to i={i}')
+            self.setter(i,v)
+        #except TypeError:
+        #    raise ValueError('Wrong values sequence length')
 
     def __len__(self):
         return MAX_26BIT
@@ -146,11 +148,11 @@ class WordMemory(object):
         else:
             indices = (index,)
             values  = (values,)
-        try:
-            for i,v in itertools.zip_longest(indices,values):
-                self.setter(i,v)
-        except TypeError:
-            raise ValueError('Wrong values sequence length')
+        #try:
+        for i,v in itertools.zip_longest(indices,values):
+            self.setter(i,v)
+        #except TypeError:
+        #    raise ValueError('Wrong values sequence length')
 
     def __len__(self):
         return MAX_26BIT>>2
@@ -274,7 +276,13 @@ cdef class Armv2:
             #raise AccessError()
             return 0
 
-        return page.memory[WORDINPAGE(addr)]
+        if NULL != page.read_callback:
+            return page.read_callback(page.mapped_device,INPAGE(addr),0)
+
+        if NULL != page.memory:
+            return page.memory[WORDINPAGE(addr)]
+
+        return 0
 
     def setword(self,addr,value):
         if addr >= MAX_26BIT:
@@ -284,7 +292,13 @@ cdef class Armv2:
         if NULL == page:
             raise AccessError()
 
-        page.memory[WORDINPAGE(addr)] = int(value)
+        if NULL != page.write_callback:
+            page.write_callback(page.mapped_device, INPAGE(addr), value)
+            return
+
+        if NULL != page.memory:
+            page.memory[WORDINPAGE(addr)] = int(value)
+
 
     @property
     def pc(self):
