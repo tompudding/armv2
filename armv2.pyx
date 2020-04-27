@@ -89,6 +89,8 @@ class Registers(object):
         return repr(self[:])
 
 class ByteMemory(object):
+    #TODO: We could have a combined bytememory and wordmemory that just bytes up to a word boundary, then did
+    #words, then any leftover bytes
     def __init__(self,cpu):
         self.cpu    = cpu
         self.getter = self.cpu.getbyte
@@ -255,16 +257,16 @@ cdef class Armv2:
             self.cpu.pc = int((0xfffffffc + (value&0x3ffffffc))&0xffffffff)
 
     def getbyte(self,addr):
-        cdef uint32_t word = self.getword(addr)
+        cdef uint32_t word = self.getword(addr & 0xfffffffc)
         cdef uint32_t b = (addr&3)<<3
         return (word>>b)&0xff;
 
     def setbyte(self,addr,value):
-        cdef uint32_t word = self.getword(addr)
-        cdef uint32_t b = (addr&3)<<3
+        cdef uint32_t word = self.getword(addr & 0xfffffffc)
+        cdef uint32_t b = (addr & 3)<<3
         cdef uint32_t mask = 0xff<<b
         cdef uint32_t new_word = (word&(~mask)) | ((value&0xff)<<b)
-        self.setword(addr,new_word)
+        self.setword(addr & 0xfffffffc,new_word)
 
     def getword(self,addr):
         if addr >= MAX_26BIT or addr < 0:
