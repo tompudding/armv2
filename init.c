@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <errno.h>
 #include <arpa/inet.h>
 
@@ -50,8 +51,10 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
     memset(cpu->physical_ram, 0, memsize);
 
     //We want a bit for every addressable word, i.e one every 32 bits
-    cpu->breakpoint_bitmask = calloc(1, 1UL << (26 - 5));
-    if( NULL == cpu->breakpoint_bitmask ) {
+    cpu->breakpoint_bitmask = mmap(NULL, BP_BITMASK_SIZE, PROT_READ | PROT_WRITE,
+                                   MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if( MAP_FAILED == cpu->breakpoint_bitmask ) {
+        cpu->breakpoint_bitmask = NULL;
         retval = ARMV2STATUS_MEMORY_ERROR;
         goto cleanup;
     }
@@ -122,7 +125,7 @@ enum armv2_status cleanup_armv2(struct armv2 *cpu)
         return ARMV2STATUS_OK;
     }
     if( NULL != cpu->breakpoint_bitmask ) {
-        free(cpu->breakpoint_bitmask);
+        munmap(cpu->breakpoint_bitmask, BP_BITMASK_SIZE);
         cpu->breakpoint_bitmask = NULL;
     }
     if( NULL != cpu->physical_ram ) {

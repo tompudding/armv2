@@ -61,8 +61,9 @@
 // We use a bitmask for breakpoints. There are 2**26 bytes of addressable memory, 2**24 aligned words which
 // could have a breakpoint, and since we can store 8 of those per byte of memory, we need 2**21 or 2 megabytes
 // of memory for this mask. Almost all of it will go unused, and the parts that do get used frequently should
-// hang around in cache so that we don't slow down too much.
-
+// hang around in cache so that we don't slow down too much. We use mmap to allocate it so that underlying
+// memory is only used in pages that are touched
+#define BP_BITMASK_SIZE (UINT32_C(1) << (26 - 5))
 #define HAS_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] >> ( ((pc) >> 2) & 0x3f )) & 1
 #define SET_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] |= (1 << ( ((pc) >> 2) & 0x3f )))
 #define CLEAR_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] &= ~(UINT32_C(1) << ( ((pc) >> 2) & 0x3f )))
