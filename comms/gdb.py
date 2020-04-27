@@ -126,6 +126,13 @@ class StopReply(Message):
     def to_binary(self):
         return format_gdb_message(b'S%02x' % self.signal)
 
+class SWBreakReply(Message):
+    def __init__(self):
+        self.signal = int(signal.SIGTRAP)
+
+    def to_binary(self):
+        return format_gdb_message(b'T%02x swbreak:;' % self.signal)
+
 
 class GetRegisters(Message):
     type = Types.READ_REGISTERS
@@ -266,6 +273,25 @@ class Memory(Message):
         data = ''.join((f'{byte:02x}' for byte in self.data)).encode('ascii')
         return format_gdb_message(data)
 
+
+class SetBreakpoint(Message):
+    type = Types.ADD_HARD_BP
+
+    def __init__(self, data):
+        data = data[3:]
+        addr, kind = data.split(b';')[0].split(b',')
+        self.addr = int(addr, 16)
+        #ignore kind, we only have one type
+
+class UnsetBreakpoint(Message):
+    type = Types.DEL_HARD_BP
+
+    def __init__(self, data):
+        data = data[3:]
+        addr, kind = data.split(b';')[0].split(b',')
+        self.addr = int(addr, 16)
+        #ignore kind, we only have one type
+
 messages_by_type = {}
 
 def format_type(t):
@@ -301,6 +327,8 @@ class BaseHandler(object):
             format_type(Types.DETACH)          : self.detach,
             format_type(Types.CONTINUE)        : instantiate(Continue),
             format_type(Types.CONTINUE_SIGNAL) : instantiate(ContinueSignal),
+            ord('z')                           : self.handle_unset_breakpoints,
+            ord('Z')                           : self.handle_set_breakpoints,
         }
         for byte in self.ignored_but_ok:
             self.handlers[byte] = self.handle_ignored
@@ -383,8 +411,7 @@ class BaseHandler(object):
         print('handle query')
         if data.startswith(b'qSupported'):
             #It wants to know what we support
-            m = format_gdb_message(b'qSupported:swbreak+;hwbreak+;PacketSize=1024')
-            print('clonk',m)
+            m = format_gdb_message(b'qSupported:hwbreak+;PacketSize=1000')
             #self.request.send(b'+')
             self.request.send(m)
         elif data == b'qC':
@@ -396,6 +423,17 @@ class BaseHandler(object):
         if data.startswith(b'vCont?'):
             self.request.send(format_gdb_message(b''))
 
+    def handle_set_breakpoints(self, data):
+        if data[1] in b'01':
+            # They'd like to set a breakpoint. Whether they want a software breakpoint or not, we use a
+            # hardware one as it's better
+            return SetBreakpoint(data)
+
+    def handle_unset_breakpoints(self, data):
+        if data[1] in b'01':
+            # They'd like to set a breakpoint. Whether they want a software breakpoint or not, we use a
+            # hardware one as it's better
+            return UnsetBreakpoint(data)
 
     def handle_get_reg(self, data):
         return GetRegisters()

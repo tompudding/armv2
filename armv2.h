@@ -57,6 +57,16 @@
 #define SETCPUFLAG(cpu, flag)   ((cpu)->flags |= FLAG_##flag)
 #define CLEARCPUFLAG(cpu, flag) ((cpu)->flags &= (~FLAG_##flag))
 
+
+// We use a bitmask for breakpoints. There are 2**26 bytes of addressable memory, 2**24 aligned words which
+// could have a breakpoint, and since we can store 8 of those per byte of memory, we need 2**21 or 2 megabytes
+// of memory for this mask. Almost all of it will go unused, and the parts that do get used frequently should
+// hang around in cache so that we don't slow down too much.
+
+#define HAS_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] >> ( ((pc) >> 2) & 0x3f )) & 1
+#define SET_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] |= (1 << ( ((pc) >> 2) & 0x3f )))
+#define CLEAR_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] &= ~(UINT32_C(1) << ( ((pc) >> 2) & 0x3f )))
+
 #define PERM_READ    4
 #define PERM_WRITE   2
 #define PERM_EXECUTE 1
@@ -107,8 +117,8 @@
 
 #define FLAG_INIT 1
 #define FLAG_WAIT 2
-#define CPU_INITIALISED(cpu) ( (((cpu)->flags)&FLAG_INIT) )
-#define WAITING(cpu) ( (((cpu)->flags)&FLAG_WAIT) )
+#define CPU_INITIALISED(cpu) ( (((cpu)->flags) & FLAG_INIT) )
+#define WAITING(cpu) ( (((cpu)->flags) & FLAG_WAIT) )
 
 enum armv2_exception {
     EXCEPT_RST                   = 0,
@@ -179,6 +189,7 @@ struct armv2 {
     struct page_info         *page_tables[NUM_PAGE_TABLES];
     struct exception_handler  exception_handlers[EXCEPT_MAX];
     struct hardware_device   *hardware_devices[HW_DEVICES_MAX];
+    uint64_t                  *breakpoint_bitmask;
     hw_manager_t              hardware_manager;
     struct hardware_mapping  *hw_mappings;
     //the pc is broken out for efficiency, when needed accessed r15 is updated from them
@@ -198,6 +209,8 @@ enum armv2_status add_hardware(struct armv2 *cpu, struct hardware_device *device
 enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t start, uint32_t end);
 enum armv2_status add_mapping(struct hardware_mapping **head, struct hardware_mapping *item);
 enum armv2_status interrupt(struct armv2 *cpu, uint32_t hw_id, uint32_t code);
+enum armv2_status set_breakpoint(struct armv2 *cpu, uint32_t addr);
+enum armv2_status unset_breakpoint(struct armv2 *cpu, uint32_t addr);
 
 //instruction handlers
 enum armv2_exception alu_instruction                           (struct armv2 *cpu, uint32_t instruction);

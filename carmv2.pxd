@@ -114,3 +114,5 @@ cdef extern from "armv2.h":
     armv2_status run_armv2(armv2 *cpu, int32_t instructions) nogil
     armv2_status add_hardware(armv2 *cpu, hardware_device *device) nogil
     armv2_status interrupt(armv2 *cpu, uint32_t hw_id, uint32_t code) nogil
+    armv2_status set_breakpoint(armv2 *cpu, uint32_t addr) nogil
+    armv2_status unset_breakpoint(armv2 *cpu, uint32_t addr) nogil

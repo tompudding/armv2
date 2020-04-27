@@ -80,6 +80,10 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions)
             goto handle_exception;
         }
 
+        if( HAS_BREAKPOINT(cpu, cpu->pc) ) {
+            exception = EXCEPT_BREAKPOINT;
+            goto handle_exception;
+        }
 
         uint32_t instruction = DEREF(cpu, cpu->pc);
         switch(CONDITION_BITS(instruction)) {

@@ -49,6 +49,13 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
     LOG("Have %u pages %u\n", num_pages, memsize);
     memset(cpu->physical_ram, 0, memsize);
 
+    //We want a bit for every addressable word, i.e one every 32 bits
+    cpu->breakpoint_bitmask = calloc(1, 1UL << (26 - 5));
+    if( NULL == cpu->breakpoint_bitmask ) {
+        retval = ARMV2STATUS_MEMORY_ERROR;
+        goto cleanup;
+    }
+
     //map the physical ram at 0
     //we could malloc all the page tables for it at once, but all the extra bookkeeping would
     //be annoying
@@ -113,6 +120,10 @@ enum armv2_status cleanup_armv2(struct armv2 *cpu)
     LOG("ARMV2 cleanup\n");
     if( NULL == cpu ) {
         return ARMV2STATUS_OK;
+    }
+    if( NULL != cpu->breakpoint_bitmask ) {
+        free(cpu->breakpoint_bitmask);
+        cpu->breakpoint_bitmask = NULL;
     }
     if( NULL != cpu->physical_ram ) {
         free(cpu->physical_ram);
@@ -355,6 +366,28 @@ enum armv2_status interrupt(struct armv2 *cpu, uint32_t hw_id, uint32_t code)
         cpu->hardware_manager.last_interrupt_code = code;
         SETPIN(cpu,I);
     }
+
+    return ARMV2STATUS_OK;
+}
+
+enum armv2_status set_breakpoint(struct armv2 *cpu, uint32_t addr)
+{
+    if( NULL == cpu || !CPU_INITIALISED(cpu) || NULL == cpu->breakpoint_bitmask ) {
+        return ARMV2STATUS_INVALID_ARGS;
+    }
+
+    SET_BREAKPOINT(cpu, addr);
+
+    return ARMV2STATUS_OK;
+}
+
+enum armv2_status unset_breakpoint(struct armv2 *cpu, uint32_t addr)
+{
+    if( NULL == cpu || !CPU_INITIALISED(cpu) || NULL == cpu->breakpoint_bitmask ) {
+        return ARMV2STATUS_INVALID_ARGS;
+    }
+
+    CLEAR_BREAKPOINT(cpu, addr);
 
     return ARMV2STATUS_OK;
 }

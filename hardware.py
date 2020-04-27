@@ -789,6 +789,12 @@ class Machine:
             setattr(self, name, device)
             setattr(device, 'name', name)
 
+    def set_breakpoint(self, addr):
+        self.cpu.set_breakpoint(addr)
+
+    def unset_breakpoint(self, addr):
+        self.cpu.unset_breakpoint(addr)
+
     def delete(self):
         with self.cv:
             self.running = False

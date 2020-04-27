@@ -359,6 +359,16 @@ cdef class Armv2:
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 
+    def set_breakpoint(self, addr):
+        result = carmv2.set_breakpoint(self.cpu, <uint32_t>addr);
+        if result != carmv2.ARMV2STATUS_OK:
+            raise ValueError()
+
+    def unset_breakpoint(self, addr):
+        result = carmv2.unset_breakpoint(self.cpu, <uint32_t>addr);
+        if result != carmv2.ARMV2STATUS_OK:
+            raise ValueError()
+
 debugf = None
 log_lock = threading.Lock()
 def debug_log(message):

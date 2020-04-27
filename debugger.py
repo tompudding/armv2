@@ -32,6 +32,8 @@ class Debugger(object):
                          messages.Types.CONTINUE : self.handle_continue,
                          messages.Types.CONTINUE_SIGNAL : self.handle_continue,
                          messages.Types.WRITE_MEM : self.handle_write_mem,
+                         messages.Types.ADD_HARD_BP : self.handle_set_breakpoint,
+                         messages.Types.DEL_HARD_BP : self.handle_unset_breakpoint,
         }
 
         self.need_symbols = False
@@ -96,10 +98,12 @@ class Debugger(object):
     def handle_set_breakpoint(self, message):
         print('Got set breakpoint')
         self.add_breakpoint(message.addr)
+        self.connection.send(messages.OK())
 
     def handle_unset_breakpoint(self, message):
         print('Got unset breakpoint')
         self.remove_breakpoint(message.addr)
+        self.connection.send(messages.OK())
 
     def handle_request_symbols(self, message):
         if self.connection:
@@ -224,25 +228,27 @@ class Debugger(object):
         #self.handle_request_symbols(self.symbols)
 
     def add_breakpoint(self, addr):
+        print(f'Add breakpoint {addr=:x}')
         if addr & 3:
             raise ValueError()
         if addr in self.breakpoints:
             return
+        #self.breakpoints[addr] = True
         addr_word = addr
-        self.breakpoints[addr]   = self.machine.memw[addr_word]
-        self.machine.memw[addr_word] = self.BKPT
+        self.machine.set_breakpoint(addr)
 
     def new_machine(self, machine):
         self.machine = machine
         self.machine.tape_drive.register_callback(self.set_need_symbols)
         self.next_instruction = None
-        for bkpt in self.breakpoints:
-            self.breakpoints[bkpt] = self.machine.memw[bkpt]
-            self.machine.memw[bkpt] = self.BKPT
+        #for bkpt in self.breakpoints:
+        #    self.breakpoints[bkpt] = self.machine.memw[bkpt]
+        #    self.machine.memw[bkpt] = self.BKPT
 
     def remove_breakpoint(self, addr):
-        self.machine.memw[addr] = self.breakpoints[addr]
-        del self.breakpoints[addr]
+        #self.machine.memw[addr] = self.breakpoints[addr]
+        #del self.breakpoints[addr]
+        self.machine.unset_breakpoint(addr)
 
     def step_num_internal(self, num, skip_breakpoint):
         # If we're at a breakpoint and we've been asked to continue, we step it once and then replace the breakpoint
@@ -301,6 +307,9 @@ class Debugger(object):
         if armv2.Status.BREAKPOINT == status:
             print('**************** GOT BREAKPOINT **************')
             self.stop()
+            #Can we send the message to GDB here or do we have threading issues? Let's try here
+            if self.connection:
+                self.connection.send(messages.SWBreakReply())
         #raise SystemExit('bob %d' % self.num_to_step)
 
     def wants_interrupt(self):
