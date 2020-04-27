@@ -1,3 +1,4 @@
+# cython: language_level=3
 cimport carmv2
 from libc.stdint cimport uint32_t, int64_t
 from libc.stdlib cimport malloc, free

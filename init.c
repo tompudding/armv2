@@ -10,42 +10,44 @@
 #include "armv2.h"
 #include "memory_map.h"
 
-enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
+enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
+{
     uint32_t num_pages = 0;
     enum armv2_status retval = ARMV2STATUS_OK;
 
-    if(NULL == cpu) {
+    if( NULL == cpu ) {
         LOG("%s error, NULL cpu\n",__func__);
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
 
     //round memsize up to a full page
-    memsize = (memsize + PAGE_MASK)&(~PAGE_MASK);
-    if(memsize&PAGE_MASK) {
+    memsize = (memsize + PAGE_MASK) & (~PAGE_MASK);
+    if( memsize & PAGE_MASK ) {
         LOG("Page mask error\n");
         return ARMV2STATUS_VALUE_ERROR;
     }
 
     num_pages = memsize >> PAGE_SIZE_BITS;
-    if(num_pages > NUM_PAGE_TABLES) {
+    if( num_pages > NUM_PAGE_TABLES ) {
         LOG("Serious page table error, too many requested\n");
         return ARMV2STATUS_VALUE_ERROR;
     }
 
-    if(memsize > MAX_MEMORY) {
-        LOG("%s error, request memory size(%u) too big\n",__func__,memsize);
+    if( memsize > MAX_MEMORY ) {
+        LOG("%s error, request memory size(%u) too big\n", __func__, memsize);
         return ARMV2STATUS_VALUE_ERROR;
     }
 
-    memset(cpu,0,sizeof(struct armv2));
+    memset(cpu, 0, sizeof(struct armv2));
     cpu->physical_ram = malloc(memsize);
-    if(NULL == cpu->physical_ram) {
+    if( NULL == cpu->physical_ram ) {
         cpu->physical_ram = NULL;
         return ARMV2STATUS_MEMORY_ERROR;
     }
+
     cpu->physical_ram_size = memsize;
-    LOG("Have %u pages %u\n",num_pages,memsize);
-    memset(cpu->physical_ram,0,memsize);
+    LOG("Have %u pages %u\n", num_pages, memsize);
+    memset(cpu->physical_ram, 0, memsize);
 
     //map the physical ram at 0
     //we could malloc all the page tables for it at once, but all the extra bookkeeping would
@@ -57,9 +59,10 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
             retval = ARMV2STATUS_MEMORY_ERROR;
             goto cleanup;
         }
-        page_info->memory = cpu->physical_ram + i*WORDS_PER_PAGE;
-        //LOG("Page %u memory %p\n",i,(void*)page_info->memory);
-        page_info->flags |= (PERM_READ|PERM_EXECUTE|PERM_WRITE);
+
+        page_info->memory = cpu->physical_ram + i * WORDS_PER_PAGE;
+        page_info->flags |= (PERM_READ | PERM_EXECUTE | PERM_WRITE);
+
         if(i == 0) {
             //the first page is never writable, we'll put the boot rom there.
             page_info->flags &= (~PERM_WRITE);
@@ -68,14 +71,15 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
     }
 
     cpu->flags = FLAG_INIT;
-
-    cpu->regs.actual[PC] = MODE_SUP | FLAG_I; //Start with the interrupt flag on so we don't get interrupts until we're ready
+    //Start with the interrupt flag on so we don't get interrupts until we're ready
+    cpu->regs.actual[PC] = MODE_SUP | FLAG_I;
     cpu->pins = 0;
     cpu->pc = -4; //hack because it gets incremented on the first loop
 
-    for(uint32_t i=0;i<NUM_EFFECTIVE_REGS;i++) {
+    for(uint32_t i = 0;i < NUM_EFFECTIVE_REGS; i++) {
         cpu->regs.effective[i] = &cpu->regs.actual[i];
     }
+
     //We start in supervisor mode bank those registers
     for(uint32_t i=13; i < 15; i++) {
         cpu->regs.effective[i] = &cpu->regs.actual[R13_S + (i - 13)];
@@ -84,7 +88,7 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
     //Set up the exception conditions
     for(uint32_t i=0;i<EXCEPT_NONE;i++) {
         cpu->exception_handlers[i].mode     = MODE_SUP;
-        cpu->exception_handlers[i].pc       = i*4;
+        cpu->exception_handlers[i].pc       = i * 4;
         cpu->exception_handlers[i].flags    = FLAG_I;
         cpu->exception_handlers[i].save_reg = LR_S;
     }
@@ -93,27 +97,28 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize) {
     cpu->exception_handlers[EXCEPT_IRQ].save_reg = LR_I;
     cpu->exception_handlers[EXCEPT_FIQ].mode     = MODE_FIQ;
     cpu->exception_handlers[EXCEPT_FIQ].save_reg = LR_F;
-    cpu->exception_handlers[EXCEPT_FIQ].flags |= FLAG_F;
-    cpu->exception_handlers[EXCEPT_RST].flags |= FLAG_F;
+    cpu->exception_handlers[EXCEPT_FIQ].flags   |= FLAG_F;
+    cpu->exception_handlers[EXCEPT_RST].flags   |= FLAG_F;
 
 cleanup:
-    if(retval != ARMV2STATUS_OK) {
+    if( retval != ARMV2STATUS_OK ) {
         cleanup_armv2(cpu);
     }
 
     return retval;
 }
 
-enum armv2_status cleanup_armv2(struct armv2 *cpu) {
+enum armv2_status cleanup_armv2(struct armv2 *cpu)
+{
     LOG("ARMV2 cleanup\n");
-    if(NULL == cpu) {
+    if( NULL == cpu ) {
         return ARMV2STATUS_OK;
     }
-    if(NULL != cpu->physical_ram) {
+    if( NULL != cpu->physical_ram ) {
         free(cpu->physical_ram);
         cpu->physical_ram = NULL;
     }
-    for(uint32_t i=0;i<NUM_PAGE_TABLES;i++) {
+    for( uint32_t i = 0;i < NUM_PAGE_TABLES; i++ ) {
         if(NULL != cpu->page_tables[i]) {
             free(cpu->page_tables[i]);
             cpu->page_tables[i] = NULL;
@@ -122,12 +127,14 @@ enum armv2_status cleanup_armv2(struct armv2 *cpu) {
     return ARMV2STATUS_OK;
 }
 
-static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32_t end, FILE *f, ssize_t *size_out ) {
+static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32_t end,
+                                       FILE *f, ssize_t *size_out )
+{
     uint32_t section_length = 0;
     ssize_t  read_bytes     = 0;
-    ssize_t size = *size_out;
+    ssize_t  size           = *size_out;
 
-    if(0 != INPAGE(start)) {
+    if( 0 != INPAGE(start) ) {
         //We only want to start loading sections in at page boundaries
         LOG("Error starting section off page boundary\n");
         return ARMV2STATUS_INVALID_PAGE;
@@ -136,7 +143,7 @@ static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32
     uint32_t page_num = PAGEOF(start);
 
     read_bytes = fread(&section_length, sizeof(section_length), 1, f);
-    if(read_bytes != 1) {
+    if( read_bytes != 1 ) {
         LOG("Error reading opening length\n");
         return ARMV2STATUS_IO_ERROR;
     }
@@ -157,12 +164,12 @@ static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32
 
     size -= section_length;
 
-    while(section_length > 0) {
+    while( section_length > 0 ) {
         size_t to_read = section_length > PAGE_SIZE ? PAGE_SIZE : section_length;
         read_bytes = fread(cpu->page_tables[page_num++]->memory, 1, to_read,f);
-        if(read_bytes != to_read) {
 
-            if(read_bytes != section_length) {
+        if( read_bytes != to_read ) {
+            if( read_bytes != section_length ) {
                 LOG("Error %d %zd %zd %d\n",page_num, read_bytes, size, section_length);
                 return ARMV2STATUS_IO_ERROR;
             }
@@ -175,7 +182,8 @@ static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status load_rom(struct armv2 *cpu, const char *filename) {
+enum armv2_status load_rom(struct armv2 *cpu, const char *filename)
+{
     FILE              *f          = NULL;
     enum armv2_status  retval     = ARMV2STATUS_OK;
     struct stat        st         = {0};
@@ -183,20 +191,20 @@ enum armv2_status load_rom(struct armv2 *cpu, const char *filename) {
         return ARMV2STATUS_OK;
     }
 
-    if(!(cpu->flags&FLAG_INIT)) {
+    if( !(cpu->flags&FLAG_INIT) ) {
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
 
-    if(NULL == cpu->page_tables[0] || NULL == cpu->page_tables[0]->memory) {
+    if( NULL == cpu->page_tables[0] || NULL == cpu->page_tables[0]->memory ) {
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
 
-    if(0 != stat(filename,&st)) {
+    if( 0 != stat(filename,&st) ) {
         return ARMV2STATUS_IO_ERROR;
     }
 
     ssize_t size = st.st_size;
-    if(size < 28) {
+    if( size < 0x28 ) {
         //28 is the bare minimum for a rom, as the vectors go up to
         //0x20, and then you need at least one instruction, and the
         //first word is the length
@@ -204,7 +212,7 @@ enum armv2_status load_rom(struct armv2 *cpu, const char *filename) {
     }
 
     f = fopen(filename,"rb");
-    if(NULL == f) {
+    if( NULL == f ) {
         LOG("Error opening %s\n",filename);
         return ARMV2STATUS_IO_ERROR;
     }
@@ -226,34 +234,40 @@ close_file:
     return retval;
 }
 
-enum armv2_status add_hardware(struct armv2 *cpu, struct hardware_device *device) {
-    if(NULL == cpu || NULL == device || !CPU_INITIALISED(cpu)) {
+enum armv2_status add_hardware(struct armv2 *cpu, struct hardware_device *device)
+{
+    if( NULL == cpu || NULL == device || !CPU_INITIALISED(cpu) ) {
         return ARMV2STATUS_INVALID_ARGS;
     }
-    if(cpu->num_hardware_devices >= HW_DEVICES_MAX) {
+
+    if( cpu->num_hardware_devices >= HW_DEVICES_MAX ) {
         return ARMV2STATUS_MAX_HW;
     }
+
     //There's space, so let's add it
     cpu->hardware_devices[cpu->num_hardware_devices++] = device;
-    //initialise the interrupt address herre
+    //initialise the interrupt address here
 
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t start, uint32_t end) {
-    uint32_t page_pos    = 0;
-    uint32_t page_start  = PAGEOF(start);
-    uint32_t page_end    = PAGEOF(end);
-    struct hardware_mapping hw_mapping = {0};
-    if(NULL == cpu || end <= start) {
+enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t start, uint32_t end)
+{
+    if( NULL == cpu || end <= start ) {
         return ARMV2STATUS_INVALID_ARGS;
     }
-    if(device_num >= cpu->num_hardware_devices) {
+    if( device_num >= cpu->num_hardware_devices ) {
         return ARMV2STATUS_NO_SUCH_DEVICE;
     }
     if(NULL == cpu->hardware_devices[device_num]) {
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
+
+    uint32_t page_pos    = 0;
+    uint32_t page_start  = PAGEOF(start);
+    uint32_t page_end    = PAGEOF(end);
+    struct hardware_mapping hw_mapping = {0};
+
     if(start&PAGE_MASK                  ||
        end  &PAGE_MASK                  ||
        page_start == 0                  ||
@@ -265,22 +279,25 @@ enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t st
         ) {
         return ARMV2STATUS_INVALID_ARGS;
     }
+
     //First we need to know if all of the requested memory is available for mapping. That means
     //it must not have been mapped already, and it may not be the zero page
     for(page_pos = page_start; page_pos < page_end; page_pos++) {
         struct page_info *page;
-        if(page_pos >= NUM_PAGE_TABLES) { // || page_pos == INTERRUPT_PAGE_NUM) {
+        if( page_pos >= NUM_PAGE_TABLES ) { // || page_pos == INTERRUPT_PAGE_NUM) {
             return ARMV2STATUS_MEMORY_ERROR;
         }
         page = cpu->page_tables[page_pos];
-        if(page == NULL) {
+        if( page == NULL ) {
             //That's OK, that means this page is currently completely unmapped. We can make a page just for this
             continue;
         }
-        if(page->read_callback || page->write_callback || page->read_byte_callback || page->write_byte_callback) {
+        if( page->read_callback || page->write_callback ||
+           page->read_byte_callback || page->write_byte_callback ) {
             return ARMV2STATUS_ALREADY_MAPPED;
         }
     }
+
     hw_mapping.device = cpu->hardware_devices[device_num];
     //If we get here then the entire range is free, so we can go ahead and fill it in
     for(page_pos = page_start; page_pos < page_end; page_pos++) {
@@ -289,26 +306,21 @@ enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t st
         if(NULL == page) {
             //we need a new page
             page = calloc(1, sizeof(struct page_info));
-            if(NULL == page) {
+            if( NULL == page ) {
                 //I don't think I'm leaving anything untidied up by returning here
                 return ARMV2STATUS_MEMORY_ERROR;
             }
-            page->flags = (PERM_READ|PERM_EXECUTE|PERM_WRITE);
+            page->flags = (PERM_READ | PERM_EXECUTE | PERM_WRITE);
             page->memory = NULL;
-            if(hw_mapping.device) {
+            if( hw_mapping.device ) {
                 page->mapped_device = hw_mapping.device->extra;
             }
             cpu->page_tables[page_pos] = page;
         }
         //Already checked everything's OK, and we're single threaded, so this should be ok I think...
-        /* LOG("Setting page_pos %x to callbacks %p %p flags %x\n", */
-        /*     page_pos, */
-        /*     hw_mapping.device->read_callback, */
-        /*     hw_mapping.device->write_callback, */
-        /*     hw_mapping.device->read_byte_callback, */
-        /*     hw_mapping.device->write_byte_callback); */
-        page->read_callback  = hw_mapping.device->read_callback;
-        page->write_callback = hw_mapping.device->write_callback;
+
+        page->read_callback       = hw_mapping.device->read_callback;
+        page->write_callback      = hw_mapping.device->write_callback;
         page->read_byte_callback  = hw_mapping.device->read_byte_callback;
         page->write_byte_callback = hw_mapping.device->write_byte_callback;
     }
@@ -316,15 +328,14 @@ enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t st
     hw_mapping.start = start;
     hw_mapping.end   = end;
     hw_mapping.flags = 0; //maybe use these later
-    add_mapping(&(cpu->hw_mappings),&hw_mapping);
+    add_mapping(&(cpu->hw_mappings), &hw_mapping);
 
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status add_mapping(struct hardware_mapping **head, struct hardware_mapping *item) {
-    LOG("Apping mad! %p %p\n",(void*)*head,(void*)item);
-    if(NULL == head) {
-        LOG("Mapping jim NULL\n");
+enum armv2_status add_mapping(struct hardware_mapping **head, struct hardware_mapping *item)
+{
+    if( NULL == head ) {
         return ARMV2STATUS_INVALID_ARGS;
     }
     item->next = *head;
@@ -332,12 +343,14 @@ enum armv2_status add_mapping(struct hardware_mapping **head, struct hardware_ma
     return ARMV2STATUS_OK;
 }
 
-enum armv2_status interrupt(struct armv2 *cpu, uint32_t hw_id, uint32_t code) {
-    if(NULL == cpu || !CPU_INITIALISED(cpu)) {
+enum armv2_status interrupt(struct armv2 *cpu, uint32_t hw_id, uint32_t code)
+{
+    if( NULL == cpu || !CPU_INITIALISED(cpu) ) {
         return ARMV2STATUS_INVALID_ARGS;
     }
+
     //TODO: some kind of interrupt queue, for now drop interrupts that happen while we're doing this
-    if(PIN_OFF(cpu,I) && FLAG_CLEAR(cpu,I)) {
+    if( PIN_OFF(cpu,I) && FLAG_CLEAR(cpu,I) ) {
         cpu->hardware_manager.last_interrupt_id = hw_id;
         cpu->hardware_manager.last_interrupt_code = code;
         SETPIN(cpu,I);

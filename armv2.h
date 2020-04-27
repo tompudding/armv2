@@ -30,32 +30,32 @@
 #define NUM_EFFECTIVE_REGS   (16)
 
 #define PAGE_SIZE_BITS       (12)
-#define PAGE_SIZE            (1<<PAGE_SIZE_BITS)
-#define PAGE_MASK            (PAGE_SIZE-1)
-#define NUM_PAGE_TABLES      (1<<(26 - PAGE_SIZE_BITS))
-#define WORDS_PER_PAGE       (1<<(PAGE_SIZE_BITS-2))
-#define MAX_MEMORY           (1<<26)
+#define PAGE_SIZE            (1 << PAGE_SIZE_BITS)
+#define PAGE_MASK            (PAGE_SIZE - 1)
+#define NUM_PAGE_TABLES      (1 << (26 - PAGE_SIZE_BITS))
+#define WORDS_PER_PAGE       (1 << (PAGE_SIZE_BITS - 2))
+#define MAX_MEMORY           (1 << 26)
 #define HW_DEVICES_MAX       (64)
 #define MAX_SYMBOLS_SIZE     (0x10000)
 
-#define PAGEOF(addr)         ((addr)>>PAGE_SIZE_BITS)
-#define INPAGE(addr)         ((addr)&PAGE_MASK)
-#define WORDINPAGE(addr)     (INPAGE(addr)>>2)
-#define DEREF(cpu,addr)      (cpu->page_tables[PAGEOF(addr)]->memory[WORDINPAGE(addr)])
-#define SETPC(cpu,newpc)     ((cpu)->regs.actual[PC] = (((cpu)->regs.actual[PC]&0xfc000003) | ((newpc)&0x03fffffc)))
-#define GETPC(cpu)           ((cpu)->regs.actual[PC]&0x03fffffc)
-#define GETREG(cpu,rn)       (*(cpu)->regs.effective[(rn)])
-#define GETUSERREG(cpu,rn)   ((cpu)->regs.actual[(rn)])
-#define SETMODE(cpu,newmode) ((cpu)->regs.actual[PC] = (((cpu)->regs.actual[PC]&0xfffffffc) | (newmode)))
-#define GETMODE(cpu)         ((cpu)->regs.actual[PC]&0x3)
-#define GETPSR(cpu)          ((cpu)->regs.actual[PC]&0xfc000000)
-#define SETPSR(cpu,newpsr)   ((cpu)->regs.actual[PC] = (((cpu)->regs.actual[PC]&0x03ffffff) | (newpsr)))
-#define GETMODEPSR(cpu)      ((cpu)->regs.actual[PC]&0xfc000003)
-#define SETFLAG(cpu,flag)    ((cpu)->regs.actual[PC] |= FLAG_##flag)
-#define SETPIN(cpu,pin)      ((cpu)->pins |= PIN_##pin)
-#define CLEARPIN(cpu,pin)    ((cpu)->pins &= (~(PIN_##pin)))
-#define SETCPUFLAG(cpu,flag) ((cpu)->flags |= FLAG_##flag)
-#define CLEARCPUFLAG(cpu,flag) ((cpu)->flags &= (~FLAG_##flag))
+#define PAGEOF(addr)         ((addr) >> PAGE_SIZE_BITS)
+#define INPAGE(addr)         ((addr) & PAGE_MASK)
+#define WORDINPAGE(addr)     (INPAGE(addr) >> 2)
+#define DEREF(cpu, addr)     (cpu->page_tables[PAGEOF(addr)]->memory[WORDINPAGE(addr)])
+#define SETPC(cpu, newpc)    ((cpu)->regs.actual[PC] = (((cpu)->regs.actual[PC] & 0xfc000003) | ((newpc) & 0x03fffffc)))
+#define GETPC(cpu)              ((cpu)->regs.actual[PC] & 0x03fffffc)
+#define GETREG(cpu, rn)         (*(cpu)->regs.effective[(rn)])
+#define GETUSERREG(cpu, rn)     ((cpu)->regs.actual[(rn)])
+#define SETMODE(cpu, newmode)   ((cpu)->regs.actual[PC] = (((cpu)->regs.actual[PC] & 0xfffffffc) | (newmode)))
+#define GETMODE(cpu)            ((cpu)->regs.actual[PC]  &0x3)
+#define GETPSR(cpu)             ((cpu)->regs.actual[PC] & 0xfc000000)
+#define SETPSR(cpu, newpsr)     ((cpu)->regs.actual[PC] = (((cpu)->regs.actual[PC] & 0x03ffffff) | (newpsr)))
+#define GETMODEPSR(cpu)         ((cpu)->regs.actual[PC] & 0xfc000003)
+#define SETFLAG(cpu, flag)      ((cpu)->regs.actual[PC] |= FLAG_##flag)
+#define SETPIN(cpu, pin)        ((cpu)->pins |= PIN_##pin)
+#define CLEARPIN(cpu, pin)      ((cpu)->pins &= (~(PIN_##pin)))
+#define SETCPUFLAG(cpu, flag)   ((cpu)->flags |= FLAG_##flag)
+#define CLEARCPUFLAG(cpu, flag) ((cpu)->flags &= (~FLAG_##flag))
 
 #define PERM_READ    4
 #define PERM_WRITE   2
@@ -68,7 +68,7 @@
 #define FLAG_I 0x08000000
 #define FLAG_F 0x04000000
 
-#define PC_PROTECTED_BITS   ((FLAG_I|FLAG_F|3))
+#define PC_PROTECTED_BITS   ((FLAG_I | FLAG_F|3))
 #define PC_UNPROTECTED_BITS (~PC_PROTECTED_BITS)
 
 #define PIN_F  0x00000001
@@ -76,10 +76,10 @@
 
 #define SWI_BREAKPOINT 0x00beeeef
 
-#define FLAG_SET(cpu,flag) ((cpu)->regs.actual[PC]&FLAG_##flag)
-#define FLAG_CLEAR(cpu,flag) (!FLAG_SET(cpu,flag))
-#define PIN_ON(cpu,pin) ((cpu)->pins&PIN_##pin)
-#define PIN_OFF(cpu,pin) (!PIN_ON(cpu,pin))
+#define FLAG_SET(cpu, flag) ((cpu)->regs.actual[PC] & FLAG_##flag)
+#define FLAG_CLEAR(cpu, flag) (!FLAG_SET(cpu, flag))
+#define PIN_ON(cpu, pin) ((cpu)->pins&PIN_##pin)
+#define PIN_OFF(cpu, pin) (!PIN_ON(cpu, pin))
 
 #define COND_EQ 0x0
 #define COND_NE 0x1
@@ -98,7 +98,7 @@
 #define COND_AL 0xe
 #define COND_NV 0xf
 
-#define CONDITION_BITS(x) ((x)>>28)
+#define CONDITION_BITS(x) ((x) >> 28)
 
 #define MODE_USR 0
 #define MODE_FIQ 1
@@ -189,7 +189,7 @@ struct armv2 {
     uint32_t                  pins;
 };
 
-typedef enum armv2_exception (*instruction_handler_t)(struct armv2 *cpu,uint32_t instruction);
+typedef enum armv2_exception (*instruction_handler_t)(struct armv2 *cpu, uint32_t instruction);
 enum armv2_status init(struct armv2 *cpu, uint32_t memsize);
 enum armv2_status load_rom(struct armv2 *cpu, const char *filename);
 enum armv2_status cleanup_armv2(struct armv2 *cpu);
@@ -200,31 +200,31 @@ enum armv2_status add_mapping(struct hardware_mapping **head, struct hardware_ma
 enum armv2_status interrupt(struct armv2 *cpu, uint32_t hw_id, uint32_t code);
 
 //instruction handlers
-enum armv2_exception ALUInstruction                         (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception MultiplyInstruction                    (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception SwapInstruction                        (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception SingleDataTransferInstruction          (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception BranchInstruction                      (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception MultiDataTransferInstruction           (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception SoftwareInterruptInstruction           (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception CoprocessorDataTransferInstruction     (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception CoprocessorRegisterTransferInstruction (struct armv2 *cpu,uint32_t instruction);
-enum armv2_exception CoprocessorDataOperationInstruction    (struct armv2 *cpu,uint32_t instruction);
+enum armv2_exception alu_instruction                           (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception multiply_instruction                      (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception swap_instruction                          (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception single_data_transfer_instruction          (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception branch_instruction                        (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception multi_data_transfer_instruction           (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception software_interrupt_instruction            (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception coprocessor_data_transfer_instruction     (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception coprocessor_register_transfer_instruction (struct armv2 *cpu, uint32_t instruction);
+enum armv2_exception coprocessor_data_operation_instruction    (struct armv2 *cpu, uint32_t instruction);
 
 #define COPROCESSOR_HW_MANAGER (1)
 #define COPROCESSOR_MMU        (2)
 #define COPROCESSOR_INTERRUPT_CONTROLLER (3)
 
-typedef enum armv2_status (*coprocessor_data_operation_t)(struct armv2*,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t);
+typedef enum armv2_status (*coprocessor_data_operation_t)(struct armv2*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
-enum armv2_status HwManagerDataOperation       (struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
-enum armv2_status HwManagerRegisterTransfer    (struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
+enum armv2_status hw_manager_data_operation(struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
+enum armv2_status hw_manager_register_transfer(struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
 
-enum armv2_status MmuDataOperation             (struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
-enum armv2_status MmuRegisterTransfer          (struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
+enum armv2_status mmu_data_operation(struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
+enum armv2_status mmu_register_transfer(struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
 
-enum armv2_status InterruptControllerOperation (struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
-enum armv2_status InterruptControllerTransfer  (struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
+enum armv2_status interrupt_controller_operation(struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
+enum armv2_status interrupt_controller_transfer(struct armv2 *cpu, uint32_t crm, uint32_t aux, uint32_t crd, uint32_t crn, uint32_t opcode);
 
 void flog(char* fmt, ...);
 
