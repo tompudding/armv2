@@ -801,6 +801,12 @@ class Machine:
     def unset_watchpoint(self, type, addr):
         self.cpu.unset_watchpoint(type, addr)
 
+    def reset_breakpoints(self):
+        self.cpu.reset_breakpoints()
+
+    def reset_watchpoints(self):
+        self.cpu.reset_watchpoints()
+
     def delete(self):
         with self.cv:
             self.running = False

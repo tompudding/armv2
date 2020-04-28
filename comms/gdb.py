@@ -111,6 +111,9 @@ class EmptyMessage(Message):
 class Stop(Message):
     type = Types.STOP
 
+class Detach(Message):
+    type = Types.DETACH
+
 class OK(Message):
     def to_binary(self):
         return format_gdb_message(b'OK')
@@ -368,7 +371,12 @@ class BaseHandler(object):
         super().__init__(*args, **kwargs)
 
     def read_message(self):
-        ready = select.select([self.request], [], [], self.select_timeout)
+        try:
+            ready = select.select([self.request], [], [], self.select_timeout)
+        except ValueError:
+            #We get this if the request has been closed and self.request is set to -1
+            self.done = True
+            return
         if ready[0]:
             new_data = self.request.recv(1024)
             if not new_data:
@@ -428,20 +436,23 @@ class BaseHandler(object):
             self.server.comms.set_connected(self.request)
             while not self.server.comms.done and not self.done:
                 self.read_message()
-            print('done')
             self.request.close()
         except socket.error as e:
             print('Got socket error')
-            self.server.comms.disconnect()
+            #self.server.comms.disconnect()
+
+        # Whatever happens, if the machine is stopped when we disconnect, we need to resume it and clear any
+        # breakpoints and stuff
+        self.done = True
+        self.server.comms.disconnect()
 
     def reply(self, message):
         print('Sending reply',message)
         self.request.send(message)
 
     def detach(self, data):
-        self.reply(format_gdb_message(b'OK'))
-        print('Detach!')
         self.done = True
+        return Detach(data)
 
     def handle_query(self, data):
         print('handle query')

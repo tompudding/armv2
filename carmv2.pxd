@@ -123,3 +123,5 @@ cdef extern from "armv2.h":
     armv2_status unset_breakpoint(armv2 *cpu, uint32_t addr) nogil
     armv2_status set_watchpoint(armv2 *cpu, watchpoint_type type, uint32_t addr) nogil
     armv2_status unset_watchpoint(armv2 *cpu, watchpoint_type type, uint32_t addr) nogil
+    armv2_status reset_breakpoints(armv2 *cpu) nogil
+    armv2_status reset_watchpoints(armv2 *cpu) nogil

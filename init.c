@@ -50,25 +50,8 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
     LOG("Have %u pages %u\n", num_pages, memsize);
     memset(cpu->physical_ram, 0, memsize);
 
-    //We want a bit for every addressable word, i.e one every 32 bits
-    cpu->breakpoint_bitmask = mmap(NULL, BP_BITMASK_SIZE, PROT_READ | PROT_WRITE,
-                                   MAP_ANONYMOUS | MAP_SHARED, -1, 0);
-    if( MAP_FAILED == cpu->breakpoint_bitmask ) {
-        cpu->breakpoint_bitmask = NULL;
-        retval = ARMV2STATUS_MEMORY_ERROR;
-        goto cleanup;
-    }
-
-    //Do the same thing for watchpoint masks
-    for(int i = 0; i < MAX_WATCHPOINT; i++) {
-        cpu->watchpoint_bitmask[i] = mmap(NULL, BP_BITMASK_SIZE, PROT_READ | PROT_WRITE,
-                                          MAP_ANONYMOUS | MAP_SHARED, -1, 0);
-        if( MAP_FAILED == cpu->watchpoint_bitmask[i] ) {
-            cpu->watchpoint_bitmask[i] = NULL;
-            retval = ARMV2STATUS_MEMORY_ERROR;
-            goto cleanup;
-        }
-    }
+    reset_breakpoints(cpu);
+    reset_watchpoints(cpu);
 
     //map the physical ram at 0
     //we could malloc all the page tables for it at once, but all the extra bookkeeping would
@@ -461,4 +444,40 @@ enum armv2_status unset_watchpoint(struct armv2 *cpu, enum watchpoint_type type,
     }
 
     return ARMV2STATUS_OK;
+}
+
+
+enum armv2_status reset_breakpoints(struct armv2 *cpu)
+{
+    clean_bitmask(&cpu->breakpoint_bitmask);
+    //We want a bit for every addressable word, i.e one every 32 bits
+    cpu->breakpoint_bitmask = mmap(NULL, BP_BITMASK_SIZE, PROT_READ | PROT_WRITE,
+                                   MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if( MAP_FAILED == cpu->breakpoint_bitmask ) {
+        cpu->breakpoint_bitmask = NULL;
+        return ARMV2STATUS_MEMORY_ERROR;
+    }
+
+    return ARMV2STATUS_OK;
+}
+enum armv2_status reset_watchpoints(struct armv2 *cpu)
+{
+    //Do the same thing for watchpoint masks
+    for(int i = 0; i < MAX_WATCHPOINT; i++) {
+        clean_bitmask(cpu->watchpoint_bitmask + i);
+        cpu->watchpoint_bitmask[i] = mmap(NULL, BP_BITMASK_SIZE, PROT_READ | PROT_WRITE,
+                                          MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+        if( MAP_FAILED == cpu->watchpoint_bitmask[i] ) {
+            cpu->watchpoint_bitmask[i] = NULL;
+            goto cleanup;
+        }
+    }
+
+    return ARMV2STATUS_OK;
+cleanup:
+    for(int i = 0; i < MAX_WATCHPOINT; i++) {
+        clean_bitmask(cpu->watchpoint_bitmask + i);
+    }
+
+    return ARMV2STATUS_MEMORY_ERROR;
 }

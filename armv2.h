@@ -240,6 +240,8 @@ enum armv2_status set_breakpoint(struct armv2 *cpu, uint32_t addr);
 enum armv2_status unset_breakpoint(struct armv2 *cpu, uint32_t addr);
 enum armv2_status set_watchpoint(struct armv2 *cpu, enum watchpoint_type type, uint32_t addr);
 enum armv2_status unset_watchpoint(struct armv2 *cpu, enum watchpoint_type type, uint32_t addr);
+enum armv2_status reset_breakpoints(struct armv2 *cpu);
+enum armv2_status reset_watchpoints(struct armv2 *cpu);
 
 //instruction handlers
 enum armv2_exception alu_instruction                           (struct armv2 *cpu, uint32_t instruction);

@@ -384,6 +384,16 @@ cdef class Armv2:
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 
+    def reset_breakpoints(self):
+        result = carmv2.reset_breakpoints(self.cpu)
+        if result != carmv2.ARMV2STATUS_OK:
+            raise ValueError()
+
+    def reset_watchpoints(self):
+        result = carmv2.reset_watchpoints(self.cpu)
+        if result != carmv2.ARMV2STATUS_OK:
+            raise ValueError()
+
 debugf = None
 log_lock = threading.Lock()
 def debug_log(message):

@@ -40,6 +40,7 @@ class Debugger(object):
                          messages.Types.DEL_READ_WP     : self.handle_unset_watchpoint,
                          messages.Types.DEL_WRITE_WP    : self.handle_unset_watchpoint,
                          messages.Types.DEL_ACCESS_WP   : self.handle_unset_watchpoint,
+                         messages.Types.DETACH          : self.handle_detach,
         }
         self.wp_types = {messages.Types.ADD_READ_WP   : armv2.WatchpointType.READ,
                          messages.Types.ADD_WRITE_WP  : armv2.WatchpointType.WRITE,
@@ -82,6 +83,15 @@ class Debugger(object):
         self.connection.exit()
         self.connection = None
 
+        # If there was a debugger connected it might have breakpoints set up and have stopped the cpu. We need
+        # to disable all that
+        self.reset_debugging()
+
+    def reset_debugging(self):
+        self.stopped = False
+        self.machine.reset_breakpoints()
+        self.machine.reset_watchpoints()
+
     def handle_message(self, message):
         try:
             handler = self.handlers[message.type]
@@ -89,6 +99,10 @@ class Debugger(object):
             print('Ooops got unknown message type', message.type)
             return
         return handler(message)
+
+    def handle_detach(self, message):
+        self.reset_debugging()
+        self.connection.send(messages.OK())
 
     def handle_continue(self, message):
         self.resume(explicit=True)

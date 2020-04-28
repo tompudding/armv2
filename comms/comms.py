@@ -64,6 +64,8 @@ class Comms(object):
             self.socket.close()
             self.socket = None
             self.connected = False
+        #If the machine is stopped, we need to resume it and disable the breakpoints and stuff
+
 
     def send(self, message):
         if self.connected:
