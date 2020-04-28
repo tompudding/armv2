@@ -748,7 +748,7 @@ class Machine:
              (self.status == armv2.Status.WAIT_FOR_INTERRUPT and not (self.cpu.pins & armv2.Pins.INTERRUPT))):
             armv2.debug_log('%d %d %x' % (self.steps_to_run, self.status, self.cpu.pins))
             self.cv.wait(5)
-            if self.steps_to_run > 0:
+            if self.steps_to_run > 0 and self.status != armv2.Status.BREAKPOINT:
                 self.status = self.cpu.step(self.steps_to_run)
             self.steps_to_run = 0
             self.cv.notify()
@@ -794,6 +794,12 @@ class Machine:
 
     def unset_breakpoint(self, addr):
         self.cpu.unset_breakpoint(addr)
+
+    def set_watchpoint(self, type, addr):
+        self.cpu.set_watchpoint(type, addr)
+
+    def unset_watchpoint(self, type, addr):
+        self.cpu.unset_watchpoint(type, addr)
 
     def delete(self):
         with self.cv:

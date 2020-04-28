@@ -209,6 +209,11 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions)
         old_mode = GETMODE(cpu);
         exception = handler(cpu, instruction);
 
+        if( HASCPUFLAG(cpu, WATCHPOINT) && exception == EXCEPT_NONE) {
+            exception = EXCEPT_BREAKPOINT;
+            CLEARCPUFLAG(cpu, WATCHPOINT);
+        }
+
         //handle the exception if there was one
     handle_exception:
         if(exception != EXCEPT_NONE) {

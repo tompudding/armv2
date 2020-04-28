@@ -296,6 +296,28 @@ class UnsetBreakpoint(Message):
         self.addr = int(addr, 16)
         #ignore kind, we only have one type
 
+
+class SetWriteWatchpoint(SetBreakpoint):
+    type = Types.ADD_WRITE_WP
+
+class SetReadWatchpoint(SetBreakpoint):
+    type = Types.ADD_READ_WP
+
+class SetAccessWatchpoint(SetBreakpoint):
+    type = Types.ADD_ACCESS_WP
+
+
+class UnsetWriteWatchpoint(SetBreakpoint):
+    type = Types.DEL_WRITE_WP
+
+class UnsetReadWatchpoint(SetBreakpoint):
+    type = Types.DEL_READ_WP
+
+class UnsetAccessWatchpoint(SetBreakpoint):
+    type = Types.DEL_ACCESS_WP
+
+
+
 messages_by_type = {}
 
 def format_type(t):
@@ -337,6 +359,11 @@ class BaseHandler(object):
         }
         for byte in self.ignored_but_ok:
             self.handlers[byte] = self.handle_ignored
+        self.bp_messages = {ord('0') : (SetBreakpoint, UnsetBreakpoint),
+                            ord('1') : (SetBreakpoint, UnsetBreakpoint),
+                            ord('2') : (SetWriteWatchpoint, UnsetWriteWatchpoint),
+                            ord('3') : (SetReadWatchpoint, UnsetReadWatchpoint),
+                            ord('4') : (SetAccessWatchpoint, UnsetAccessWatchpoint)}
         self.done = False
         super().__init__(*args, **kwargs)
 
@@ -450,16 +477,18 @@ class BaseHandler(object):
             self.reply(format_gdb_message(b''))
 
     def handle_set_breakpoints(self, data):
-        if data[1] in b'01':
-            # They'd like to set a breakpoint. Whether they want a software breakpoint or not, we use a
-            # hardware one as it's better
-            return SetBreakpoint(data)
+        try:
+            return self.bp_messages[data[1]][0](data)
+        except KeyError:
+            self.reply(format_gdb_message(b''))
+            return
 
     def handle_unset_breakpoints(self, data):
-        if data[1] in b'01':
-            # They'd like to set a breakpoint. Whether they want a software breakpoint or not, we use a
-            # hardware one as it's better
-            return UnsetBreakpoint(data)
+        try:
+            return self.bp_messages[data[1]][1](data)
+        except KeyError:
+            self.reply(format_gdb_message(b''))
+            return
 
     def handle_get_reg(self, data):
         return GetRegisters()

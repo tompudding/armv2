@@ -467,7 +467,7 @@ enum armv2_exception single_data_transfer_instruction(struct armv2 *cpu, uint32_
     }
 
     //do the load/store
-    if( instruction&SDT_LDR ) {
+    if( instruction & SDT_LDR ) {
         //LDR
         uint32_t value;
         //must be aligned
@@ -478,8 +478,11 @@ enum armv2_exception single_data_transfer_instruction(struct armv2 *cpu, uint32_
             return EXCEPT_DATA_ABORT;
         }
 
-        if( ARMV2STATUS_OK != perform_load(page,rn_val,&value, instruction & SDT_LOAD_BYTE) ) {
+        if( ARMV2STATUS_OK != perform_load(page, rn_val, &value, instruction & SDT_LOAD_BYTE) ) {
             return EXCEPT_DATA_ABORT;
+        }
+        if( HAS_READ_WATCHPOINT(cpu, rn_val) ) {
+            SETCPUFLAG(cpu, WATCHPOINT);
         }
 
         if( rd == PC ) {
@@ -529,6 +532,9 @@ enum armv2_exception single_data_transfer_instruction(struct armv2 *cpu, uint32_
                 return EXCEPT_DATA_ABORT;
             }
             (void) perform_store(page, rn_val, value, 1);
+        }
+        if( HAS_WRITE_WATCHPOINT(cpu, rn_val) ) {
+            SETCPUFLAG(cpu, WATCHPOINT);
         }
     }
     //Now for any post indexing
@@ -658,6 +664,9 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
                 retval = EXCEPT_DATA_ABORT;
                 continue;
             }
+            if( HAS_READ_WATCHPOINT(cpu, address) ) {
+                SETCPUFLAG(cpu, WATCHPOINT);
+            }
 
             if( rs == PC ) {
                 //this means we update the whole register, except for prohibited flags in user mode
@@ -701,6 +710,9 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
                 }
             }
             (void) perform_store(page, address, value, 1);
+            if( HAS_WRITE_WATCHPOINT(cpu, address) ) {
+                SETCPUFLAG(cpu, WATCHPOINT);
+            }
         }
     }
 
@@ -776,6 +788,9 @@ enum armv2_exception swap_instruction(struct armv2 *cpu, uint32_t instruction)
     }
 
     (void) perform_store(page, address, value, 1);
+    if( HAS_WRITE_WATCHPOINT(cpu, address) || HAS_READ_WATCHPOINT(cpu, address) ) {
+        SETCPUFLAG(cpu, WATCHPOINT);
+    }
 
     return EXCEPT_NONE;
 }

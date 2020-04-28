@@ -34,8 +34,20 @@ class Debugger(object):
                          messages.Types.WRITE_MEM       : self.handle_write_mem,
                          messages.Types.ADD_HARD_BP     : self.handle_set_breakpoint,
                          messages.Types.DEL_HARD_BP     : self.handle_unset_breakpoint,
+                         messages.Types.ADD_READ_WP     : self.handle_set_watchpoint,
+                         messages.Types.ADD_WRITE_WP    : self.handle_set_watchpoint,
+                         messages.Types.ADD_ACCESS_WP   : self.handle_set_watchpoint,
+                         messages.Types.DEL_READ_WP     : self.handle_unset_watchpoint,
+                         messages.Types.DEL_WRITE_WP    : self.handle_unset_watchpoint,
+                         messages.Types.DEL_ACCESS_WP   : self.handle_unset_watchpoint,
         }
-
+        self.wp_types = {messages.Types.ADD_READ_WP   : armv2.WatchpointType.READ,
+                         messages.Types.ADD_WRITE_WP  : armv2.WatchpointType.WRITE,
+                         messages.Types.ADD_ACCESS_WP : armv2.WatchpointType.ACCESS,
+                         messages.Types.DEL_READ_WP   : armv2.WatchpointType.READ,
+                         messages.Types.DEL_WRITE_WP  : armv2.WatchpointType.WRITE,
+                         messages.Types.DEL_ACCESS_WP : armv2.WatchpointType.ACCESS
+        }
         self.need_symbols = False
         self.machine.tape_drive.register_callback(self.set_need_symbols)
         self.connection = None
@@ -103,6 +115,16 @@ class Debugger(object):
     def handle_unset_breakpoint(self, message):
         print('Got unset breakpoint')
         self.remove_breakpoint(message.addr)
+        self.connection.send(messages.OK())
+
+    def handle_set_watchpoint(self, message):
+        print('Got set watchpoint')
+        self.machine.set_watchpoint(self.wp_types[message.type], message.addr)
+        self.connection.send(messages.OK())
+
+    def handle_unset_watchpoint(self, message):
+        print('Got unset watchpoint')
+        self.machine.unset_watchpoint(self.wp_types[message.type], message.addr)
         self.connection.send(messages.OK())
 
     def handle_request_symbols(self, message):
@@ -256,14 +278,14 @@ class Debugger(object):
             return None
         self.num_to_step -= num
         #armv2.DebugLog('stepping %s %s %s' % (self.machine.pc,num, self.machine.pc in self.breakpoints))
-        if skip_breakpoint and self.machine.pc in self.breakpoints:
-            old_pos = self.machine.pc
-            print('boom doing replacement')
-            self.machine.memw[self.machine.pc] = self.breakpoints[self.machine.pc]
-            status = self.machine.step_and_wait(1)
-            self.machine.memw[old_pos] = self.BKPT
-            if num > 0:
-                num -= 1
+        #if skip_breakpoint and self.machine.pc in self.breakpoints:
+        #    old_pos = self.machine.pc
+        #    print('boom doing replacement')
+        #    #self.machine.memw[self.machine.pc] = self.breakpoints[self.machine.pc]
+        #    status = self.machine.step_and_wait(1)
+        #    #self.machine.memw[old_pos] = self.BKPT
+        #    if num > 0:
+        #        num -= 1
         if num > 0:
             status = self.machine.step_and_wait(num)
 

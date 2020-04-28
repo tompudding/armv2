@@ -56,6 +56,7 @@
 #define CLEARPIN(cpu, pin)      ((cpu)->pins &= (~(PIN_##pin)))
 #define SETCPUFLAG(cpu, flag)   ((cpu)->flags |= FLAG_##flag)
 #define CLEARCPUFLAG(cpu, flag) ((cpu)->flags &= (~FLAG_##flag))
+#define HASCPUFLAG(cpu, flag)   ((cpu)->flags &  FLAG_##flag)
 
 
 // We use a bitmask for breakpoints. There are 2**26 bytes of addressable memory, 2**24 aligned words which
@@ -65,8 +66,21 @@
 // memory is only used in pages that are touched
 #define BP_BITMASK_SIZE (UINT32_C(1) << (26 - 5))
 #define HAS_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] >> ( ((pc) >> 2) & 0x3f )) & 1
-#define SET_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] |= (1 << ( ((pc) >> 2) & 0x3f )))
-#define CLEAR_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] &= ~(UINT32_C(1) << ( ((pc) >> 2) & 0x3f )))
+#define SET_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] |= (UINT64_C(1) << ( ((pc) >> 2) & 0x3f )))
+#define CLEAR_BREAKPOINT(cpu, pc) (cpu->breakpoint_bitmask[ (pc) >> (2+6) ] &= ~(UINT64_C(1) << ( ((pc) >> 2) & 0x3f )))
+
+#define HAS_WATCHPOINT(cpu, type, a) (cpu->watchpoint_bitmask[type##_WATCHPOINT][ (a) >> (2+6) ] >> ( ((a) >> 2) & 0x3f )) & 1
+
+#define SET_WATCHPOINT(cpu, type, a) (cpu->watchpoint_bitmask[type##_WATCHPOINT][ (a) >> (2+6) ] |= (UINT64_C(1) << ( ((a) >> 2) & 0x3f )))
+
+#define CLEAR_WATCHPOINT(cpu, type, a) (cpu->watchpoint_bitmask[type##_WATCHPOINT][ (a) >> (2+6) ] &= ~(UINT64_C(1) << ( ((a) >> 2) & 0x3f )))
+
+#define HAS_READ_WATCHPOINT(cpu, a) HAS_WATCHPOINT(cpu, READ, a)
+#define HAS_WRITE_WATCHPOINT(cpu, a) HAS_WATCHPOINT(cpu, WRITE, a)
+#define SET_READ_WATCHPOINT(cpu, a) SET_WATCHPOINT(cpu, READ, a)
+#define SET_WRITE_WATCHPOINT(cpu, a) SET_WATCHPOINT(cpu, WRITE, a)
+#define CLEAR_READ_WATCHPOINT(cpu, a) CLEAR_WATCHPOINT(cpu, READ, a)
+#define CLEAR_WRITE_WATCHPOINT(cpu, a) CLEAR_WATCHPOINT(cpu, WRITE, a)
 
 #define PERM_READ    4
 #define PERM_WRITE   2
@@ -118,6 +132,7 @@
 
 #define FLAG_INIT 1
 #define FLAG_WAIT 2
+#define FLAG_WATCHPOINT 4
 #define CPU_INITIALISED(cpu) ( (((cpu)->flags) & FLAG_INIT) )
 #define WAITING(cpu) ( (((cpu)->flags) & FLAG_WAIT) )
 
@@ -182,6 +197,16 @@ struct hardware_mapping {
     uint32_t flags;
 };
 
+enum watchpoint_type {
+    WRITE_WATCHPOINT = 0,
+    READ_WATCHPOINT = 1,
+    ACCESS_WATCHPOINT = 2,
+};
+
+//There are only two types of watchpoint we need to worry about; READ and WRITE. MAX_WATCHPOINT is used for
+//array sizes so we can store both, but ACCESS_WATCHPOINT might be used as a value to indicate both
+#define MAX_WATCHPOINT ACCESS_WATCHPOINT
+
 struct armv2 {
     struct regs               regs; //storage for all the registers
     uint32_t                 *physical_ram;
@@ -191,6 +216,7 @@ struct armv2 {
     struct exception_handler  exception_handlers[EXCEPT_MAX];
     struct hardware_device   *hardware_devices[HW_DEVICES_MAX];
     uint64_t                  *breakpoint_bitmask;
+    uint64_t                  *watchpoint_bitmask[MAX_WATCHPOINT];
     hw_manager_t              hardware_manager;
     struct hardware_mapping  *hw_mappings;
     //the pc is broken out for efficiency, when needed accessed r15 is updated from them
@@ -212,6 +238,8 @@ enum armv2_status add_mapping(struct hardware_mapping **head, struct hardware_ma
 enum armv2_status interrupt(struct armv2 *cpu, uint32_t hw_id, uint32_t code);
 enum armv2_status set_breakpoint(struct armv2 *cpu, uint32_t addr);
 enum armv2_status unset_breakpoint(struct armv2 *cpu, uint32_t addr);
+enum armv2_status set_watchpoint(struct armv2 *cpu, enum watchpoint_type type, uint32_t addr);
+enum armv2_status unset_watchpoint(struct armv2 *cpu, enum watchpoint_type type, uint32_t addr);
 
 //instruction handlers
 enum armv2_exception alu_instruction                           (struct armv2 *cpu, uint32_t instruction);

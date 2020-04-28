@@ -9,6 +9,11 @@ cdef extern from "armv2.h":
         ARMV2STATUS_IO_ERROR
         ARMV2STATUS_BREAKPOINT
 
+    cdef enum watchpoint_type:
+        WRITE_WATCHPOINT
+        READ_WATCHPOINT
+        ACCESS_WATCHPOINT
+
     enum: NUMREGS
     enum: NUM_EFFECTIVE_REGS
     enum: FP
@@ -116,3 +121,5 @@ cdef extern from "armv2.h":
     armv2_status interrupt(armv2 *cpu, uint32_t hw_id, uint32_t code) nogil
     armv2_status set_breakpoint(armv2 *cpu, uint32_t addr) nogil
     armv2_status unset_breakpoint(armv2 *cpu, uint32_t addr) nogil
+    armv2_status set_watchpoint(armv2 *cpu, watchpoint_type type, uint32_t addr) nogil
+    armv2_status unset_watchpoint(armv2 *cpu, watchpoint_type type, uint32_t addr) nogil

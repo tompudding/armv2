@@ -30,6 +30,11 @@ class Status:
     BREAKPOINT         = carmv2.ARMV2STATUS_BREAKPOINT
     WAIT_FOR_INTERRUPT = carmv2.ARMV2STATUS_WAIT_FOR_INTERRUPT
 
+class WatchpointType:
+    WRITE  = carmv2.WRITE_WATCHPOINT
+    READ   = carmv2.READ_WATCHPOINT
+    ACCESS = carmv2.ACCESS_WATCHPOINT
+
 class Pins:
     INTERRUPT      = carmv2.PIN_I
     FAST_INTERRUPT = carmv2.PIN_F
@@ -366,6 +371,16 @@ cdef class Armv2:
 
     def unset_breakpoint(self, addr):
         result = carmv2.unset_breakpoint(self.cpu, <uint32_t>addr);
+        if result != carmv2.ARMV2STATUS_OK:
+            raise ValueError()
+
+    def set_watchpoint(self, type, addr):
+        result = carmv2.set_watchpoint(self.cpu, <carmv2.watchpoint_type>type, <uint32_t>addr);
+        if result != carmv2.ARMV2STATUS_OK:
+            raise ValueError()
+
+    def unset_watchpoint(self, type, addr):
+        result = carmv2.unset_watchpoint(self.cpu, <carmv2.watchpoint_type>type, <uint32_t>addr);
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 

@@ -59,6 +59,17 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
         goto cleanup;
     }
 
+    //Do the same thing for watchpoint masks
+    for(int i = 0; i < MAX_WATCHPOINT; i++) {
+        cpu->watchpoint_bitmask[i] = mmap(NULL, BP_BITMASK_SIZE, PROT_READ | PROT_WRITE,
+                                          MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+        if( MAP_FAILED == cpu->watchpoint_bitmask[i] ) {
+            cpu->watchpoint_bitmask[i] = NULL;
+            retval = ARMV2STATUS_MEMORY_ERROR;
+            goto cleanup;
+        }
+    }
+
     //map the physical ram at 0
     //we could malloc all the page tables for it at once, but all the extra bookkeeping would
     //be annoying
@@ -118,16 +129,25 @@ cleanup:
     return retval;
 }
 
+static void clean_bitmask(uint64_t **bm) {
+    if( NULL != bm && NULL != *bm ) {
+        munmap(*bm, BP_BITMASK_SIZE);
+        *bm = NULL;
+    }
+}
+
 enum armv2_status cleanup_armv2(struct armv2 *cpu)
 {
     LOG("ARMV2 cleanup\n");
     if( NULL == cpu ) {
         return ARMV2STATUS_OK;
     }
-    if( NULL != cpu->breakpoint_bitmask ) {
-        munmap(cpu->breakpoint_bitmask, BP_BITMASK_SIZE);
-        cpu->breakpoint_bitmask = NULL;
+    clean_bitmask(&cpu->breakpoint_bitmask);
+
+    for(int i = 0; i < MAX_WATCHPOINT; i++) {
+        clean_bitmask(cpu->watchpoint_bitmask + i);
     }
+
     if( NULL != cpu->physical_ram ) {
         free(cpu->physical_ram);
         cpu->physical_ram = NULL;
@@ -391,6 +411,54 @@ enum armv2_status unset_breakpoint(struct armv2 *cpu, uint32_t addr)
     }
 
     CLEAR_BREAKPOINT(cpu, addr);
+
+    return ARMV2STATUS_OK;
+}
+
+enum armv2_status set_watchpoint(struct armv2 *cpu, enum watchpoint_type type, uint32_t addr)
+{
+    if( NULL == cpu || !CPU_INITIALISED(cpu) || NULL == cpu->breakpoint_bitmask ) {
+        return ARMV2STATUS_INVALID_ARGS;
+    }
+
+    switch( type ) {
+    case READ_WATCHPOINT:
+        SET_READ_WATCHPOINT(cpu, addr);
+        break;
+
+    case WRITE_WATCHPOINT:
+        SET_WRITE_WATCHPOINT(cpu, addr);
+        break;
+
+    case ACCESS_WATCHPOINT:
+        SET_READ_WATCHPOINT(cpu, addr);
+        SET_WRITE_WATCHPOINT(cpu, addr);
+        break;
+    }
+
+    return ARMV2STATUS_OK;
+}
+
+enum armv2_status unset_watchpoint(struct armv2 *cpu, enum watchpoint_type type, uint32_t addr)
+{
+    if( NULL == cpu || !CPU_INITIALISED(cpu) || NULL == cpu->breakpoint_bitmask ) {
+        return ARMV2STATUS_INVALID_ARGS;
+    }
+
+    switch( type ) {
+    case READ_WATCHPOINT:
+        CLEAR_READ_WATCHPOINT(cpu, addr);
+        break;
+
+    case WRITE_WATCHPOINT:
+        CLEAR_WRITE_WATCHPOINT(cpu, addr);
+        break;
+
+    case ACCESS_WATCHPOINT:
+        CLEAR_READ_WATCHPOINT(cpu, addr);
+        CLEAR_WRITE_WATCHPOINT(cpu, addr);
+        break;
+    }
 
     return ARMV2STATUS_OK;
 }
