@@ -481,9 +481,27 @@ class BaseHandler(object):
             print('Unknown message',data)
             self.reply(format_gdb_message(b''))
 
+    def handle_file(self, data):
+        # This is used to give gdb a copy of the symbols: If they put "file target:/whatever" then gdb will
+        # request "whatever" from us, and we can reply with a constructed elf with all the symbols in. There's
+        # no such thing as multiple programs so it suffices to just give everything for any requested fil
+
+        if data.startswith(b'setfs'):
+            #Whatever
+            self.reply(format_gdb_message(b'F0'))
+
+        elif data.startswith(b'open'):
+            #TODO: We do probably need to keep track of file descriptors and positions and things in order to
+            #handle GDB reading from multiple files at once
+            self.reply(format_gdb_message(b'F7'))
+        else:
+            self.reply(format_gdb_message(b''))
+
     def handle_extended(self, data):
         if data.startswith(b'vCont?'):
             self.reply(format_gdb_message(b''))
+        elif data.startswith(b'vFile:'):
+            return self.handle_file(data[6:])
         else:
             self.reply(format_gdb_message(b''))
 
