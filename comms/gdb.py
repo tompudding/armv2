@@ -108,7 +108,7 @@ class EmptyMessage(Message):
     def __init__(self):
         pass
 
-class Stop(EmptyMessage):
+class Stop(Message):
     type = Types.STOP
 
 class OK(Message):
@@ -256,11 +256,15 @@ class RegisterValues(Message):
 
     def __init__(self, regs, mode, pc):
         #There are 8 floating point registers gdb expects, and they're 12 bytes! Then an "fps" register
-        self.registers = [regs[i] for i in range(15)] + [pc,0,mode]
+        self.regs = [regs[i] for i in range(15)] + [pc]
+        self.fp_regs = [0 for i in range(8)]
+        self.final_regs = [0, mode]
 
     def to_binary(self):
-        regs = ''.join((f'{byte_swap(reg):08x}' for reg in self.registers)).encode('ascii')
-        return format_gdb_message(regs)
+        regs = ''.join((f'{byte_swap(reg):08x}' for reg in self.regs))
+        fp_regs = ''.join((f'{byte_swap(reg):024x}' for reg in self.fp_regs))
+        final_regs = ''.join((f'{byte_swap(reg):08x}' for reg in self.final_regs))
+        return format_gdb_message((regs + fp_regs + final_regs).encode('ascii'))
 
 class RegisterValue(RegisterValues):
     def __init__(self, register):
@@ -310,7 +314,7 @@ class BaseHandler(object):
     acks = set(v for v in b'+-')
     ack = b'+'
     bad_ack = b'-'
-    ignored_but_ok = set(v for v in b'H?')
+    ignored_but_ok = set(v for v in b'H')
 
     def __init__(self, *args, **kwargs):
         self.handlers = {
@@ -329,6 +333,7 @@ class BaseHandler(object):
             format_type(Types.CONTINUE_SIGNAL) : instantiate(ContinueSignal),
             ord('z')                           : self.handle_unset_breakpoints,
             ord('Z')                           : self.handle_set_breakpoints,
+            format_type(Types.HALTED_REASON)   : instantiate(Stop),
         }
         for byte in self.ignored_but_ok:
             self.handlers[byte] = self.handle_ignored
@@ -382,7 +387,7 @@ class BaseHandler(object):
 
         for message in messages:
             print(f'{message=}')
-            self.request.send(self.ack)
+            self.reply(self.ack)
             if message:
                 m = self.message_factory(message)
                 if m:
@@ -402,26 +407,47 @@ class BaseHandler(object):
             print('Got socket error')
             self.server.comms.disconnect()
 
+    def reply(self, message):
+        print('Sending reply',message)
+        self.request.send(message)
+
     def detach(self, data):
-        self.request.send(format_gdb_message(b'OK'))
+        self.reply(format_gdb_message(b'OK'))
         print('Detach!')
         self.done = True
 
     def handle_query(self, data):
         print('handle query')
-        if data.startswith(b'qSupported'):
+        if data.startswith(b'qSupported:'):
+            features = [f.rstrip(b'+') for f in data.split(b'qSupported:')[1].split(b';')]
+            reply_features = []
+            for feature in features:
+                supported = feature in [b'swbreak',b'hwbreak',b'vContSupported']
+                reply_features.append(feature + (b'+' if supported else b'-'))
+
+            message = b';'.join(reply_features) + b';PacketSize=1000'
             #It wants to know what we support
-            m = format_gdb_message(b'qSupported:hwbreak+;PacketSize=1000')
-            #self.request.send(b'+')
-            self.request.send(m)
+            m = format_gdb_message(b'qSupported:' + message)
+            self.reply(m)
         elif data == b'qC':
-            self.request.send(format_gdb_message(b''))
+            self.reply(format_gdb_message(b'QC1'))
+        elif data == b'qfThreadInfo':
+            self.reply(format_gdb_message(b'm1'))
+        elif data == b'qsThreadInfo':
+            self.reply(format_gdb_message(b'l'))
+        elif data == b'qAttached':
+            self.reply(format_gdb_message(b'1'))
+        #elif data == b'qTStatus':
+        #    self.reply(format_gdb_message(b'T0'))
         else:
             print('Unknown message',data)
+            self.reply(format_gdb_message(b''))
 
     def handle_extended(self, data):
         if data.startswith(b'vCont?'):
-            self.request.send(format_gdb_message(b''))
+            self.reply(format_gdb_message(b''))
+        else:
+            self.reply(format_gdb_message(b''))
 
     def handle_set_breakpoints(self, data):
         if data[1] in b'01':
@@ -440,18 +466,18 @@ class BaseHandler(object):
 
     def handle_ignored(self, data):
         print('Handle ignored')
-        self.request.send(format_gdb_message(b'OK'))
+        self.reply(format_gdb_message(b'OK'))
 
     def message_factory(self, data):
         #First we need to check the checksum
         if data == b'\x03':
             #Special interrupt message
-            return Stop()
+            return Stop(b'')
         csum = checksum(data[1:-3])
         message_csum = int(data[-2:],16)
         if data[0] != ord('$') or csum != message_csum:
             print('Checksum mismatch {csum=} {message_csum=}')
-            self.request.send(self.bad_ack)
+            self.reply(self.bad_ack)
             return
 
         data = data[1:-3]

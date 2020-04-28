@@ -22,18 +22,18 @@ class Debugger(object):
         self.machine          = machine
         self.breakpoints      = {}
         self.next_breakpoint  = None
-        self.handlers = {messages.Types.STOP : self.handle_stop,
-                         messages.Types.READ_REGISTERS : self.handle_get_regs,
-                         messages.Types.READ_REGISTER : self.handle_get_reg,
+        self.handlers = {messages.Types.STOP            : self.handle_stop,
+                         messages.Types.READ_REGISTERS  : self.handle_get_regs,
+                         messages.Types.READ_REGISTER   : self.handle_get_reg,
                          messages.Types.WRITE_REGISTERS : self.handle_set_regs,
-                         messages.Types.WRITE_REGISTER : self.handle_set_reg,
-                         messages.Types.READ_MEM : self.handle_read_mem,
-                         messages.Types.STEP : self.handle_step,
-                         messages.Types.CONTINUE : self.handle_continue,
+                         messages.Types.WRITE_REGISTER  : self.handle_set_reg,
+                         messages.Types.READ_MEM        : self.handle_read_mem,
+                         messages.Types.STEP            : self.handle_step,
+                         messages.Types.CONTINUE        : self.handle_continue,
                          messages.Types.CONTINUE_SIGNAL : self.handle_continue,
-                         messages.Types.WRITE_MEM : self.handle_write_mem,
-                         messages.Types.ADD_HARD_BP : self.handle_set_breakpoint,
-                         messages.Types.DEL_HARD_BP : self.handle_unset_breakpoint,
+                         messages.Types.WRITE_MEM       : self.handle_write_mem,
+                         messages.Types.ADD_HARD_BP     : self.handle_set_breakpoint,
+                         messages.Types.DEL_HARD_BP     : self.handle_unset_breakpoint,
         }
 
         self.need_symbols = False
