@@ -92,12 +92,17 @@ cdef extern from "armv2.h":
         access_callback_t write_byte_callback
         uint32_t flags
 
+    struct region:
+        uint32_t start
+        uint32_t end
+
     struct armv2:
         regs regs
-        uint32_t *physical_ram
+        #uint32_t *physical_ram
         uint32_t physical_ram_size
         page_info *page_tables[NUM_PAGE_TABLES]
         exception_handler exception_handlers[EXCEPT_MAX]
+        region boot_rom
         uint32_t pc
         uint32_t flags
         uint32_t pins

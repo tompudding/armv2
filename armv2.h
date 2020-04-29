@@ -203,13 +203,18 @@ enum watchpoint_type {
     ACCESS_WATCHPOINT = 2,
 };
 
+struct region {
+    uint32_t start;
+    uint32_t end;
+};
+
 //There are only two types of watchpoint we need to worry about; READ and WRITE. MAX_WATCHPOINT is used for
 //array sizes so we can store both, but ACCESS_WATCHPOINT might be used as a value to indicate both
 #define MAX_WATCHPOINT ACCESS_WATCHPOINT
 
 struct armv2 {
     struct regs               regs; //storage for all the registers
-    //uint32_t                 *physical_ram;
+    //uint32_t                 *physical_ram; //TODO: mmap here first and assign later
     uint32_t                  physical_ram_size;
     uint32_t                  free_ram;
     uint32_t                  num_hardware_devices;
@@ -220,6 +225,7 @@ struct armv2 {
     uint64_t                  *watchpoint_bitmask[MAX_WATCHPOINT];
     hw_manager_t              hardware_manager;
     struct hardware_mapping  *hw_mappings;
+    struct region             boot_rom;
     //the pc is broken out for efficiency, when needed accessed r15 is updated from them
     uint32_t                  pc;
     //the flags are about the processor(like initialised), not part of it

@@ -5,12 +5,15 @@
 #include "synapse.h"
 #include <terminal.h>
 
-volatile struct tape_control  *tape_control        = (void*)0x01002000;
-uint8_t                       *tape_load_area      = (void*)0x8000;
-uint8_t                       *symbols_load_area   = (void*)0x30000;
-volatile uint32_t             *rng                 = (void*)0x01001000 + WIDTH*HEIGHT*2;
-volatile uint32_t             *clock_word          = (void*)0x01001000 + (WIDTH*HEIGHT*2) + 4;
-void                         **crash_handler_word  = (void*)0x3fff8;
+volatile struct tape_control  *tape_control       = (void*)0x01002000;
+uint8_t                       *tape_load_area     = (void*)0x8000;
+uint8_t                       *symbols_load_area  = (void*)0x30000;
+volatile uint32_t             *rng                = (void*)0x01001000 + WIDTH*HEIGHT*2;
+volatile uint32_t             *clock_word         = (void*)0x01001000 + (WIDTH*HEIGHT*2) + 4;
+void                         **crash_handler_word = (void*)0x3fff8;
+struct region                 *tape_regions       = (void*)0x3fff8 - (sizeof(struct region) * MAX_TAPE_REGIONS);
+
+uint32_t num_tape_regions = 0;
 
 int main(void);
 

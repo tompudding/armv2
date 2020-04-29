@@ -364,6 +364,40 @@ cdef class Armv2:
         if result != carmv2.ARMV2STATUS_OK:
             raise ValueError()
 
+    def memory_map(self):
+        #Return a list of currently mapped memory regions
+        map = []
+        current = None
+        cdef carmv2.page_info *page = NULL
+        for addr in xrange(0, MAX_26BIT, 1 << 12):
+            page = self.cpu.page_tables[PAGEOF(addr)]
+            if NULL != page:
+                if current is None:
+                    current = addr
+            else:
+                if current is not None:
+                    map.append( (current, addr) )
+                    current = None
+
+        if current is not None:
+            map.append( (current, MAX_26BIT) )
+        return map
+
+    def loaded_libraries(self):
+        # Return a list of the loaded "libraries", by which me means the boot rom and any tapes that were
+        # loaded
+        map = [(self.cpu.boot_rom.start, self.cpu.boot_rom.end)]
+        pos = tape_regions = 0x3fff8 - 16*8
+        for i in xrange(16):
+            start = self.getword(pos)
+            end = self.getword(pos + 4)
+            debug_log(f'Tape region {start:08x} {end:08x}')
+            if start == end:
+                break
+            map.append( (start, end) )
+            pos += 8
+        return map
+
     def set_breakpoint(self, addr):
         result = carmv2.set_breakpoint(self.cpu, <uint32_t>addr);
         if result != carmv2.ARMV2STATUS_OK:

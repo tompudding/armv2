@@ -141,11 +141,12 @@ enum armv2_status cleanup_armv2(struct armv2 *cpu)
 }
 
 static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32_t end,
-                                       FILE *f, ssize_t *size_out )
+                                       FILE *f, ssize_t *size_out, size_t *written_out )
 {
     uint32_t section_length = 0;
     ssize_t  read_bytes     = 0;
     ssize_t  size           = *size_out;
+    size_t written = 0;
 
     if( 0 != INPAGE(start) ) {
         //We only want to start loading sections in at page boundaries
@@ -186,7 +187,7 @@ static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32
                 return ARMV2STATUS_INVALID_PAGE;
             }
         }
-        read_bytes = fread(cpu->page_tables[page_num++]->memory, 1, to_read,f);
+        read_bytes = fread(cpu->page_tables[page_num]->memory, 1, to_read,f);
 
         if( read_bytes != to_read ) {
             if( read_bytes != section_length ) {
@@ -194,10 +195,15 @@ static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32
                 return ARMV2STATUS_IO_ERROR;
             }
         }
+        page_num++;
+        written += read_bytes;
         section_length -= to_read;
     }
 
     *size_out = size;
+    if( written_out ) {
+        *written_out = written;
+    }
 
     return ARMV2STATUS_OK;
 }
@@ -214,10 +220,6 @@ enum armv2_status load_rom(struct armv2 *cpu, const char *filename)
     if( !(cpu->flags&FLAG_INIT) ) {
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
-
-    /* if( NULL == cpu->page_tables[0] || NULL == cpu->page_tables[0]->memory ) { */
-    /*     return ARMV2STATUS_INVALID_CPUSTATE; */
-    /* } */
 
     if( 0 != stat(filename,&st) ) {
         return ARMV2STATUS_IO_ERROR;
@@ -236,14 +238,17 @@ enum armv2_status load_rom(struct armv2 *cpu, const char *filename)
         LOG("Error opening %s\n",filename);
         return ARMV2STATUS_IO_ERROR;
     }
+    size_t written = 0;
 
-    retval = load_section( cpu, BOOT_ROM_ADDR, TAPE_ADDR, f, &size );
+    retval = load_section( cpu, BOOT_ROM_ADDR, TAPE_ADDR, f, &size, &written );
     if( ARMV2STATUS_OK != retval ) {
         LOG("Error loading boot rom section\n");
         goto close_file;
     }
+    cpu->boot_rom.start = BOOT_ROM_ADDR;
+    cpu->boot_rom.end = cpu->boot_rom.start + written;
 
-    retval = load_section( cpu, SYMBOLS_ADDR, SYMBOLS_ADDR + MAX_SYMBOLS_SIZE, f, &size );
+    retval = load_section( cpu, SYMBOLS_ADDR, SYMBOLS_ADDR + MAX_SYMBOLS_SIZE, f, &size, NULL );
     if( ARMV2STATUS_OK != retval ) {
         LOG("Error loading boot rom symbols\n");
         goto close_file;

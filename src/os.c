@@ -65,9 +65,10 @@ int tape_next_word(uint32_t *out) {
     return result;
 }
 
-int load_tape_data( uint8_t *tape_area, bool *final ) {
+int load_tape_data( uint8_t *tape_area, bool *final, size_t *written_out ) {
     uint32_t section_length = 0;
     int result = tape_next_word( &section_length );
+    size_t written = 0;
     if( final ) {
         *final = section_length & TAPE_FLAG_FINAL;
     }
@@ -80,7 +81,11 @@ int load_tape_data( uint8_t *tape_area, bool *final ) {
         if(READY == result) {
             section_length--;
             *tape_area++ = byte;
+            written++;
         }
+    }
+    if( written_out ) {
+        *written_out = written;
     }
     return result;
 }
@@ -119,7 +124,20 @@ enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
     //Now we've just read the
 
     //Now we can load symbols from the tape in
-    return load_tape_data( symbol_entry_pos, NULL );
+    return load_tape_data( symbol_entry_pos, NULL, NULL );
+}
+
+void add_loaded_tape( void *addr, size_t len )
+{
+    printf("\n    Data going at %08x\n", (uint32_t)(tape_regions + num_tape_regions));
+    if( num_tape_regions >= MAX_TAPE_REGIONS ) {
+        //we ignore everything after the max
+        return;
+    }
+
+    tape_regions[num_tape_regions].start = addr;
+    tape_regions[num_tape_regions].end = addr + len;
+    num_tape_regions++;
 }
 
 enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
@@ -150,13 +168,16 @@ enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
         return result;
     }
 
-    printf("at %08x\n", load_addr);
+    printf("\n    Loading at %08x\n", load_addr);
     bool final = false;
+    size_t written = 0;
 
-    result = load_tape_data( (void*)load_addr, &final );
+    result = load_tape_data( (void*)load_addr, &final, &written );
     if( READY != result ) {
         return result;
     }
+
+    (void) add_loaded_tape(load_addr, written);
 
     result = load_tape_symbols( load_addr, symbols_area );
     if( READY != result ) {

@@ -78,6 +78,9 @@ class Debugger(object):
             raise
 
         self.connection.start()
+        print(self.machine.cpu.memory_map())
+        for start, end in self.machine.cpu.loaded_libraries():
+            print(f'Region {start:08x} - {end:08x}')
 
     def stop_listening(self):
         self.connection.exit()

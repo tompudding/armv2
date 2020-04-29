@@ -9,6 +9,11 @@ struct tape_control {
     volatile uint8_t data;
 };
 
+struct region {
+    void *start;
+    void *end;
+};
+
 enum tape_codes {
     NEXT_BYTE   = 0,
     NOT_READY   = 1,
@@ -31,9 +36,12 @@ enum letter_codes {
 #define CLOCK_ID         0x92d177b0
 #define TAPE_NAME_LEN    16
 #define TAPE_FLAG_FINAL  0x80000000
+#define MAX_TAPE_REGIONS 16
 
 extern volatile struct tape_control  *tape_control;
 extern uint8_t                       *tape_load_area;
+struct region                        *tape_regions;
+extern uint32_t                       num_tape_regions;
 extern uint8_t                       *symbols_load_area;
 extern volatile uint32_t             *rng;
 extern volatile uint32_t             *clock_word;
