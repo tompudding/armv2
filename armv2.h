@@ -209,8 +209,9 @@ enum watchpoint_type {
 
 struct armv2 {
     struct regs               regs; //storage for all the registers
-    uint32_t                 *physical_ram;
+    //uint32_t                 *physical_ram;
     uint32_t                  physical_ram_size;
+    uint32_t                  free_ram;
     uint32_t                  num_hardware_devices;
     struct page_info         *page_tables[NUM_PAGE_TABLES];
     struct exception_handler  exception_handlers[EXCEPT_MAX];
@@ -232,6 +233,7 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize);
 enum armv2_status load_rom(struct armv2 *cpu, const char *filename);
 enum armv2_status cleanup_armv2(struct armv2 *cpu);
 enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions);
+enum armv2_status fault(struct armv2 *cpu, uint32_t addr);
 enum armv2_status add_hardware(struct armv2 *cpu, struct hardware_device *device);
 enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t start, uint32_t end);
 enum armv2_status add_mapping(struct hardware_mapping **head, struct hardware_mapping *item);

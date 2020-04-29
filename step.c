@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/mman.h>
 #include "armv2.h"
 
 enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions)
@@ -76,8 +77,10 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions)
         if(cpu->page_tables[PAGEOF(cpu->pc)] == NULL) {
             //Trying to execute an unmapped page!
             //some sort of exception
-            exception = EXCEPT_PREFETCH_ABORT;
-            goto handle_exception;
+            if( ARMV2STATUS_OK != fault(cpu, PAGEOF(cpu->pc)) ) {
+                exception = EXCEPT_PREFETCH_ABORT;
+                goto handle_exception;
+            }
         }
 
         if( HAS_BREAKPOINT(cpu, cpu->pc) ) {
@@ -271,4 +274,52 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions)
 
     }
     return ARMV2STATUS_OK;
+}
+
+// We start with no memory paged in. On a page fault, we see if we've got enough RAM to populate it
+enum armv2_status fault(struct armv2 *cpu, uint32_t addr)
+{
+    if( NULL == cpu || PAGEOF(addr) >= NUM_PAGE_TABLES ) {
+        LOG("Error\n");
+        return ARMV2STATUS_INVALID_ARGS;
+    }
+    enum armv2_status result = ARMV2STATUS_OK;
+
+    // We need at least a page of free RAM
+    if( cpu->free_ram < PAGE_SIZE ) {
+        LOG("Not enough free ram\n");
+        return ARMV2STATUS_MEMORY_ERROR;
+    }
+
+    struct page_info *page_info = calloc(1, sizeof(struct page_info));
+    if(NULL == page_info) {
+        LOG("Error allocating page info\n");
+        return ARMV2STATUS_MEMORY_ERROR;
+    }
+
+    page_info->memory = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if( MAP_FAILED == page_info->memory ) {
+        result = ARMV2STATUS_MEMORY_ERROR;
+        LOG("Error mmaping memory\n");
+        goto cleanup;
+    }
+    page_info->flags |= (PERM_READ | PERM_EXECUTE | PERM_WRITE);
+
+    if(addr == 0) {
+        //the first page is never writable, we'll put the boot rom there.
+        page_info->flags &= (~PERM_WRITE);
+    }
+
+    cpu->page_tables[PAGEOF(addr)] = page_info;
+    cpu->free_ram -= PAGE_SIZE;
+
+cleanup:
+    if( result != ARMV2STATUS_OK ) {
+        if( page_info && MAP_FAILED != page_info->memory ) {
+            munmap(page_info->memory, PAGE_SIZE);
+        }
+        free(page_info);
+    }
+
+    return result;
 }

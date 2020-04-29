@@ -463,7 +463,10 @@ enum armv2_exception single_data_transfer_instruction(struct armv2 *cpu, uint32_
     page = cpu->page_tables[PAGEOF(rn_val)];
     if( NULL == page ) {
         //This is a data abort. Could also check for permission here
-        return EXCEPT_DATA_ABORT;
+        if( ARMV2STATUS_OK != fault(cpu, rn_val) ) {
+            return EXCEPT_DATA_ABORT;
+        }
+        page = cpu->page_tables[PAGEOF(rn_val)];
     }
 
     //do the load/store
@@ -647,8 +650,10 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
         page = cpu->page_tables[PAGEOF(address)];
         if( NULL == page ) {
             //This is a data abort. Could also check for permission here
-            retval = EXCEPT_DATA_ABORT;
-            continue;
+            if( ARMV2STATUS_OK != fault(cpu, address) ) {
+                return EXCEPT_DATA_ABORT;
+            }
+            page = cpu->page_tables[PAGEOF(address)];
         }
         if( address & 0x3 ) {
             retval = EXCEPT_DATA_ABORT;
@@ -722,7 +727,6 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
 
 enum armv2_exception swap_instruction(struct armv2 *cpu, uint32_t instruction)
 {
-    //LOG("%s\n", __func__);
     uint32_t rm   = instruction & 0xf;
     uint32_t rd   = (instruction >> 12) & 0xf;
     uint32_t rn   = (instruction >> 16) & 0xf;
@@ -739,7 +743,10 @@ enum armv2_exception swap_instruction(struct armv2 *cpu, uint32_t instruction)
     page = cpu->page_tables[PAGEOF(address)];
     if( NULL == page ) {
         //This is a data abort. Could also check for permission here
-        return EXCEPT_DATA_ABORT;
+        if( ARMV2STATUS_OK != fault(cpu, address) ) {
+            return EXCEPT_DATA_ABORT;
+        }
+        page = cpu->page_tables[PAGEOF(address)];
     }
 
     if( address & 0x3 && !byte ) {

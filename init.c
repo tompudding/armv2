@@ -40,15 +40,16 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
     }
 
     memset(cpu, 0, sizeof(struct armv2));
-    cpu->physical_ram = malloc(memsize);
-    if( NULL == cpu->physical_ram ) {
-        cpu->physical_ram = NULL;
-        return ARMV2STATUS_MEMORY_ERROR;
-    }
+    /* cpu->physical_ram = malloc(memsize); */
+    /* if( NULL == cpu->physical_ram ) { */
+    /*     cpu->physical_ram = NULL; */
+    /*     return ARMV2STATUS_MEMORY_ERROR; */
+    /* } */
 
     cpu->physical_ram_size = memsize;
+    cpu->free_ram = cpu->physical_ram_size;
     LOG("Have %u pages %u\n", num_pages, memsize);
-    memset(cpu->physical_ram, 0, memsize);
+    //memset(cpu->physical_ram, 0, memsize);
 
     reset_breakpoints(cpu);
     reset_watchpoints(cpu);
@@ -57,22 +58,22 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
     //we could malloc all the page tables for it at once, but all the extra bookkeeping would
     //be annoying
 
-    for(uint32_t i = 0; i < num_pages; i++) {
-        struct page_info *page_info = calloc(1, sizeof(struct page_info));
-        if(NULL == page_info) {
-            retval = ARMV2STATUS_MEMORY_ERROR;
-            goto cleanup;
-        }
+    /* for(uint32_t i = 0; i < num_pages; i++) { */
+    /*     struct page_info *page_info = calloc(1, sizeof(struct page_info)); */
+    /*     if(NULL == page_info) { */
+    /*         retval = ARMV2STATUS_MEMORY_ERROR; */
+    /*         goto cleanup; */
+    /*     } */
 
-        page_info->memory = cpu->physical_ram + i * WORDS_PER_PAGE;
-        page_info->flags |= (PERM_READ | PERM_EXECUTE | PERM_WRITE);
+    /*     page_info->memory = cpu->physical_ram + i * WORDS_PER_PAGE; */
+    /*     page_info->flags |= (PERM_READ | PERM_EXECUTE | PERM_WRITE); */
 
-        if(i == 0) {
-            //the first page is never writable, we'll put the boot rom there.
-            page_info->flags &= (~PERM_WRITE);
-        }
-        cpu->page_tables[i] = page_info;
-    }
+    /*     if(i == 0) { */
+    /*         //the first page is never writable, we'll put the boot rom there. */
+    /*         page_info->flags &= (~PERM_WRITE); */
+    /*     } */
+    /*     cpu->page_tables[i] = page_info; */
+    /* } */
 
     cpu->flags = FLAG_INIT;
     //Start with the interrupt flag on so we don't get interrupts until we're ready
@@ -104,7 +105,6 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
     cpu->exception_handlers[EXCEPT_FIQ].flags   |= FLAG_F;
     cpu->exception_handlers[EXCEPT_RST].flags   |= FLAG_F;
 
-cleanup:
     if( retval != ARMV2STATUS_OK ) {
         cleanup_armv2(cpu);
     }
@@ -131,10 +131,6 @@ enum armv2_status cleanup_armv2(struct armv2 *cpu)
         clean_bitmask(cpu->watchpoint_bitmask + i);
     }
 
-    if( NULL != cpu->physical_ram ) {
-        free(cpu->physical_ram);
-        cpu->physical_ram = NULL;
-    }
     for( uint32_t i = 0;i < NUM_PAGE_TABLES; i++ ) {
         if(NULL != cpu->page_tables[i]) {
             free(cpu->page_tables[i]);
@@ -183,6 +179,13 @@ static enum armv2_status load_section( struct armv2 *cpu, uint32_t start, uint32
 
     while( section_length > 0 ) {
         size_t to_read = section_length > PAGE_SIZE ? PAGE_SIZE : section_length;
+        if( NULL == cpu->page_tables[page_num] ) {
+            enum armv2_status result = fault(cpu, page_num * PAGE_SIZE);
+            if( ARMV2STATUS_OK !=  result) {
+                LOG("Error %d fauling in page %08x\n", result, page_num * PAGE_SIZE);
+                return ARMV2STATUS_INVALID_PAGE;
+            }
+        }
         read_bytes = fread(cpu->page_tables[page_num++]->memory, 1, to_read,f);
 
         if( read_bytes != to_read ) {
@@ -212,9 +215,9 @@ enum armv2_status load_rom(struct armv2 *cpu, const char *filename)
         return ARMV2STATUS_INVALID_CPUSTATE;
     }
 
-    if( NULL == cpu->page_tables[0] || NULL == cpu->page_tables[0]->memory ) {
-        return ARMV2STATUS_INVALID_CPUSTATE;
-    }
+    /* if( NULL == cpu->page_tables[0] || NULL == cpu->page_tables[0]->memory ) { */
+    /*     return ARMV2STATUS_INVALID_CPUSTATE; */
+    /* } */
 
     if( 0 != stat(filename,&st) ) {
         return ARMV2STATUS_IO_ERROR;

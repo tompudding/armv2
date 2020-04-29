@@ -13,7 +13,7 @@ from optparse import OptionParser
 from . import sounds
 
 def new_machine(boot_rom):
-    machine = hardware.Machine(cpu_size=1 << 21, cpu_rom=boot_rom)
+    machine = hardware.Machine(cpu_size=1 << 18, cpu_rom=boot_rom)
     try:
         machine.add_hardware(hardware.Keyboard(machine), name='keyboard')
         machine.add_hardware(hardware.Display(machine, scale_factor=1), name='display')

@@ -322,10 +322,10 @@ cdef class Armv2:
     def mode(self):
         return self.regs.pc&3
 
-    def __init__(self,size,filename = None):
+    def __init__(self, size, filename = None):
         cdef carmv2.armv2_status result
         cdef uint32_t mem = size
-        result = carmv2.init(self.cpu,mem)
+        result = carmv2.init(self.cpu, mem)
         self.regs = Registers(self)
         self.memsize = size
         self.mem  = ByteMemory(self)
