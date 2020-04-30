@@ -140,7 +140,8 @@ void add_loaded_tape( void *addr, size_t len )
     num_tape_regions++;
 }
 
-enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out) {
+enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out)
+{
     //Tapes are comprised of 2 sections, the data and (optionally) the symbols. Just load the first for now
     uint32_t entry_point = 0;
     char tape_name[TAPE_NAME_LEN];

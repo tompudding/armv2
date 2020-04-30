@@ -12,6 +12,7 @@ import random
 import signal
 from pygame.locals import *
 from . import tapes
+import makeelf.elf as melf
 
 class Debugger(object):
     BKPT         = 0xef000000 | armv2.SWI_BREAKPOINT
@@ -78,9 +79,56 @@ class Debugger(object):
             raise
 
         self.connection.start()
-        print(self.machine.cpu.memory_map())
-        for start, end in self.machine.cpu.loaded_libraries():
-            print(f'Region {start:08x} - {end:08x}')
+
+        elf = self.get_file()
+        with open('/tmp/bob', 'wb') as f:
+            f.write(elf)
+
+        #This sure is a lot of namespacing!
+
+    def get_file(self):
+        #Return an elf file that represents the current machine
+        elf = melf.ELF(e_machine=melf.EM.EM_ARM, e_data=melf.ELFDATA.ELFDATA2LSB)
+        libs = self.machine.cpu.loaded_libraries()
+        sections = {}
+
+        for i, (start, end) in enumerate(libs):
+            if i == 0:
+                name = '.rom'
+            else:
+                name = f'tape_{i+1}'
+            section = elf._append_section(name, self.machine.mem[start:end], start, sh_flags=melf.SHF.SHF_EXECINSTR)
+            segment = elf.append_segment(section, addr=start, mem_size=end-start, flags='rwx')
+            sections[i] = section
+
+        current_section = 0
+        for i, (value, name) in enumerate(self.symbols):
+            # Maybe we've moved into the next section?
+
+            while current_section < len(libs) and value > libs[current_section][1]:
+                current_section += 1
+
+            if current_section < len(libs):
+                section = current_section
+            else:
+                #This symbol isn't in any of our sections
+                section = 0
+
+            section_start = libs[section][0]
+
+            #Guess the size (as we're not currently recording it)
+            if i + 1 < len(self.symbols):
+                size = self.symbols[i+1][0] - value
+            else:
+                #err, it's the last symbol. I have no idea
+                size = 4
+
+            #if value >= section_start:
+            elf.append_symbol(name, sections[section], value, size,
+                              sym_binding=melf.STB.STB_GLOBAL, sym_type=melf.STT.STT_FUNC)
+        return bytes(elf)
+
+
 
     def stop_listening(self):
         self.connection.exit()
@@ -262,7 +310,7 @@ class Debugger(object):
             name = ''.join(name)
             symbols.append((value, name))
 
-        #self.symbols = messages.Symbols(symbols)
+        self.symbols = symbols
         # pretend they just requested the symbols
         #self.handle_request_symbols(self.symbols)
 
