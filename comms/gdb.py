@@ -45,6 +45,10 @@ class Types(enum.Enum):
     CONTINUE_ACTION = 'vCont?'
     CTRL_C          = 'vCtrlC'
     FILE_OPERATION  = 'vFile'
+    FILE_OPEN       = 'vFile:open'
+    FILE_CLOSE      = 'vFile:close'
+    FILE_FSTAT      = 'vFile:fstat'
+    FILE_PREAD      = 'vFile:pread'
     FLASH_ERASE     = 'vFlashErase'
     FLASH_WRITE     = 'vFlashWrite'
     FLASH_DONE      = 'vFlashDone'
@@ -83,17 +87,29 @@ def format_gdb_message(bytes):
 def byte_swap(n):
     return ((n & 0xff) << 24) | ((n & 0xff00) << 8) | ((n & 0xff0000) >> 8) | ((n & 0xff000000) >> 24)
 
+escaped = bytearray( [c^0x20 for c in b'#$}'] )
 def unescape(data):
-    out = []
+    out = bytearray()
     pos = 0
     while pos < len(data):
-        if data[pos] == BaseHandler.escape and pos + 1 < len(data) and data[pos+1] in b'#$}':
-            out.append(data[pos+1:pos+1+1])
+        if data[pos] == BaseHandler.escape and pos + 1 < len(data) and (data[pos+1] ^ 0x20) in b'#$}':
+            out.append(data[pos+1] ^ 0x20)
             pos += 2
         else:
-            out.append(data[pos:pos+1])
+            out.append(data[pos])
             pos += 1
-    return b''.join(out)
+    return bytes(out)
+
+def escape(data):
+    out = bytearray()
+    pos = 0
+    for byte in data:
+        if byte in b'#$}*':
+            out.append(BaseHandler.escape)
+            byte ^= 0x20
+        out.append(byte)
+
+    return bytes(out)
 
 class Message(object):
     type = Types.UNKNOWN
@@ -107,6 +123,9 @@ class Message(object):
 class EmptyMessage(Message):
     def __init__(self):
         pass
+
+    def to_binary(self):
+        return format_gdb_message(b'')
 
 class Stop(Message):
     type = Types.STOP
@@ -135,6 +154,94 @@ class SWBreakReply(Message):
 
     def to_binary(self):
         return format_gdb_message(b'T%02x swbreak:;' % self.signal)
+
+class OpenFile(Message):
+    type = Types.FILE_OPEN
+    def to_binary(self):
+        return format_gdb_message(b'g')
+
+class CloseFile(Message):
+    type = Types.FILE_CLOSE
+
+    def __init__(self, message):
+        self.fd = int(message)
+
+class FstatFile(Message):
+    type = Types.FILE_FSTAT
+
+    def __init__(self, message):
+        self.fd = int(message)
+
+class PreadFile(Message):
+    type = Types.FILE_PREAD
+
+    def __init__(self, message):
+        fd, count, offset = (int(v,16) for v in message.split(b','))
+        self.fd = fd
+        self.count = count
+        self.offset = offset
+
+class FileResponse(Message):
+    type = Types.FILE_OPEN
+
+    def __init__(self, result):
+        self.result = result
+
+    def to_binary(self):
+        return format_gdb_message(b'F%d' % self.result)
+
+class FstatResponse(Message):
+    # Something about this doesn't actually work; it's requested 3 times and then ignored, perhaps I'll come
+    # back to it
+    type = Types.FILE_FSTAT
+
+    def __init__(self, length):
+        self.length = length
+
+    def stat_format(self):
+        out = bytearray()
+
+        #unsigned int  st_dev;      /* device */
+        #unsigned int  st_ino;      /* inode */
+        out.extend(struct.pack('>II',0,0))
+
+        #mode_t        st_mode;     /* protection */
+        out.extend(struct.pack('>I',0xe0))
+
+        #unsigned int  st_nlink;    /* number of hard links */
+        #unsigned int  st_uid;      /* user ID of owner */
+        #unsigned int  st_gid;      /* group ID of owner */
+        #unsigned int  st_rdev;     /* device type (if inode device) */
+        out.extend(struct.pack('>IIII',0,0,0,0))
+
+        #unsigned long st_size;     /* total size, in bytes */
+        out.extend(struct.pack('>Q',self.length))
+
+        #unsigned long st_blksize;  /* blocksize for filesystem I/O */
+        #unsigned long st_blocks;   /* number of blocks allocated */
+        out.extend(struct.pack('>QQ',1,self.length))
+        #time_t        st_atime;    /* time of last access */
+        #time_t        st_mtime;    /* time of last modification */
+        #time_t        st_ctime;    /* time of last change */
+        out.extend(struct.pack('>III',0,0,0))
+        return bytes(out)
+
+    def to_binary(self):
+        data = self.stat_format()
+        message = b'F%x;' % len(data)
+
+        return format_gdb_message(message + escape(data))
+
+class PreadResponse(Message):
+    type = Types.FILE_PREAD
+
+    def __init__(self, chunk):
+        self.chunk = chunk
+
+    def to_binary(self):
+        message = b'F%x;' % len(self.chunk)
+
+        return format_gdb_message(message + escape(self.chunk))
 
 
 class GetRegisters(Message):
@@ -360,8 +467,10 @@ class BaseHandler(object):
             ord('Z')                           : self.handle_set_breakpoints,
             format_type(Types.HALTED_REASON)   : instantiate(Stop),
         }
+        self.files = {}
         for byte in self.ignored_but_ok:
             self.handlers[byte] = self.handle_ignored
+
         self.bp_messages = {ord('0') : (SetBreakpoint, UnsetBreakpoint),
                             ord('1') : (SetBreakpoint, UnsetBreakpoint),
                             ord('2') : (SetWriteWatchpoint, UnsetWriteWatchpoint),
@@ -475,6 +584,8 @@ class BaseHandler(object):
             self.reply(format_gdb_message(b'l'))
         elif data == b'qAttached':
             self.reply(format_gdb_message(b'1'))
+        elif data == b'qSymbol::':
+            self.reply(format_gdb_message(b'OK'))
         #elif data == b'qTStatus':
         #    self.reply(format_gdb_message(b'T0'))
         else:
@@ -490,10 +601,17 @@ class BaseHandler(object):
             #Whatever
             self.reply(format_gdb_message(b'F0'))
 
-        elif data.startswith(b'open'):
+        elif data.startswith(b'open:'):
             #TODO: We do probably need to keep track of file descriptors and positions and things in order to
             #handle GDB reading from multiple files at once
-            self.reply(format_gdb_message(b'F7'))
+            #self.reply(format_gdb_message(b'F7'))
+            return OpenFile(data)
+        elif data.startswith(b'close:'):
+            return CloseFile(data[6:])
+        elif data.startswith(b'fstat:'):
+            return FstatFile(data[6:])
+        elif data.startswith(b'pread:'):
+            return PreadFile(data[6:])
         else:
             self.reply(format_gdb_message(b''))
 

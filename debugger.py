@@ -42,6 +42,10 @@ class Debugger(object):
                          messages.Types.DEL_WRITE_WP    : self.handle_unset_watchpoint,
                          messages.Types.DEL_ACCESS_WP   : self.handle_unset_watchpoint,
                          messages.Types.DETACH          : self.handle_detach,
+                         messages.Types.FILE_OPEN       : self.handle_file_open,
+                         messages.Types.FILE_CLOSE      : self.handle_file_close,
+                         messages.Types.FILE_FSTAT      : self.handle_file_fstat,
+                         messages.Types.FILE_PREAD      : self.handle_file_pread,
         }
         self.wp_types = {messages.Types.ADD_READ_WP   : armv2.WatchpointType.READ,
                          messages.Types.ADD_WRITE_WP  : armv2.WatchpointType.WRITE,
@@ -53,6 +57,7 @@ class Debugger(object):
         self.need_symbols = False
         self.machine.tape_drive.register_callback(self.set_need_symbols)
         self.connection = None
+        self.open_fds = {}
         try:
             self.load_symbols()
             self.mem_watches = {}
@@ -86,6 +91,48 @@ class Debugger(object):
 
         #This sure is a lot of namespacing!
 
+    def handle_file_open(self, message):
+        print('Handle file open!',len(self.open_fds))
+        for fd in range(10):
+            if fd in self.open_fds:
+                continue
+            self.open_fds[fd] = self.get_file()
+            self.connection.send(messages.FileResponse(fd))
+            return
+
+        for fd in self.open_fds:
+            print(fd)
+        #We couldn't find an open
+        self.connection.send(messages.EmptyMessage())
+
+    def handle_file_close(self, message):
+        print('Got a close for fd',message.fd)
+
+        try:
+            self.open_fds.pop(message.fd)
+            result = 0
+        except KeyError:
+            result = -1
+
+        #We couldn't find an open
+        self.connection.send(messages.FileResponse(result))
+
+    def handle_file_fstat(self, message):
+        try:
+            f = self.open_fds[message.fd]
+            self.connection.send(messages.FstatResponse(len(f)))
+        except KeyError:
+            self.connection.send(messages.FileResponse(-1))
+            return
+
+    def handle_file_pread(self, message):
+        try:
+            f = self.open_fds[message.fd]
+            self.connection.send(messages.PreadResponse(f[message.offset:message.offset + message.count]))
+        except KeyError:
+            self.connection.send(messages.FileResponse(-1))
+            return
+
     def get_file(self):
         #Return an elf file that represents the current machine
         elf = melf.ELF(e_machine=melf.EM.EM_ARM, e_data=melf.ELFDATA.ELFDATA2LSB)
@@ -114,8 +161,6 @@ class Debugger(object):
                 #This symbol isn't in any of our sections
                 section = 0
 
-            section_start = libs[section][0]
-
             #Guess the size (as we're not currently recording it)
             if i + 1 < len(self.symbols):
                 size = self.symbols[i+1][0] - value
@@ -123,7 +168,6 @@ class Debugger(object):
                 #err, it's the last symbol. I have no idea
                 size = 4
 
-            #if value >= section_start:
             elf.append_symbol(name, sections[section], value, size,
                               sym_binding=melf.STB.STB_GLOBAL, sym_type=melf.STT.STT_FUNC)
         return bytes(elf)
