@@ -144,8 +144,11 @@ class Debugger(object):
                 name = '.rom'
             else:
                 name = f'tape_{i+1}'
+
             section = elf._append_section(name, self.machine.mem[start:end], start, sh_flags=melf.SHF.SHF_EXECINSTR)
             segment = elf.append_segment(section, addr=start, mem_size=end-start, flags='rwx')
+            elf.Elf.Phdr_table = elf.Elf.Phdr_table[1:]
+
             sections[i] = section
 
         current_section = 0
