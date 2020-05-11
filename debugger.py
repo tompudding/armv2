@@ -137,7 +137,8 @@ class Debugger(object):
         #Return an elf file that represents the current machine
         elf = melf.ELF(e_machine=melf.EM.EM_ARM, e_data=melf.ELFDATA.ELFDATA2LSB)
         libs = self.machine.cpu.loaded_libraries()
-        sections = {}
+        sections = []
+        elf.Elf.Phdr_table = elf.Elf.Phdr_table[1:]
 
         for i, (start, end) in enumerate(libs):
             if i == 0:
@@ -147,19 +148,22 @@ class Debugger(object):
 
             #start += 0x1000
             #end += 0x1000
-
+            num_headers = len(elf.Elf.Phdr_table)
             section = elf._append_section(name, self.machine.mem[start:end],
                                           start, sh_flags=melf.SHF.SHF_EXECINSTR
                                           | melf.SHF.SHF_WRITE
                                           | melf.SHF.SHF_ALLOC)
+            print(f'before={num_headers} after={len(elf.Elf.Phdr_table)}')
             segment = elf.append_segment(section, addr=start, mem_size=end-start, flags='rwx')
-            elf.Elf.Phdr_table = elf.Elf.Phdr_table[1:]
+            #I think for the first one of these it adds a weird empty segment for some reason
+
+            #elf.Elf.Phdr_table = elf.Elf.Phdr_table[1:]
             print(f'section {section} offset={elf.Elf.Shdr_table[section].sh_offset:x}')
             for sect in elf.Elf.Shdr_table:
                 print(f'offset={sect.sh_offset:x}')
 
 
-            sections[i] = section
+            sections.append(section)
 
         current_section = 0
         for i, (value, name) in enumerate(self.symbols):
@@ -186,7 +190,8 @@ class Debugger(object):
                               sym_binding=melf.STB.STB_GLOBAL, sym_type=melf.STT.STT_FUNC)
 
         a = bytes(elf)
-        elf.Elf.Phdr_table[0].p_offset = elf.Elf.Shdr_table[section].sh_offset
+        for i,section in enumerate(sections):
+            elf.Elf.Phdr_table[i].p_offset = elf.Elf.Shdr_table[section].sh_offset
         return bytes(elf)
 
 
