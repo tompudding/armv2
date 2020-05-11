@@ -106,12 +106,11 @@ class ByteMemory(object):
         if isinstance(index,slice):
             indices = index.indices(MAX_26BIT)
             indices = xrange(*indices)
+            return bytearray(self.getter(index) for index in indices)
         else:
             indices = (index,)
-        if len(indices) == 1:
             return self.getter(index)
-        else:
-            return bytearray(self.getter(index) for index in indices)
+
 
     def __setitem__(self,index,values):
         debug_log(f'Write_entry v={values} to i={index}')

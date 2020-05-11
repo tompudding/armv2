@@ -145,9 +145,19 @@ class Debugger(object):
             else:
                 name = f'tape_{i+1}'
 
-            section = elf._append_section(name, self.machine.mem[start:end], start, sh_flags=melf.SHF.SHF_EXECINSTR)
+            #start += 0x1000
+            #end += 0x1000
+
+            section = elf._append_section(name, self.machine.mem[start:end],
+                                          start, sh_flags=melf.SHF.SHF_EXECINSTR
+                                          | melf.SHF.SHF_WRITE
+                                          | melf.SHF.SHF_ALLOC)
             segment = elf.append_segment(section, addr=start, mem_size=end-start, flags='rwx')
             elf.Elf.Phdr_table = elf.Elf.Phdr_table[1:]
+            print(f'section {section} offset={elf.Elf.Shdr_table[section].sh_offset:x}')
+            for sect in elf.Elf.Shdr_table:
+                print(f'offset={sect.sh_offset:x}')
+
 
             sections[i] = section
 
@@ -170,9 +180,13 @@ class Debugger(object):
             else:
                 #err, it's the last symbol. I have no idea
                 size = 4
+            #value += 0x1000
 
             elf.append_symbol(name, sections[section], value, size,
                               sym_binding=melf.STB.STB_GLOBAL, sym_type=melf.STT.STT_FUNC)
+
+        a = bytes(elf)
+        elf.Elf.Phdr_table[0].p_offset = elf.Elf.Shdr_table[section].sh_offset
         return bytes(elf)
 
 
