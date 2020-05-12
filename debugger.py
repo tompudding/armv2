@@ -46,6 +46,8 @@ class Debugger(object):
                          messages.Types.FILE_CLOSE      : self.handle_file_close,
                          messages.Types.FILE_FSTAT      : self.handle_file_fstat,
                          messages.Types.FILE_PREAD      : self.handle_file_pread,
+                         messages.Types.CONNECTED       : self.handle_connect,
+                         messages.Types.DISCONNECTED    : self.handle_disconnect,
         }
         self.wp_types = {messages.Types.ADD_READ_WP   : armv2.WatchpointType.READ,
                          messages.Types.ADD_WRITE_WP  : armv2.WatchpointType.WRITE,
@@ -70,9 +72,9 @@ class Debugger(object):
             self.exit()
             raise
 
-    def start_listening(self):
+    def start_listening(self, connection_callback=None):
         for port_trial in range(10):
-            self.port = 4141#random.randint(0x400, 0x10000)
+            self.port = random.randint(0x400, 0x10000)
             print(f'Trying port {self.port}')
             try:
                 self.connection = messages.Server(port=self.port, callback=self.handle_message)
@@ -83,11 +85,12 @@ class Debugger(object):
         else:
             raise
 
+        self.connection_callback=connection_callback
         self.connection.start()
 
-        elf = self.get_file()
-        with open('/tmp/bob', 'wb') as f:
-            f.write(elf)
+        #elf = self.get_file()
+        #with open('/tmp/bob', 'wb') as f:
+        #    f.write(elf)
 
         #This sure is a lot of namespacing!
 
@@ -221,13 +224,27 @@ class Debugger(object):
     def handle_detach(self, message):
         self.reset_debugging()
         self.connection.send(messages.OK())
+        print('Got detach in debugger')
+        if self.connection_callback:
+            self.connection_callback(False,False)
+
+    def handle_disconnect(self, message):
+        self.reset_debugging()
+        print('GOT DISCONNECT in debugger')
+        if self.connection_callback:
+            self.connection_callback(False)
 
     def handle_continue(self, message):
+        print('RESUME!')
         self.resume(explicit=True)
+        if self.connection_callback:
+            self.connection_callback(stopped=False)
 
     def handle_stop(self, message):
         self.stop(send_message=False)
         self.connection.send(messages.StopReply(signal.SIGINT))
+        if self.connection_callback:
+            self.connection_callback(stopped=True)
 
     def handle_step(self, message):
         self.step(explicit=True)
@@ -275,7 +292,10 @@ class Debugger(object):
 
     def handle_connect(self, message):
         # On connect we send an initial update
-        self.send_register_update()
+        #self.send_register_update()
+        print('GOT CONNECT IN DEBUGGER')
+        if self.connection_callback:
+            self.connection_callback(True)
 
     def handle_disassembly(self, message):
         start = message.start

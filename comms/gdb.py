@@ -70,6 +70,9 @@ class Types(enum.Enum):
     DEL_ACCESS_WP   = 'Z4'
     UNKNOWN         = '\x00'
     STOP            = '\x03'
+    #Special internal types
+    CONNECTED       = 'CONNECTED'
+    DISCONNECTED    = 'DISCONNTED'
 
 
 
@@ -137,6 +140,11 @@ class OK(Message):
     def to_binary(self):
         return format_gdb_message(b'OK')
 
+class Connect(EmptyMessage):
+    type = Types.CONNECTED
+
+class Disconnect(EmptyMessage):
+    type = Types.DISCONNECTED
 
 class StopReply(Message):
     def __init__(self, data=None):
@@ -543,6 +551,7 @@ class BaseHandler(object):
             self.data = b''
             self.needed = None
             self.server.comms.set_connected(self.request)
+            self.server.comms.handle(Connect())
             while not self.server.comms.done and not self.done:
                 self.read_message()
             self.request.close()
@@ -552,7 +561,9 @@ class BaseHandler(object):
 
         # Whatever happens, if the machine is stopped when we disconnect, we need to resume it and clear any
         # breakpoints and stuff
+
         self.done = True
+        self.server.comms.handle(Disconnect())
         self.server.comms.disconnect()
 
     def reply(self, message):
