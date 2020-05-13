@@ -553,20 +553,31 @@ class Display(armv2.Device):
         self.scale_factor = scale_factor
         self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts', 'petscii.png'))
 
-        self.back_quads_buffer = drawing.QuadBuffer(self.width * self.height)
-        self.fore_quads_buffer = drawing.QuadBuffer(self.width * self.height)
-        self.back_quads = [drawing.Quad(self.back_quads_buffer) for i in range(self.width * self.height)]
-        self.fore_quads = [drawing.Quad(self.fore_quads_buffer) for i in range(self.width * self.height)]
+        self.cell_quads_buffer = drawing.QuadBuffer(self.width * self.height)
+        self.fore_vertex_buffer = drawing.VertexBuffer(self.pixel_size[0] * self.pixel_size[1])
+        self.cell_quads = [drawing.Quad(self.cell_quads_buffer) for i in range(self.width * self.height)]
+        #self.fore_vertices = [drawing.Vertex(self.fore_vertex_buffer) for i in range(self.pixel_size[0] * self.pixel_size[1])]
+        self.pixel_data = numpy.zeros((self.pixel_size[0]*self.pixel_size[1]//32, 4), numpy.uint32)
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
         self.powered_on = True
 
-        for z, quad_list in enumerate((self.back_quads, self.fore_quads)):
-            for pos, quad in enumerate(quad_list):
-                x = pos % self.width
-                y = self.height - 1 - (pos // self.width)
-                bl = Point(x * self.cell_size, y * self.cell_size)
-                tr = bl + Point(self.cell_size, self.cell_size)
-                quad.set_vertices(bl, tr, z)
+        #for chunk in self.pixel_data:
+        #    for i in range(len(chunk)):
+        #        chunk[i] = 0xa5a5a5a5
+
+        for pos, quad in enumerate(self.cell_quads):
+            x = pos % self.width
+            y = self.height - 1 - (pos // self.width)
+            bl = Point(x * self.cell_size, y * self.cell_size)
+            tr = bl + Point(self.cell_size, self.cell_size)
+            quad.set_vertices(bl, tr, 0)
+
+        # for pos, vertex in enumerate(self.fore_vertices):
+        #     x = pos % (self.pixel_size[0])
+        #     y = self.pixel_size[1] - 1 - (pos // (self.pixel_size[1]))
+        #     bl = Point(x, y)
+        #     vertex.set_vertices(bl, None, 1)
+        #     vertex.set_colour((1,0,0,1))
 
         self.font_data = [0 for i in range(256)]
         self.letter_data = [0 for i in range(self.width * self.height)]
@@ -638,17 +649,18 @@ class Display(armv2.Device):
         palette = self.palette_data[pos]
         back_colour = self.Colours.palette[(palette >> 4) & 0xf]
         fore_colour = self.Colours.palette[(palette) & 0xf]
-        self.back_quads[pos].set_colour(back_colour)
-        self.fore_quads[pos].set_colour(fore_colour)
-        tc = self.atlas.texture_coords(chr(letter))
-        self.fore_quads[pos].set_texture_coordinates(tc)
+        self.cell_quads[pos].set_colour(fore_colour)
+        self.cell_quads[pos].set_back_colour(back_colour)
+        #self.fore_vertices[pos].set_colour(fore_colour)
+        #tc = self.atlas.texture_coords(chr(letter))
+        #self.fore_quads[pos].set_texture_coordinates(tc)
 
     def new_frame(self):
         drawing.new_crt_frame(self.crt_buffer)
         # self.crt_buffer.bind_for_writing()
         if self.powered_on:
-            drawing.draw_no_texture(self.back_quads_buffer)
-            drawing.draw_all(self.fore_quads_buffer, self.atlas.texture)
+            drawing.draw_pixels(self.cell_quads_buffer, self.pixel_data)
+            #drawing.draw_no_texture(self.fore_vertex_buffer)
 
     def end_frame(self):
         drawing.end_crt_frame(self.crt_buffer)

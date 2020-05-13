@@ -24,6 +24,8 @@ class ShapeBuffer(object):
         self.tc_data     = numpy.zeros((size * self.num_points, 2), numpy.float32)
         self.colour_data = numpy.ones((size * self.num_points, 4),
                                       numpy.float32)  # RGBA default is white opaque
+        self.back_colour_data = numpy.ones((size * self.num_points, 4),
+                                      numpy.float32)  # RGBA default is white opaque
         self.indices     = numpy.zeros(size * self.num_points, numpy.uint32)  # de
         self.size = size
         for i in range(size * self.num_points):
@@ -122,14 +124,14 @@ class ShadowQuadBuffer(QuadBuffer):
         return light
 
 
-class LineBuffer(ShapeBuffer):
-    num_points = 2
-    draw_type = opengl.GL_LINES
+class VertexBuffer(ShapeBuffer):
+    num_points = 1
+    draw_type = opengl.GL_POINTS
 
     def __init__(self, size, ui=False, mouse_relative=False):
         self.is_ui = ui
         self.mouse_relative = mouse_relative
-        super(LineBuffer, self).__init__(size)
+        super(VertexBuffer, self).__init__(size)
 
 
 class ShapeVertex(object):
@@ -167,6 +169,7 @@ class Shape(object):
         self.vertex = ShapeVertex(self.index, source.vertex_data)
         self.tc     = ShapeVertex(self.index, source.tc_data)
         self.colour = ShapeVertex(self.index, source.colour_data)
+        self.back_colour = ShapeVertex(self.index, source.back_colour_data)
         if vertex is not None:
             self.vertex[0:self.num_points] = vertex
         if tc is not None:
@@ -245,6 +248,11 @@ class Shape(object):
             return
         self.setcolour(self.colour, colour)
 
+    def set_back_colour(self, colour):
+        if self.deleted:
+            return
+        self.setcolour(self.back_colour, colour)
+
     def set_colours(self, colours):
         if self.deleted:
             return
@@ -272,6 +280,8 @@ def setverticesline(self, vertex, start, end, z):
     vertex[0] = (start.x, start.y, z)
     vertex[1] = (end.x, end.y, z)
 
+def setverticesvertex(self, vertex, start, end, z):
+    vertex[0] = (start.x, start.y, z)
 
 def setcolourquad(self, colour, value):
     for i in range(4):
@@ -279,22 +289,14 @@ def setcolourquad(self, colour, value):
             colour[i][j] = value[j]
 
 
-def setcoloursquad(self, colour, values):
-    for i in range(4):
-        for j in range(4):
-            colour[i][j] = values[i][j]
-
-
 def setcolourline(self, colour, value):
     for i in range(2):
         for j in range(4):
             colour[i][j] = value[j]
 
-
-def setcoloursline(self, colour, values):
-    for i in range(2):
-        for j in range(4):
-            colour[i][j] = values[i][j]
+def setcolourvertex(self, colour, value):
+    for j in range(4):
+        colour[0][j] = value[j]
 
 
 class Quad(Shape):
@@ -307,6 +309,11 @@ class Line(Shape):
     num_points = 2
     setvertices = setverticesline
     setcolour   = setcolourline
+
+class Vertex(Shape):
+    num_points = 1
+    setvertices = setverticesvertex
+    setcolour = setcolourvertex
 
 
 class QuadBorder(object):

@@ -28,6 +28,7 @@ class ShaderLocations(object):
         self.screen_dimensions = None
         self.translation       = None
         self.scale             = None
+        self.pixels            = None
 
 
 class ShaderData(object):
@@ -57,7 +58,7 @@ class ShaderData(object):
         self.fragment_shader_attrib_binding()
         self.program = shaders.ShaderProgram(self.program)
         glLinkProgram(self.program)
-        self.program.check_validate()
+        #self.program.check_validate()
         self.program.check_linked()
         for shader in shads:
             glDeleteShader(shader)
@@ -65,6 +66,7 @@ class ShaderData(object):
         for (namelist, func) in ((uniforms, glGetUniformLocation), (attributes, glGetAttribLocation)):
             for name in namelist:
                 setattr(self.locations, name, func(self.program, name))
+                print(name, getattr(self.locations, name))
 
     def fragment_shader_attrib_binding(self):
         pass
@@ -136,10 +138,13 @@ def init(w, h, pixel_size):
     default_shader.load('default',
                         uniforms=('tex', 'translation', 'scale',
                                   'screen_dimensions',
-                                  'using_textures'),
+                                  'using_textures','pixels'),
                         attributes=('vertex_data',
                                     'tc_data',
-                                    'colour_data'))
+                                    'fore_colour_data','back_colour_data'))
+
+    #vao = glGenVertexArrays(1)
+    #glBindVertexArray(vao)
 
     crt_shader.load('crt',
                     uniforms=('tex', 'translation', 'scale',
@@ -216,8 +221,9 @@ def init_drawing():
 
 
 def draw_all(quad_buffer, texture):
-    # This is a copy paste from the above function, but this is the inner loop of the program, and we need it to be fast.
-    # I'm not willing to put conditionals around the normal lines, so I made a copy of the function without them
+    # This is a copy paste from the above function, but this is the inner loop of the program, and we need it
+    # to be fast.  I'm not willing to put conditionals around the normal lines, so I made a copy of the
+    # function without them
     glActiveTexture(GL_TEXTURE0)
     glBindTexture(GL_TEXTURE_2D, texture.texture)
     glUniform1i(default_shader.locations.using_textures, 1)
@@ -232,13 +238,14 @@ def draw_all(quad_buffer, texture):
     glVertexAttribPointer(default_shader.locations.colour_data, 4,
                           GL_FLOAT, GL_FALSE, 0, quad_buffer.colour_data)
 
-    glDrawElements(GL_QUADS, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
+    glDrawElements(quad_buffer.draw_type, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
     glDisableVertexAttribArray(default_shader.locations.vertex_data)
     glDisableVertexAttribArray(default_shader.locations.tc_data)
     glDisableVertexAttribArray(default_shader.locations.colour_data)
 
 
 def draw_no_texture(quad_buffer):
+    raise Bobbins
     glUniform1i(default_shader.locations.using_textures, 0)
 
     glEnableVertexAttribArray(default_shader.locations.vertex_data)
@@ -249,7 +256,30 @@ def draw_no_texture(quad_buffer):
     glVertexAttribPointer(default_shader.locations.colour_data, 4,
                           GL_FLOAT, GL_FALSE, 0, quad_buffer.colour_data)
 
-    glDrawElements(GL_QUADS, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
+    glDrawElements(quad_buffer.draw_type, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
 
     glDisableVertexAttribArray(default_shader.locations.vertex_data)
     glDisableVertexAttribArray(default_shader.locations.colour_data)
+
+def draw_pixels(quad_buffer, pixel_data):
+    #The quad buffer should be a set of quads that cover all the cells
+
+    glUniform1i(default_shader.locations.using_textures, 0)
+    glUniform4uiv(default_shader.locations.pixels, len(pixel_data), pixel_data)
+
+    glEnableVertexAttribArray(default_shader.locations.vertex_data)
+    glEnableVertexAttribArray(default_shader.locations.fore_colour_data)
+    glEnableVertexAttribArray(default_shader.locations.back_colour_data)
+
+    glVertexAttribPointer(default_shader.locations.vertex_data, 3,
+                          GL_FLOAT, GL_FALSE, 0, quad_buffer.vertex_data)
+    glVertexAttribPointer(default_shader.locations.fore_colour_data, 4,
+                          GL_FLOAT, GL_FALSE, 0, quad_buffer.colour_data)
+    glVertexAttribPointer(default_shader.locations.back_colour_data, 4,
+                          GL_FLOAT, GL_FALSE, 0, quad_buffer.back_colour_data)
+
+    glDrawElements(quad_buffer.draw_type, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
+
+    glDisableVertexAttribArray(default_shader.locations.vertex_data)
+    glDisableVertexAttribArray(default_shader.locations.fore_colour_data)
+    glDisableVertexAttribArray(default_shader.locations.back_colour_data)

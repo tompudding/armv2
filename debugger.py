@@ -96,8 +96,6 @@ class Debugger(object):
         #with open('/tmp/bob', 'wb') as f:
         #    f.write(elf)
 
-        #This sure is a lot of namespacing!
-
     def handle_file_open(self, message):
         print('Handle file open!',len(self.open_fds))
         for fd in range(10):
