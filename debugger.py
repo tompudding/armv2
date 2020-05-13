@@ -73,8 +73,12 @@ class Debugger(object):
             raise
 
     def start_listening(self, connection_callback=None):
-        for port_trial in range(10):
-            self.port = random.randint(0x400, 0x10000)
+        port_attempts = [0xcafe,0xdead,0xbeef,0xf00d,0xc0de,0xface,0xbead,0xfeed,0xd0ff,0xd0d0]
+        random.shuffle(port_attempts)
+        port_attempts += [random.randint(0x400, 0x10000) for i in range(10)]
+        print([f'{p:x}' for p in port_attempts])
+        for port_trial in port_attempts:
+            self.port = port_trial
             print(f'Trying port {self.port}')
             try:
                 self.connection = messages.Server(port=self.port, callback=self.handle_message)
