@@ -15,6 +15,14 @@ from . import globals
 from .globals.types import Point
 import armv2_emulator
 
+def byte_reverse(x):
+    out = 0
+    for i in range(8):
+        b = (x >> i) & 1
+        out |= b << (7-i)
+
+    return out
+
 class Keyboard(armv2.Device):
     """
     A Keyboard device. The memory map looks like
@@ -551,12 +559,19 @@ class Display(armv2.Device):
         super(Display, self).__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
-        self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts', 'petscii.png'))
+        #self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts', 'petscii.png'))
 
         self.cell_quads_buffer = drawing.QuadBuffer(self.width * self.height)
         self.fore_vertex_buffer = drawing.VertexBuffer(self.pixel_size[0] * self.pixel_size[1])
         self.cell_quads = [drawing.Quad(self.cell_quads_buffer) for i in range(self.width * self.height)]
-        #self.fore_vertices = [drawing.Vertex(self.fore_vertex_buffer) for i in range(self.pixel_size[0] * self.pixel_size[1])]
+
+        # The shape of this pixel data is an unfortunate side effect of trying to cram it all in in one large
+        # uniform; 2400 uint32s is too many, so we're using 600 uvec4s. We could instead do 4 draw calls with
+        # the screen partitioned and change the uniform portion each time, but this is what we're doing for
+        # now.
+        #
+        # Each element of the pixel data has 4x32 = 128 bits. The screen is 320 pixels across, so it doesn't
+        # really line up nicely
         self.pixel_data = numpy.zeros((self.pixel_size[0]*self.pixel_size[1]//32, 4), numpy.uint32)
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
         self.powered_on = True
@@ -582,6 +597,14 @@ class Display(armv2.Device):
         self.font_data = [0 for i in range(256)]
         self.letter_data = [0 for i in range(self.width * self.height)]
         self.palette_data = [0 for i in range(self.width * self.height)]
+
+        with open(os.path.join(globals.dirs.fonts,'petscii.txt'),'r') as f:
+            for line in f:
+                i, word = line.strip().split(' : ')
+                i, word = [int(v,16) for v in (i,word)]
+                #Each 64 bit word reprents all the bits of an 8x8 cell, but it's easier to store them as 8
+                #rows of a byte each as that's how they'll get written to memory
+                self.font_data[i] = [ byte_reverse(((word >> i*8) & 0xff)) for i in range(7,-1,-1) ]
 
         # initialise the whole screen
         for pos in range(len(self.letter_data)):
@@ -645,12 +668,34 @@ class Display(armv2.Device):
         return 0
 
     def redraw(self, pos):
-        letter = self.letter_data[pos]
+
         palette = self.palette_data[pos]
         back_colour = self.Colours.palette[(palette >> 4) & 0xf]
         fore_colour = self.Colours.palette[(palette) & 0xf]
         self.cell_quads[pos].set_colour(fore_colour)
         self.cell_quads[pos].set_back_colour(back_colour)
+
+
+        letter = self.letter_data[pos]
+        letter_bits = self.font_data[letter]
+        #We need the chunk positions for our pixel data which are a bit awkward. pos is the linear cell position (i.e y*width + height), so the pixel position is that times 8
+
+        x = pos % self.width
+        y = self.height - 1 - (pos // self.width)
+        pixel_cell_pos = (x + (y * self.cell_size * self.width)) * self.cell_size
+
+        for i in range(len(letter_bits)):
+            pixel_pos = pixel_cell_pos + (i * self.width * 8)
+            word = pixel_pos // 32
+            shift = pixel_pos & 0x1f
+
+            #we are only changing one byte from this word, so mask that off
+            mask = (0xff << shift) ^ 0xffffffff
+
+            old = self.pixel_data[word // 4][word & 3]
+            new = (letter_bits[7-i] << shift) | (old & mask)
+            self.pixel_data[word // 4][word & 3] = new
+
         #self.fore_vertices[pos].set_colour(fore_colour)
         #tc = self.atlas.texture_coords(chr(letter))
         #self.fore_quads[pos].set_texture_coordinates(tc)

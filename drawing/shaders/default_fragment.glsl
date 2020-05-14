@@ -22,7 +22,7 @@ void main()
         uint n = x + y*uint(320);
         uint word = n / uint(32);
         uint outer_word = word / uint(4);
-        uint inner_word = word & uint(4);
+        uint inner_word = word & uint(3);
         uint bit = n & uint(0x1f);
         uint bob = (pixels[outer_word][inner_word] >> bit)&uint(1);
         //if( uint(1) == uint(1) ) {

@@ -58,7 +58,7 @@ class ShaderData(object):
         self.fragment_shader_attrib_binding()
         self.program = shaders.ShaderProgram(self.program)
         glLinkProgram(self.program)
-        #self.program.check_validate()
+        self.program.check_validate()
         self.program.check_linked()
         for shader in shads:
             glDeleteShader(shader)
@@ -245,7 +245,6 @@ def draw_all(quad_buffer, texture):
 
 
 def draw_no_texture(quad_buffer):
-    raise Bobbins
     glUniform1i(default_shader.locations.using_textures, 0)
 
     glEnableVertexAttribArray(default_shader.locations.vertex_data)

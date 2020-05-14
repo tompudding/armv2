@@ -184,7 +184,7 @@ def init(width, height, do_screen=True):
     pygame.key.set_repeat(500, 50)
     globals.sounds = sounds.Sounds()
     globals.screen = Point(width, height)
-    globals.dirs = globals.types.Directories('resource')
+    globals.dirs = globals.types.Directories(os.path.join(os.path.dirname(__file__),'resource'))
     globals.screen_quadbuffer     = drawing.QuadBuffer(16)
     globals.screen.full_quad      = drawing.Quad(globals.screen_quadbuffer)
     globals.screen.full_quad.set_vertices(Point(0, 0), globals.screen, 0.01)
