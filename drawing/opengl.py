@@ -131,11 +131,20 @@ class CrtBuffer(object):
 
 
 default_shader   = ShaderData()
+screen_shader    = ShaderData()
 crt_shader       = ShaderData()
 
 
 def init(w, h, pixel_size):
     default_shader.load('default',
+                        uniforms=('tex', 'translation', 'scale',
+                                  'screen_dimensions',
+                                  'using_textures'),
+                        attributes=('vertex_data',
+                                    'tc_data',
+                                    'colour_data'))
+
+    screen_shader.load('screen',
                         uniforms=('tex', 'translation', 'scale',
                                   'screen_dimensions',
                                   'using_textures','pixels'),
@@ -170,7 +179,7 @@ def clear_screen():
 
 
 def new_crt_frame(crt_buffer):
-    default_shader.use()
+    screen_shader.use()
     crt_buffer.bind_for_writing()
     # glDepthMask(GL_TRUE)
     glClearColor(0.0, 0.0, 0.0, 1.0)
@@ -213,6 +222,12 @@ def init_drawing():
     glUniform2f(default_shader.locations.translation, 0, 0)
     glUniform2f(default_shader.locations.scale, 1, 1)
 
+    screen_shader.use()
+    glUniform3f(screen_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, 10)
+    glUniform1i(screen_shader.locations.tex, 0)
+    glUniform2f(screen_shader.locations.translation, 0, 0)
+    glUniform2f(screen_shader.locations.scale, 1, 1)
+
     crt_shader.use()
     glUniform3f(crt_shader.locations.screen_dimensions, globals.screen.x, globals.screen.y, 10)
     glUniform1i(crt_shader.locations.tex, 0)
@@ -224,6 +239,7 @@ def draw_all(quad_buffer, texture):
     # This is a copy paste from the above function, but this is the inner loop of the program, and we need it
     # to be fast.  I'm not willing to put conditionals around the normal lines, so I made a copy of the
     # function without them
+    raise Throbbins
     glActiveTexture(GL_TEXTURE0)
     glBindTexture(GL_TEXTURE_2D, texture.texture)
     glUniform1i(default_shader.locations.using_textures, 1)
@@ -245,6 +261,7 @@ def draw_all(quad_buffer, texture):
 
 
 def draw_no_texture(quad_buffer):
+    default_shader.use()
     glUniform1i(default_shader.locations.using_textures, 0)
 
     glEnableVertexAttribArray(default_shader.locations.vertex_data)
@@ -261,24 +278,24 @@ def draw_no_texture(quad_buffer):
     glDisableVertexAttribArray(default_shader.locations.colour_data)
 
 def draw_pixels(quad_buffer, pixel_data):
+    screen_shader.use()
     #The quad buffer should be a set of quads that cover all the cells
+    glUniform1i(screen_shader.locations.using_textures, 0)
+    glUniform4uiv(screen_shader.locations.pixels, len(pixel_data), pixel_data)
 
-    glUniform1i(default_shader.locations.using_textures, 0)
-    glUniform4uiv(default_shader.locations.pixels, len(pixel_data), pixel_data)
+    glEnableVertexAttribArray(screen_shader.locations.vertex_data)
+    glEnableVertexAttribArray(screen_shader.locations.fore_colour_data)
+    glEnableVertexAttribArray(screen_shader.locations.back_colour_data)
 
-    glEnableVertexAttribArray(default_shader.locations.vertex_data)
-    glEnableVertexAttribArray(default_shader.locations.fore_colour_data)
-    glEnableVertexAttribArray(default_shader.locations.back_colour_data)
-
-    glVertexAttribPointer(default_shader.locations.vertex_data, 3,
+    glVertexAttribPointer(screen_shader.locations.vertex_data, 3,
                           GL_FLOAT, GL_FALSE, 0, quad_buffer.vertex_data)
-    glVertexAttribPointer(default_shader.locations.fore_colour_data, 4,
+    glVertexAttribPointer(screen_shader.locations.fore_colour_data, 4,
                           GL_FLOAT, GL_FALSE, 0, quad_buffer.colour_data)
-    glVertexAttribPointer(default_shader.locations.back_colour_data, 4,
+    glVertexAttribPointer(screen_shader.locations.back_colour_data, 4,
                           GL_FLOAT, GL_FALSE, 0, quad_buffer.back_colour_data)
 
     glDrawElements(quad_buffer.draw_type, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
 
-    glDisableVertexAttribArray(default_shader.locations.vertex_data)
-    glDisableVertexAttribArray(default_shader.locations.fore_colour_data)
-    glDisableVertexAttribArray(default_shader.locations.back_colour_data)
+    glDisableVertexAttribArray(screen_shader.locations.vertex_data)
+    glDisableVertexAttribArray(screen_shader.locations.fore_colour_data)
+    glDisableVertexAttribArray(screen_shader.locations.back_colour_data)
