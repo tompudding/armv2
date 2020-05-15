@@ -276,7 +276,6 @@ cdef class Armv2:
         self.setword(addr & 0xfffffffc,new_word)
 
     def getword(self,addr):
-        return 0
         cdef carmv2.hardware_device *dev = NULL
         cdef void *extra = NULL
         cdef uint32_t offset = 0
@@ -305,7 +304,6 @@ cdef class Armv2:
         return 0
 
     def setword(self,addr,value):
-        return 0
         cdef carmv2.hardware_device *dev = NULL
         cdef void *extra = NULL
         cdef uint32_t offset = 0

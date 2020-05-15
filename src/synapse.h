@@ -37,6 +37,9 @@ enum letter_codes {
 #define TAPE_NAME_LEN    16
 #define TAPE_FLAG_FINAL  0x80000000
 #define MAX_TAPE_REGIONS 16
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 240
+#define ARRAY_SIZE(x) (sizeof((x))/sizeof((x)[0]))
 
 extern volatile struct tape_control  *tape_control;
 extern uint8_t                       *tape_load_area;
