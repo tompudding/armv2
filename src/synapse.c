@@ -5,13 +5,23 @@
 #include "synapse.h"
 #include <terminal.h>
 
-volatile struct tape_control  *tape_control       = (void*)0x01002000;
+#define PALETTE_START ((void*)0x01001000)
+#define LETTER_START  (PALETTE_START + WIDTH*HEIGHT)
+#define FONT_START    (LETTER_START + WIDTH*HEIGHT)
+#define FB_START      (FONT_START + 0x100 * sizeof(uint64_t))
+#define RNG_START     (FB_START + WIDTH*HEIGHT*8*8/8)
+
+volatile struct tape_control  *tape_control       = (void*)0x01005000;
 uint8_t                       *tape_load_area     = (void*)0x8000;
 uint8_t                       *symbols_load_area  = (void*)0x30000;
-volatile uint32_t             *rng                = (void*)0x01001000 + WIDTH*HEIGHT*2;
 volatile uint32_t             *clock_word         = (void*)0x01001000 + (WIDTH*HEIGHT*2) + 4;
 void                         **crash_handler_word = (void*)0x3fff8;
 struct region                 *tape_regions       = (void*)0x3fff8 - (sizeof(struct region) * MAX_TAPE_REGIONS);
+uint8_t                       *palette_data       = PALETTE_START;
+uint8_t                       *letter_data        = LETTER_START;
+uint64_t                      *font_data          = FONT_START;
+uint32_t                      *framebuffer        = FB_START;
+volatile uint32_t             *rng                = RNG_START;
 
 uint32_t num_tape_regions = 0;
 

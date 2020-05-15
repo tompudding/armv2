@@ -167,7 +167,7 @@ typedef uint32_t (*operation_callback_t)(void *extra, uint32_t arg0, uint32_t ar
 
 struct page_info {
     uint32_t          *memory;
-    void              *mapped_device;
+    struct hardware_device *mapped_device;
     access_callback_t  read_callback;
     access_callback_t  write_callback;
     access_callback_t  read_byte_callback;
@@ -176,6 +176,11 @@ struct page_info {
 };
 
 struct armv2_t;
+
+struct region {
+    uint32_t start;
+    uint32_t end;
+};
 
 struct hardware_device {
     uint32_t device_id;
@@ -186,6 +191,7 @@ struct hardware_device {
     access_callback_t write_byte_callback;
     operation_callback_t operation_callback;
     struct armv2_t *cpu;
+    struct region mapped;
     void *extra;
 };
 
@@ -201,11 +207,6 @@ enum watchpoint_type {
     WRITE_WATCHPOINT = 0,
     READ_WATCHPOINT = 1,
     ACCESS_WATCHPOINT = 2,
-};
-
-struct region {
-    uint32_t start;
-    uint32_t end;
 };
 
 //There are only two types of watchpoint we need to worry about; READ and WRITE. MAX_WATCHPOINT is used for

@@ -46,6 +46,10 @@ extern uint8_t                       *symbols_load_area;
 extern volatile uint32_t             *rng;
 extern volatile uint32_t             *clock_word;
 extern void                         **crash_handler_word;
+extern uint8_t                       *palette_data;
+extern uint8_t                       *letter_data;
+extern uint64_t                      *font_data;
+extern uint32_t                      *framebuffer;
 
 uint64_t wait_for_interrupt();
 void set_alarm(int milliseconds);

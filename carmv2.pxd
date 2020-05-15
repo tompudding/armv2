@@ -83,18 +83,30 @@ cdef extern from "armv2.h":
     ctypedef uint32_t (*access_callback_t)(void *, uint32_t, uint32_t)
     ctypedef uint32_t (*operation_callback_t)(void *, uint32_t, uint32_t)
 
+    struct region:
+        uint32_t start
+        uint32_t end
+
+    struct hardware_device:
+        uint32_t device_id
+        uint32_t interrupt_flag_addr
+        access_callback_t read_callback
+        access_callback_t write_callback
+        access_callback_t read_byte_callback
+        access_callback_t write_byte_callback
+        operation_callback_t operation_callback
+        armv2 *cpu
+        region mapped
+        void *extra
+
     struct page_info:
         uint32_t *memory
-        void *mapped_device;
+        hardware_device *mapped_device
         access_callback_t read_callback
         access_callback_t write_callback
         access_callback_t read_byte_callback
         access_callback_t write_byte_callback
         uint32_t flags
-
-    struct region:
-        uint32_t start
-        uint32_t end
 
     struct armv2:
         regs regs
@@ -106,17 +118,6 @@ cdef extern from "armv2.h":
         uint32_t pc
         uint32_t flags
         uint32_t pins
-
-    struct hardware_device:
-        uint32_t device_id
-        uint32_t interrupt_flag_addr
-        access_callback_t read_callback
-        access_callback_t write_callback
-        access_callback_t read_byte_callback
-        access_callback_t write_byte_callback
-        operation_callback_t operation_callback
-        armv2 *cpu
-        void *extra
 
     armv2_status init(armv2 *cpu, uint32_t memsize) nogil
     armv2_status load_rom(armv2 *cpu, const char *filename) nogil

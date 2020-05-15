@@ -17,9 +17,9 @@ clock_device_id           = 0x92d177b0
 keyboard_map_start        = 0x01000000
 keyboard_map_end          = 0x01001000
 display_map_start         = 0x01001000
-display_map_end           = 0x01002000
-tape_map_start            = 0x01002000
-tape_map_end              = 0x01003000
+display_map_end           = 0x01005000
+tape_map_start            = 0x01005000
+tape_map_end              = 0x01006000
 interrupt_ringbuffer      = 0x000bff00
 interrupt_ringbuffer_pos  = 0x000bfefc
 wfi_ringbuffer_pos        = 0x000bfef8
@@ -248,12 +248,12 @@ handle_error:
         SUB R0, R1
         /* Current R0 is the offset from the start of the error cases, but each is 2 instructions
            so divide by 8 */
-        
+
         LSR R0,#3
         LDR R4,=0x3fffc
         ADD R5, R4, #13*4
 /* copy the saved registers into place */
-restore_regs_loop:      
+restore_regs_loop:
         LDR R3, [SP], #4
         STR R3, [R4], #4
         CMP R4, R5

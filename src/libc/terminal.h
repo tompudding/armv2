@@ -31,8 +31,6 @@ enum colours    {
 extern volatile uint32_t *keyboard_bitmask;
 extern volatile uint8_t  *keyboard_ringbuffer;
 extern volatile uint8_t  *ringbuffer_pos;
-extern uint8_t           *palette_data;
-extern uint8_t           *letter_data;
 extern size_t             os_cursor_pos;
 
 void set_screen_data(uint32_t normal, uint32_t inverted, size_t border_size);

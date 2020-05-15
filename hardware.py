@@ -551,9 +551,22 @@ class Display(armv2.Device):
     height = 30
     cell_size = 8
     pixel_size = (width * cell_size, height * cell_size)
+    # The palette data is a byte for each 8x8 "cell" that gives the background and foreground colour in each
+    # of its nibbles
     palette_start = 0
+    # The letter data is a byte for each cell which gives which character is drawn at that cell
     letter_start  = width * height
     letter_end    = width * height * 2
+    # The font data is 256 8 byte words, each of which is bitmask for that character. The first half is fixed
+    # (writes to it are rejected without error), but the second half can be customized
+    font_start    = letter_end
+    font_end      = font_start + 0x100*8
+    # The framebuffer is a bitmask for all (width*cellsize) * (height*cellsize) pixels on the screen. If the
+    # bit is set then it has the foreground colour, otherwise it has the background colour. Software running
+    # on the device can either write to the letter data to draw a character to a cell, or write directly to
+    # the framebuffer
+    frame_buffer_start = font_end
+    frame_buffer_end = frame_buffer_start + ((width * cell_size * height * cell_size)//8)
 
     def __init__(self, cpu, scale_factor):
         super(Display, self).__init__(cpu)
@@ -575,10 +588,6 @@ class Display(armv2.Device):
         self.pixel_data = numpy.zeros((self.pixel_size[0]*self.pixel_size[1]//32, 4), numpy.uint32)
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
         self.powered_on = True
-
-        #for chunk in self.pixel_data:
-        #    for i in range(len(chunk)):
-        #        chunk[i] = 0xa5a5a5a5
 
         for pos, quad in enumerate(self.cell_quads):
             x = pos % self.width
@@ -615,10 +624,18 @@ class Display(armv2.Device):
 
     def read_callback(self, addr, value):
         # The display has a secret RNG, did you know that?
-        if addr == self.letter_end:
+        if addr == self.frame_buffer_end:
             return int(random.getrandbits(32))
-        if addr == self.letter_end + 4:
+        if addr == self.frame_buffer_end + 4:
             return int(time.time())
+
+        # If it's an aligned read from the frame buffer then it's easier for us to do it directly
+        if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
+            word = (addr - self.frame_buffer_start) // 4
+            return self.pixel_data[word // 4][word & 3]
+
+        # Otherwise we handle it byte-wise
+
         bytes = [self.read_byte_callback(addr + i, 0) for i in range(4)]
         return (bytes[0]) | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)
 
@@ -633,6 +650,14 @@ class Display(armv2.Device):
         if addr == self.letter_end:
             random.seed(value)
             return 0
+
+        # If it's an aligned read from the frame buffer then it's easier for us to do it directly
+        if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
+            print(f'YOYO got write of {value:08x} to {addr:08x}')
+            word = (addr - self.frame_buffer_start) // 4
+            self.pixel_data[word // 4][word & 3] = value
+            return 0
+
         for i in range(4):
             byte = value & 0xff
             self.write_byte_callback(addr, byte)
@@ -647,6 +672,15 @@ class Display(armv2.Device):
         elif addr < self.letter_end:
             pos = addr - self.letter_start
             return self.letter_data[pos]
+        elif addr < self.font_end:
+            pos = addr - self.font_start
+            return self.font_data[pos // 8][pos & 7]
+        elif addr < self.frame_buffer_end:
+            pos = addr - self.frame_buffer_start
+            word = pos // 4
+            word = self.pixel_data[word // 4][word & 3]
+            byte = pos & 3
+            return (word >> (byte * 8)) & 0xff
 
     def write_byte_callback(self, addr, value):
         #armv2.debug_log('display write byte %x %x\n' % (addr,value))
@@ -665,6 +699,16 @@ class Display(armv2.Device):
                 return 0
             self.letter_data[pos] = value
             self.redraw(pos)
+        elif addr < self.font_end:
+            pos = addr - self.font_start
+            self.font_data[pos // 8][pos & 7] = value
+        elif addr < self.frame_buffer_end:
+            pos = addr - self.frame_buffer_start
+            word = pos // 4
+            old_word = self.pixel_data[word // 4][word & 3]
+            shift = (pos & 3) * 8
+            mask = 0xffffffff ^ (0xff << shift)
+            self.pixel_data[word // 4][word & 3] = (old_word & mask) | (value << shift)
         return 0
 
     def redraw(self, pos):

@@ -338,7 +338,7 @@ enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t st
             page->flags = (PERM_READ | PERM_EXECUTE | PERM_WRITE);
             page->memory = NULL;
             if( hw_mapping.device ) {
-                page->mapped_device = hw_mapping.device->extra;
+                page->mapped_device = hw_mapping.device;
             }
             cpu->page_tables[page_pos] = page;
         }
@@ -348,6 +348,11 @@ enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t st
         page->write_callback      = hw_mapping.device->write_callback;
         page->read_byte_callback  = hw_mapping.device->read_byte_callback;
         page->write_byte_callback = hw_mapping.device->write_byte_callback;
+    }
+
+    if( hw_mapping.device ) {
+        hw_mapping.device->mapped.start = start;
+        hw_mapping.device->mapped.end = end;
     }
 
     hw_mapping.start = start;

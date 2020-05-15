@@ -5,8 +5,7 @@
 volatile uint32_t *keyboard_bitmask    = (void*)0x01000000;
 volatile uint8_t  *keyboard_ringbuffer = (void*)0x01000020;
 volatile uint8_t  *ringbuffer_pos      = (void*)0x010000a0;
-uint8_t           *palette_data        = (void*)0x01001000;
-uint8_t           *letter_data         = (void*)0x01001000 + WIDTH*HEIGHT;
+
 
 #define BACKGROUND BLACK
 #define FOREGROUND GREEN

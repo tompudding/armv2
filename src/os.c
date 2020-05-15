@@ -244,6 +244,21 @@ int main(void) {
     banner();
     processing = 1;
 
+    //Quick hack for demonstrating the loaded font
+    /* for(int i = 4; i < 4+16; i++) { */
+    /*     for(int j = 4; j < 4+16; j++) { */
+    /*         letter_data[j*WIDTH+i] = ((j-4)<<4) | (i-4); */
+    /*     } */
+    /* } */
+    /* while(1) { */
+    /*     wait_for_interrupt(); */
+    /* } */
+
+    //Quick hack to test that the framebuffer works
+    //for(int i = 0; i < WIDTH*HEIGHT*8*8/32; i++) {
+    //    framebuffer[i] = 0xa5a5a5a5;
+    //}
+
     while(1) {
         printf(PROMPT);
         handle_command(gets(command));

@@ -183,6 +183,8 @@ cdef class Device:
         self.cdevice.write_byte_callback = <carmv2.access_callback_t>self.write_byte;
         self.cdevice.operation_callback = <carmv2.operation_callback_t>self.operation;
         self.cdevice.cpu = <carmv2.armv2*>args[0].cpu
+        self.cdevice.mapped.start = 0
+        self.cdevice.mapped.end = 0
         if self.cdevice == NULL:
             raise MemoryError()
 
@@ -274,6 +276,10 @@ cdef class Armv2:
         self.setword(addr & 0xfffffffc,new_word)
 
     def getword(self,addr):
+        return 0
+        cdef carmv2.hardware_device *dev = NULL
+        cdef void *extra = NULL
+        cdef uint32_t offset = 0
         if addr >= MAX_26BIT or addr < 0:
             #raise IndexError()
             return 0
@@ -284,7 +290,14 @@ cdef class Armv2:
             return 0
 
         if NULL != page.read_callback:
-            return page.read_callback(page.mapped_device,INPAGE(addr),0)
+            dev = page.mapped_device
+            if dev:
+                extra = dev.extra
+                offset = addr - dev.mapped.start
+            else:
+                offset = INPAGE(addr)
+
+            return page.read_callback(extra, offset, 0)
 
         if NULL != page.memory:
             return page.memory[WORDINPAGE(addr)]
@@ -292,6 +305,10 @@ cdef class Armv2:
         return 0
 
     def setword(self,addr,value):
+        return 0
+        cdef carmv2.hardware_device *dev = NULL
+        cdef void *extra = NULL
+        cdef uint32_t offset = 0
         if addr >= MAX_26BIT:
             return 0#raise IndexError()
 
@@ -300,7 +317,13 @@ cdef class Armv2:
             raise AccessError()
 
         if NULL != page.write_callback:
-            page.write_callback(page.mapped_device, INPAGE(addr), value)
+            dev = page.mapped_device
+            if dev:
+                extra = dev.extra
+                offset = addr - dev.mapped.start
+            else:
+                offset = INPAGE(addr)
+            page.write_callback(extra, offset, value)
             return
 
         if NULL != page.memory:

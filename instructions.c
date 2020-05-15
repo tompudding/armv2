@@ -157,11 +157,17 @@ static enum armv2_status perform_load(struct page_info *page, uint32_t addr, uin
     }
 
     if( page->read_callback ) {
+        void *mapped_device = NULL;
+        uint32_t offset = INPAGE(addr);
+        if( page->mapped_device ) {
+            mapped_device = page->mapped_device->extra;
+            offset = addr - page->mapped_device->mapped.start;
+        }
         if( byte ) {
-            value = page->read_byte_callback(page->mapped_device, INPAGE(addr), 0);
+            value = page->read_byte_callback(mapped_device, offset, 0);
         }
         else {
-            value = page->read_callback(page->mapped_device, INPAGE(addr), 0);
+            value = page->read_callback(mapped_device, offset, 0);
         }
     }
     else if( NULL != page->memory ) {
@@ -187,7 +193,13 @@ static enum armv2_status perform_store(struct page_info *page, uint32_t addr, ui
         return ARMV2STATUS_INVALID_ARGS;
     }
     if( callback && page->write_callback ) {
-        page->write_callback(page->mapped_device, INPAGE(addr), value);
+        void *mapped_device = NULL;
+        uint32_t offset = INPAGE(addr);
+        if( page->mapped_device ) {
+            mapped_device = page->mapped_device->extra;
+            offset = addr - page->mapped_device->mapped.start;
+        }
+        page->write_callback(mapped_device, offset, value);
     }
     else if( NULL != page->memory ) {
         page->memory[INPAGE(addr) >> 2] = value;
@@ -514,13 +526,19 @@ enum armv2_exception single_data_transfer_instruction(struct armv2 *cpu, uint32_
             uint32_t byte_mask = 0xff << ((rn_val & 3) << 3);
             uint32_t rest_mask = ~byte_mask;
             uint32_t store_val;
-
+            void *mapped_device = NULL;
+            uint32_t offset = INPAGE(rn_val);
+            if( page->mapped_device ) {
+                mapped_device = page->mapped_device->extra;
+                offset = rn_val - page->mapped_device->mapped.start;
+            }
             if( page->write_byte_callback ) {
-                page->write_byte_callback(page->mapped_device, INPAGE(rn_val), value & 0xff);
+
+                page->write_byte_callback(mapped_device, offset, value & 0xff);
             }
             else {
                 if( page->read_byte_callback ) {
-                    store_val = page->read_byte_callback(page->mapped_device, INPAGE(rn_val), 0);
+                    store_val = page->read_byte_callback(mapped_device, offset, 0);
                 }
                 else {
                     store_val = (page->memory[INPAGE(rn_val) >> 2] & rest_mask)
