@@ -585,7 +585,7 @@ class Display(armv2.Device):
         #
         # Each element of the pixel data has 4x32 = 128 bits. The screen is 320 pixels across, so it doesn't
         # really line up nicely
-        self.pixel_data = numpy.zeros((self.pixel_size[0]*self.pixel_size[1]//32, 4), numpy.uint32)
+        self.pixel_data = numpy.zeros((self.pixel_size[0] * self.pixel_size[1] // 32, 4), numpy.uint32)
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
         self.powered_on = True
 
@@ -595,13 +595,6 @@ class Display(armv2.Device):
             bl = Point(x * self.cell_size, y * self.cell_size)
             tr = bl + Point(self.cell_size, self.cell_size)
             quad.set_vertices(bl, tr, 0)
-
-        # for pos, vertex in enumerate(self.fore_vertices):
-        #     x = pos % (self.pixel_size[0])
-        #     y = self.pixel_size[1] - 1 - (pos // (self.pixel_size[1]))
-        #     bl = Point(x, y)
-        #     vertex.set_vertices(bl, None, 1)
-        #     vertex.set_colour((1,0,0,1))
 
         self.font_data = [0 for i in range(256)]
         self.letter_data = [0 for i in range(self.width * self.height)]
@@ -613,7 +606,7 @@ class Display(armv2.Device):
                 i, word = [int(v,16) for v in (i,word)]
                 #Each 64 bit word reprents all the bits of an 8x8 cell, but it's easier to store them as 8
                 #rows of a byte each as that's how they'll get written to memory
-                self.font_data[i] = [ byte_reverse(((word >> i*8) & 0xff)) for i in range(7,-1,-1) ]
+                self.font_data[i] = [ byte_reverse(((word >> (i*8)) & 0xff)) for i in range(7,-1,-1) ]
 
         # initialise the whole screen
         for pos in range(len(self.letter_data)):
@@ -653,7 +646,6 @@ class Display(armv2.Device):
 
         # If it's an aligned read from the frame buffer then it's easier for us to do it directly
         if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
-            print(f'YOYO got write of {value:08x} to {addr:08x}')
             word = (addr - self.frame_buffer_start) // 4
             self.pixel_data[word // 4][word & 3] = value
             return 0
@@ -701,7 +693,8 @@ class Display(armv2.Device):
             self.redraw(pos)
         elif addr < self.font_end:
             pos = addr - self.font_start
-            self.font_data[pos // 8][pos & 7] = value
+            if pos // 8 >= 0x80:
+                self.font_data[pos // 8][7-(pos & 7)] = value
         elif addr < self.frame_buffer_end:
             pos = addr - self.frame_buffer_start
             word = pos // 4

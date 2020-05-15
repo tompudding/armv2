@@ -255,9 +255,9 @@ int main(void) {
     /* } */
 
     //Quick hack to test that the framebuffer works
-    //for(int i = 0; i < WIDTH*HEIGHT*8*8/32; i++) {
-    //    framebuffer[i] = 0xa5a5a5a5;
-    //}
+    /* for(int i = 0; i < WIDTH*HEIGHT*8*8/32; i++) { */
+    /*    framebuffer[i] = 0xa5a5a5a5; */
+    /* } */
 
     while(1) {
         printf(PROMPT);
