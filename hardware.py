@@ -584,7 +584,9 @@ class Display(armv2.Device):
         # now.
         #
         # Each element of the pixel data has 4x32 = 128 bits. The screen is 320 pixels across, so it doesn't
-        # really line up nicely
+        # really line up nicely. Note that the pixel data is stored from the bottom of the screen up (as
+        # that's how we draw it to the screen in our opengl), but we want the CPU to see it from the top down,
+        # so we do that translation in the memory accesses
         self.pixel_data = numpy.zeros((self.pixel_size[0] * self.pixel_size[1] // 32, 4), numpy.uint32)
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
         self.powered_on = True
@@ -624,7 +626,7 @@ class Display(armv2.Device):
 
         # If it's an aligned read from the frame buffer then it's easier for us to do it directly
         if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
-            word = (addr - self.frame_buffer_start) // 4
+            word = self.cpu_to_screen(addr - self.frame_buffer_start) // 4
             return self.pixel_data[word // 4][word & 3]
 
         # Otherwise we handle it byte-wise
@@ -638,6 +640,15 @@ class Display(armv2.Device):
     def pixel_height(self):
         return self.height * self.cell_size * self.scale_factor
 
+    def cpu_to_screen(self, offset):
+        offset *= 8
+        x, y = offset % self.pixel_size[0], offset // self.pixel_size[0]
+        y = self.pixel_size[1] - 1 - y
+        out = ((y * self.pixel_size[0]) + x) // 8
+        print(f'translated offset {offset:x} to {out:x}')
+        return out
+
+
     def write_callback(self, addr, value):
         armv2.debug_log('display write word %x %x\n' % (addr, value))
         if addr == self.letter_end:
@@ -646,7 +657,7 @@ class Display(armv2.Device):
 
         # If it's an aligned read from the frame buffer then it's easier for us to do it directly
         if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
-            word = (addr - self.frame_buffer_start) // 4
+            word = self.cpu_to_screen(addr - self.frame_buffer_start) // 4
             self.pixel_data[word // 4][word & 3] = value
             return 0
 
@@ -668,7 +679,7 @@ class Display(armv2.Device):
             pos = addr - self.font_start
             return self.font_data[pos // 8][pos & 7]
         elif addr < self.frame_buffer_end:
-            pos = addr - self.frame_buffer_start
+            pos = self.cpu_to_screen(addr - self.frame_buffer_start)
             word = pos // 4
             word = self.pixel_data[word // 4][word & 3]
             byte = pos & 3
@@ -696,7 +707,7 @@ class Display(armv2.Device):
             if pos // 8 >= 0x80:
                 self.font_data[pos // 8][7-(pos & 7)] = value
         elif addr < self.frame_buffer_end:
-            pos = addr - self.frame_buffer_start
+            pos = self.cpu_to_screen(addr - self.frame_buffer_start)
             word = pos // 4
             old_word = self.pixel_data[word // 4][word & 3]
             shift = (pos & 3) * 8
