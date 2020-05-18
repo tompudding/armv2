@@ -129,7 +129,7 @@ enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area ) {
 
 void add_loaded_tape( void *addr, size_t len )
 {
-    printf("\n    Data going at %08x\n", (uint32_t)(tape_regions + num_tape_regions));
+    //printf("\n    Data going at %08x\n", (uint32_t)(tape_regions + num_tape_regions));
     if( num_tape_regions >= MAX_TAPE_REGIONS ) {
         //we ignore everything after the max
         return;

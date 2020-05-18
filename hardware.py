@@ -125,7 +125,7 @@ class TapeDrive(armv2.Device):
     id = 0x2730eb6c
 
     stripe_height = 2
-    border_pixels = 32
+    border_pixels = 16
 
     class Codes:
         NEXT_BYTE   = 0
