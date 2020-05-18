@@ -842,7 +842,7 @@ class Machine:
              (self.status == armv2.Status.WAIT_FOR_INTERRUPT and not (self.cpu.pins & armv2.Pins.INTERRUPT))):
             armv2.debug_log('%d %d %x' % (self.steps_to_run, self.status, self.cpu.pins))
             self.cv.wait(5)
-            if self.steps_to_run > 0 and self.status != armv2.Status.BREAKPOINT:
+            if self.steps_to_run > 0:
                 self.status = self.cpu.step(self.steps_to_run)
             self.steps_to_run = 0
             self.cv.notify()
