@@ -92,10 +92,6 @@ class Debugger(object):
         self.connection_callback=connection_callback
         self.connection.start()
 
-        #elf = self.get_file()
-        #with open('/tmp/bob', 'wb') as f:
-        #    f.write(elf)
-
     def handle_file_open(self, message):
         print('Handle file open!',len(self.open_fds))
         for fd in range(10):
@@ -103,6 +99,9 @@ class Debugger(object):
                 continue
             self.open_fds[fd] = self.get_file()
             self.connection.send(messages.FileResponse(fd))
+
+            with open('/tmp/bob', 'wb') as f:
+                f.write(self.open_fds[fd])
             return
 
         for fd in self.open_fds:
@@ -375,6 +374,7 @@ class Debugger(object):
             #self.connection.send(messages.MemViewReply(message.id, message.watch_start, data))
 
     def set_need_symbols(self):
+        print('NEED SYMBOLS')
         self.need_symbols = True
 
     def load_symbols(self):
@@ -446,6 +446,7 @@ class Debugger(object):
 
         # self.state_window.update()
         if self.need_symbols:
+            print('LOADING SYMBOLS')
             self.load_symbols()
         #self.send_register_update()
         self.send_mem_update()

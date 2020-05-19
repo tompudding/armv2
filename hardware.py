@@ -140,6 +140,7 @@ class TapeDrive(armv2.Device):
         self.data_byte     = 0
         self.tape          = None
         self.entered_pilot = False
+        self.entered_first_pilot = False
         self.running       = True
         self.playing       = False
         self.loading       = False
@@ -204,6 +205,7 @@ class TapeDrive(armv2.Device):
         self.status = other.status
         self.tape          = other.tape
         self.entered_pilot = other.entered_pilot
+        self.entered_first_pilot = other.entered_first_pilot
         self.running       = other.running
         self.playing       = other.playing
         self.loading       = other.loading
@@ -404,18 +406,19 @@ class TapeDrive(armv2.Device):
         if not self.loading:
             return
 
-        if self.entered_pilot and self.status == self.Codes.NOT_READY:
+        if self.entered_first_pilot and self.status == self.Codes.NOT_READY:
             # We're waiting, so check if it's time for the next byte
             if self.is_byte_ready():
                 self.feed_byte()
 
-        if bits is None or not self.entered_pilot:
+        if bits is None or not self.entered_first_pilot:
             # In this phase we do rolling bars of grey and red
             if bits is None and not self.entered_pilot:
-                if self.end_callback:
-                    self.end_callback()
                 if stage == armv2_emulator.tapes.TapeStage.tone:
+                    if self.end_callback:
+                        self.end_callback()
                     self.entered_pilot = True
+                    self.entered_first_pilot = True
 
             if self.playing and not self.paused and stage is armv2_emulator.tapes.TapeStage.tone:
                 pos = float(globals.t - self.start_time) / 20
@@ -435,7 +438,7 @@ class TapeDrive(armv2.Device):
         else:
             # The stripes should be all the ones up to that position. If we don't have anything
             # Use zeroes
-            #self.entered_pilot = False
+            self.entered_pilot = False
 
             if len(bits) == 0:
                 #The tape returns a set of empty bits when it's done
@@ -645,7 +648,6 @@ class Display(armv2.Device):
         x, y = offset % self.pixel_size[0], offset // self.pixel_size[0]
         y = self.pixel_size[1] - 1 - y
         out = ((y * self.pixel_size[0]) + x) // 8
-        print(f'translated offset {offset:x} to {out:x}')
         return out
 
 
