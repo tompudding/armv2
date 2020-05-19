@@ -2,6 +2,7 @@ import os
 import sys
 import struct
 import tapes
+import glob
 import configparser
 from elftools.elf.sections import SymbolTableSection
 from elftools.elf.elffile import ELFFile
@@ -259,12 +260,24 @@ if __name__ == '__main__':
     binary = create_binary(args.header, args.binary, args.name, boot=args.boot)
 
     if not args.boot:
-        blocks = [binary]
-        loading_name = os.path.splitext(args.binary)[0] + '_loading.so'
-        if os.path.exists(loading_name):
-            blocks.insert(0, create_binary(args.header, loading_name,
-                                           args.name + ' loader', boot=args.boot, final=False))
+        blocks = []
+        prefix = os.path.splitext(args.binary)[0]
+        loading_name = prefix + '_loading.so'
+        extras = [loading_name]
+        extras.extend(glob.glob(prefix + '*.bin'))
+        for extra in extras:
+            print(f'{extra=}')
+            if not os.path.exists(extra):
+                print('no existo')
+                continue
+            if extra.endswith('.so'):
+                blocks.insert(0, create_binary(args.header, loading_name,
+                                               args.name + ' loader', boot=args.boot, final=False))
+            else:
+                with open(extra,'rb') as f:
+                    blocks.append(to_synapse_format(f.read(), b'', os.path.basename(extra), 0, None, final=False))
         # If we're making a tape wrap it up in the tape format
+        blocks.append(binary)
         binary = to_binary_format(blocks)
 
         final_output = to_tape_format(binary, args.name)
