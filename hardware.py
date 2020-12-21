@@ -312,6 +312,8 @@ class TapeDrive(armv2.Device):
         # their symbols
         self.stop_playing()
         self.loading = False
+        self.entered_pilot = False
+        self.entered_first_pilot = False
         if self.end_callback is not None:
             self.end_callback()
 

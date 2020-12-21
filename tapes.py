@@ -273,7 +273,7 @@ class ProgramTape(Tape):
 
         # The update function is mainly to return to the display a set of bits it should use to draw its
         # coloured bars. If we don't have any bits we also tell it if we're playing a tone so it can draw cool
-        # red and gret bars.
+        # red and grey bars.
         #
         # Actual delivery of data is handled by byte_ready() and get_byte(). If you call get_byte() without
         # calling byte_ready it will just return all the bytes for you as fast as you want them (to facilitate
