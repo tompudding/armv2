@@ -26,16 +26,28 @@ def new_machine(boot_rom):
 
 
 class Emulator(object):
+    #Speeds are cycles per ms
+    speeds = [1024, 512, 256, 16, 2]
+    clock_rate = None
     def __init__(self, callback=None, boot_rom='build/boot.rom', tapes=None):
         self.last = 0
         self.boot_rom = boot_rom
         self.powered_on = True
         self.machine = new_machine(self.boot_rom)
+
         try:
             self.dbg = debugger.Debugger(self.machine, tapes)
         except:
             self.machine.delete()
             raise
+        self.speed_index = 0
+        self.clock_rate = self.speeds[self.speed_index]
+        print(f'Set speed to {self.clock_rate}')
+
+    def cycle_speed(self):
+        self.speed_index = (self.speed_index + 1) % len(self.speeds)
+        self.clock_rate = self.speeds[self.speed_index]
+        print(f'Set speed to {self.clock_rate}')
 
     def __enter__(self):
         return self
@@ -123,7 +135,7 @@ class Emulator(object):
 
     def mainloop(self, callback):
         globals.t = pygame.time.get_ticks()
-        self.dbg.step_num(self.dbg.FRAME_CYCLES)
+        self.dbg.step_num(self.frame_cycles)
         for event in pygame.event.get():
             if event.type == pygame.locals.QUIT:
                 return True

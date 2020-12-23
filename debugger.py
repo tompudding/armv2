@@ -491,6 +491,7 @@ class Debugger(object):
 
     def step_num(self, num):
         self.num_to_step = num
+
         if not self.stopped:
             if self.machine.stepping:
                 return

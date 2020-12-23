@@ -6,25 +6,27 @@
 #include <sys/mman.h>
 #include "armv2.h"
 
-enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions)
+enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
 {
     uint32_t running = 1;
     uint32_t old_mode = 0;
+    int32_t instructions = *instructions_in_out;
 
     //instructions of -1 means run forever
     while(running) {
         old_mode = GETMODE(cpu);
 
         if( instructions == 0 ) {
+            *instructions_in_out = 0;
             return ARMV2STATUS_OK;
         }
 
+        if( WAITING(cpu) && PIN_OFF(cpu, I) && PIN_OFF(cpu, F) ) {
+            *instructions_in_out = instructions;
+            return ARMV2STATUS_WAIT_FOR_INTERRUPT;
+        }
         if( instructions > 0 ) {
             instructions--;
-        }
-
-        if( WAITING(cpu) && PIN_OFF(cpu, I) && PIN_OFF(cpu, F) ) {
-            return ARMV2STATUS_WAIT_FOR_INTERRUPT;
         }
 
         enum armv2_exception exception = EXCEPT_NONE;
@@ -230,6 +232,7 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions)
                     //This is special and means stop executing the emulator
                     //Don't advance PC next time since we're at a bkpt
                     cpu->pc -= 4;
+                    *instructions_in_out = instructions;
                     return ARMV2STATUS_BREAKPOINT;
                 }
             }
@@ -273,6 +276,7 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions)
         }
 
     }
+    *instructions_in_out = instructions;
     return ARMV2STATUS_OK;
 }
 

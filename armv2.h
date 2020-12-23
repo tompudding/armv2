@@ -239,7 +239,7 @@ typedef enum armv2_exception (*instruction_handler_t)(struct armv2 *cpu, uint32_
 enum armv2_status init(struct armv2 *cpu, uint32_t memsize);
 enum armv2_status load_rom(struct armv2 *cpu, const char *filename);
 enum armv2_status cleanup_armv2(struct armv2 *cpu);
-enum armv2_status run_armv2(struct armv2 *cpu, int32_t instructions);
+enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions);
 enum armv2_status fault(struct armv2 *cpu, uint32_t addr);
 enum armv2_status add_hardware(struct armv2 *cpu, struct hardware_device *device);
 enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t start, uint32_t end);

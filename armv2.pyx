@@ -1,6 +1,6 @@
 # cython: language_level=3
 cimport carmv2
-from libc.stdint cimport uint32_t, int64_t
+from libc.stdint cimport uint32_t, int64_t, int32_t
 from libc.stdlib cimport malloc, free
 import itertools
 import threading
@@ -364,11 +364,12 @@ cdef class Armv2:
     def step(self,number = None):
         cdef uint32_t result
         cdef carmv2.armv2 *cpu = self.cpu
-        cdef uint32_t instructions = -1 if number == None else number
+        cdef int32_t instructions = -1 if number == None else number
         with nogil:
-            result = carmv2.run_armv2(cpu, instructions)
+            result = carmv2.run_armv2(cpu, &instructions)
         #right now can only return OK or BREAKPOINT, but we don't care either way...
-        return result
+
+        return result, int(instructions)
 
     def add_hardware(self,Device device,name = None):
         #FIXME: Does this do reference counting properly? We need it to increment, and we need a corresponding
