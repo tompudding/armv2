@@ -46,7 +46,6 @@ class Keyboard(armv2.Device):
         self.ring_buffer = [0 for i in range(self.ringbuffer_size)]
         self.pos = 0
         self.key_state = 0
-        armv2.debug_log('keyboard keyboard keyboard!\n')
 
     def key_down(self, key):
         armv2.debug_log('key down ' + str(key))
@@ -592,7 +591,8 @@ class Display(armv2.Device):
         # really line up nicely. Note that the pixel data is stored from the bottom of the screen up (as
         # that's how we draw it to the screen in our opengl), but we want the CPU to see it from the top down,
         # so we do that translation in the memory accesses
-        self.pixel_data = numpy.zeros((self.pixel_size[0] * self.pixel_size[1] // 32, 4), numpy.uint32)
+        self.pixel_data_words = numpy.zeros((self.pixel_size[0] * self.pixel_size[1] // (32*4), 4), numpy.uint32)
+        self.pixel_data = self.pixel_data_words.view(dtype = numpy.uint8).reshape( (self.pixel_size[1], (self.pixel_size[0] // 8)) )
         self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
         self.powered_on = True
 
@@ -613,11 +613,15 @@ class Display(armv2.Device):
                 i, word = [int(v,16) for v in (i,word)]
                 #Each 64 bit word reprents all the bits of an 8x8 cell, but it's easier to store them as 8
                 #rows of a byte each as that's how they'll get written to memory
-                self.font_data[i] = [ byte_reverse(((word >> (i*8)) & 0xff)) for i in range(7,-1,-1) ]
+                self.font_data[i] = numpy.array([ byte_reverse(((word >> (i*8)) & 0xff)) for i in range(8) ], dtype = numpy.uint8)
 
         # initialise the whole screen
         for pos in range(len(self.letter_data)):
+            self.redraw_colours(pos)
             self.redraw(pos)
+
+        self.dirty = set()
+        self.dirty_colours = set()
 
     def power_down(self):
         self.powered_on = False
@@ -632,7 +636,7 @@ class Display(armv2.Device):
         # If it's an aligned read from the frame buffer then it's easier for us to do it directly
         if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
             word = self.cpu_to_screen(addr - self.frame_buffer_start) // 4
-            return self.pixel_data[word // 4][word & 3]
+            return self.pixel_data_words[word // 4][word & 3]
 
         # Otherwise we handle it byte-wise
 
@@ -654,7 +658,6 @@ class Display(armv2.Device):
 
 
     def write_callback(self, addr, value):
-        armv2.debug_log('display write word %x %x\n' % (addr, value))
         if addr == self.letter_end:
             random.seed(value)
             return 0
@@ -662,7 +665,7 @@ class Display(armv2.Device):
         # If it's an aligned read from the frame buffer then it's easier for us to do it directly
         if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
             word = self.cpu_to_screen(addr - self.frame_buffer_start) // 4
-            self.pixel_data[word // 4][word & 3] = value
+            self.pixel_data_words[word // 4][word & 3] = value
             return 0
 
         for i in range(4):
@@ -685,12 +688,11 @@ class Display(armv2.Device):
         elif addr < self.frame_buffer_end:
             pos = self.cpu_to_screen(addr - self.frame_buffer_start)
             word = pos // 4
-            word = self.pixel_data[word // 4][word & 3]
+            word = self.pixel_data_words[word // 4][word & 3]
             byte = pos & 3
             return (word >> (byte * 8)) & 0xff
 
     def write_byte_callback(self, addr, value):
-        #armv2.debug_log('display write byte %x %x\n' % (addr,value))
         if addr < self.letter_start:
             # It's the palette
             pos = addr
@@ -698,14 +700,16 @@ class Display(armv2.Device):
                 # no change, ignore
                 return 0
             self.palette_data[pos] = value
-            self.redraw(pos)
+            #self.redraw_colours(pos)
+            self.dirty_colours.add(pos)
         elif addr < self.letter_end:
             pos = addr - self.letter_start
             if value == self.letter_data[pos]:
                 # no change, ignore
                 return 0
             self.letter_data[pos] = value
-            self.redraw(pos)
+            #self.redraw(pos)
+            self.dirty.add(pos)
         elif addr < self.font_end:
             pos = addr - self.font_start
             if pos // 8 >= 0x80:
@@ -713,50 +717,43 @@ class Display(armv2.Device):
         elif addr < self.frame_buffer_end:
             pos = self.cpu_to_screen(addr - self.frame_buffer_start)
             word = pos // 4
-            old_word = self.pixel_data[word // 4][word & 3]
+            old_word = self.pixel_data_words[word // 4][word & 3]
             shift = (pos & 3) * 8
             mask = 0xffffffff ^ (0xff << shift)
-            self.pixel_data[word // 4][word & 3] = (old_word & mask) | (value << shift)
+            self.pixel_data_words[word // 4][word & 3] = (old_word & mask) | (value << shift)
         return 0
 
-    def redraw(self, pos):
-
+    def redraw_colours(self, pos):
         palette = self.palette_data[pos]
         back_colour = self.Colours.palette[(palette >> 4) & 0xf]
         fore_colour = self.Colours.palette[(palette) & 0xf]
         self.cell_quads[pos].set_colour(fore_colour)
         self.cell_quads[pos].set_back_colour(back_colour)
 
-
+    def redraw(self, pos):
         letter = self.letter_data[pos]
         letter_bits = self.font_data[letter]
-        #We need the chunk positions for our pixel data which are a bit awkward. pos is the linear cell position (i.e y*width + height), so the pixel position is that times 8
 
         x = pos % self.width
         y = self.height - 1 - (pos // self.width)
-        pixel_cell_pos = (x + (y * self.cell_size * self.width)) * self.cell_size
 
-        for i in range(len(letter_bits)):
-            pixel_pos = pixel_cell_pos + (i * self.width * 8)
-            word = pixel_pos // 32
-            shift = pixel_pos & 0x1f
-
-            #we are only changing one byte from this word, so mask that off
-            mask = (0xff << shift) ^ 0xffffffff
-
-            old = self.pixel_data[word // 4][word & 3]
-            new = (letter_bits[7-i] << shift) | (old & mask)
-            self.pixel_data[word // 4][word & 3] = new
-
-        #self.fore_vertices[pos].set_colour(fore_colour)
-        #tc = self.atlas.texture_coords(chr(letter))
-        #self.fore_quads[pos].set_texture_coordinates(tc)
+        self.pixel_data[y*8:(y+1)*8, x] = letter_bits
 
     def new_frame(self):
         drawing.new_crt_frame(self.crt_buffer)
         # self.crt_buffer.bind_for_writing()
+        redraw = self.dirty
+        redraw_colours = self.dirty_colours
+        self.dirty = set()
+        self.dirty_colours = set()
+        for pos in redraw:
+            self.redraw(pos)
+        for pos in redraw_colours:
+            self.redraw_colours(pos)
+
+        #self.dirty = set()
         if self.powered_on:
-            drawing.draw_pixels(self.cell_quads_buffer, self.pixel_data)
+            drawing.draw_pixels(self.cell_quads_buffer, self.pixel_data_words)
             #drawing.draw_no_texture(self.fore_vertex_buffer)
 
     def end_frame(self):
@@ -855,10 +852,15 @@ class Machine:
         while self.running and \
             ((self.steps_to_run == 0) or
              (self.status == armv2.Status.WAIT_FOR_INTERRUPT and not (self.cpu.pins & armv2.Pins.INTERRUPT))):
-            armv2.debug_log('%d %d %x' % (self.steps_to_run, self.status, self.cpu.pins))
             self.cv.wait(5)
+            num_left = self.steps_to_run
             if self.steps_to_run > 0:
-                self.status = self.cpu.step(self.steps_to_run)
+                #self.cv.release()
+                #self.cv.notify()
+                self.status, num_left = self.cpu.step(self.steps_to_run)
+                #self.cv.acquire()
+            if num_left != self.steps_to_run:
+                armv2.debug_log(f'{self.steps_to_run=:d} {self.status=:x} {num_left=} {self.cpu.pins=:x}')
             self.steps_to_run = 0
             self.cv.notify()
 
@@ -873,17 +875,17 @@ class Machine:
 
     def step(self, num):
         with self.cv:
-            self.steps_to_run = num
+            self.steps_to_run = int(num)
             self.cv.notify()
 
     def step_and_wait(self, num):
         self.step(num)
+
         with self.cv:
             while self.running:
                 while self.running and (self.steps_to_run and self.status != armv2.Status.WAIT_FOR_INTERRUPT):
                     self.cv.wait(0.1)
-                    # Keep interrupts pumping every now and again
-                    #self.cpu.interrupt(6, 0)
+
                 if not self.running:
                     break
                 return self.status
@@ -927,11 +929,10 @@ class Machine:
             self.tape_drive.delete()
 
     def interrupt(self, hw_id, code):
-        # print 'Interrupting1'
         with self.cv:
             self.cpu.interrupt(hw_id, code)
-            # If the CPU is presently paused, it won't ever know it's received an interrupt, it needs to take one step
-            # to take the exception
+            # If the CPU is presently paused, it won't ever know it's received an interrupt, it needs to take
+            # one step to take the exception
             if self.steps_to_run == 0:
                 self.steps_to_run = 1
             self.cv.notify()
