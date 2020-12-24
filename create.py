@@ -4,6 +4,7 @@ import struct
 import tapes
 import glob
 import configparser
+import elftools
 from elftools.elf.sections import SymbolTableSection
 from elftools.elf.elffile import ELFFile
 
@@ -18,6 +19,12 @@ class RelTypes:
 def load(filename):
     with open(filename, 'rb') as f:
         return bytearray(f.read())
+
+def decode_immediate(n):
+    imm = n & 0xff
+    rot = (n >> 8) & 0xf
+
+    return (imm >> rot) | (imm << (32 - rot))
 
 
 def get_symbols(elf):
@@ -46,6 +53,81 @@ def get_symbols(elf):
         #             self._versioninfo['type'] == 'GNU'):
         #         version = self._symbol_version(nsym)
         #         if (version['name'] != symbol.name and
+
+    # We'd also like to provide symbols for the .got entries and the .plt functions
+    dynsym = elf.get_section_by_name('.dynsym')
+    if not dynsym:
+        return
+    symbols = [symbol.name.strip() for symbol in dynsym.iter_symbols()]
+    for section in elf.iter_sections():
+        if isinstance(section, elftools.elf.relocation.RelocationSection):
+            print('***',section.name)
+    section = elf.get_section_by_name('.rel.plt')
+    gots = {}
+    for relocation in section.iter_relocations():
+        name = symbols[relocation['r_info_sym']]
+        addr = relocation['r_offset']
+        info = relocation['r_info']
+        yield addr, name + '_ptr'
+        gots[addr] = name
+
+    plt = elf.get_section_by_name('.plt')
+    plt_data = plt.data()
+    plt_addr = plt.header['sh_addr']
+
+    # We're expecting PLT functions to look like this:
+    # ADRL R12, 0x<num_1>
+    # LDR PC, [R12, #0x<num_2>]
+    #
+    # where (num_1 + num_2) is one of the GOT symbols we just worked ou
+    instructions = [struct.unpack('<I',plt_data[pos:pos+4])[0] for pos in range(0, len(plt_data), 4)]
+
+    for i, ins in enumerate(instructions):
+
+        if (ins & 0xfe500000) != 0xe4100000:
+            continue
+        # this is an ldr
+        rt = (ins >> 12) & 0xf
+        if rt != 15:
+            #we want it to be loading pc
+            continue
+        rn = (ins >> 16) & 0xf
+        imm = ins & 0xfff
+        # we look for an ADR 1 or two instructions back. Note that I'm seeing ADD R12, R12, 0 in the middle for some reason. Let's add that in the mix
+        for j in range(1,3):
+            if (instructions[i-j] & 0xffff0000) != 0xe28f0000:
+                continue
+
+            if j == 2:
+                if (instructions[i-1] & 0xffe00000) != 0xe2800000:
+                    raise Exception('Unexpected PLT thingy')
+
+                extra_rd = (instructions[i-1] >> 16) & 0xf
+                extra_rn = (instructions[i-1] >> 12) & 0xf
+                if extra_rd != rn:
+                    #This doesn't matter it's not affecting the register we care about
+                    continue
+                if extra_rn != rn:
+                    raise Exception('Gah bobbins')
+
+                imm += decode_immediate(instructions[i-1] & 0xfff)
+
+            #we found an ADR!
+            adr_rd = (instructions[i-j] >> 12) & 0xf
+            if adr_rd != rn:
+                continue
+
+            adr_imm = decode_immediate(instructions[i-j] & 0xfff)
+            current_addr = plt_addr + ((i-j)*4)
+            # We have to add 8 to current addr for ARM weirdness
+            total = imm + (current_addr+8) + adr_imm
+
+            if total in gots:
+                yield current_addr, gots[total]
+
+
+
+    #print([nsym, symbol in enumerate(section.iter_symbols)])
 
 
 def get_full_symbols(elf):
