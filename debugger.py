@@ -484,7 +484,10 @@ class Debugger(object):
             #Can we send the message to GDB here or do we have threading issues? Let's try here
             if self.connection:
                 self.connection.send(messages.SWBreakReply())
-        #raise SystemExit('bob %d' % self.num_to_step)
+
+            if self.connection_callback:
+                self.connection_callback(stopped=True)
+
 
     def wants_interrupt(self):
         return not self.stopped or self.machine.is_waiting()
