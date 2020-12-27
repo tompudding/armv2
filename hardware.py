@@ -521,13 +521,10 @@ class Display(armv2.Device):
 
     Mapped memory looks like this:
 
-    0x0000 - 0x04b0 : Letter array, 1 byte for every pixel starting at the bottom left, where the high nibble
-                      represents the background colour and the low nibble the foreground colour
-    0x04b0 - 0x0960 : Same as above, but each byte represents the ascii code for the character displayed
+    0x000 - 0x4b0 : Letter array, 1 byte for every pixel starting at the bottom left, where the high nibble
+                    represents the background colour and the low nibble the foreground colour
+    0x4b0 - 0x960 : Same as above, but each byte represents the ascii code for the character displayed
 
-    0x0960 - 0x1160 : font data, 256 8 byte words, each of which is a bitmask for that character
-
-    0x1160 - 0x36e0 : pixel data
     """
 
     class Colours:
@@ -638,7 +635,7 @@ class Display(armv2.Device):
 
         # If it's an aligned read from the frame buffer then it's easier for us to do it directly
         if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
-            x, y, word = self.cpu_to_screen(addr - self.frame_buffer_start) // 4
+            word = self.cpu_to_screen(addr - self.frame_buffer_start) // 4
             return self.pixel_data_words[word // 4][word & 3]
 
         # Otherwise we handle it byte-wise
@@ -657,7 +654,7 @@ class Display(armv2.Device):
         x, y = offset % self.pixel_size[0], offset // self.pixel_size[0]
         y = self.pixel_size[1] - 1 - y
         out = ((y * self.pixel_size[0]) + x) // 8
-        return x, y, out
+        return out
 
 
     def write_callback(self, addr, value):
@@ -667,18 +664,8 @@ class Display(armv2.Device):
 
         # If it's an aligned read from the frame buffer then it's easier for us to do it directly
         if 0 == (addr & 3) and addr >= self.frame_buffer_start and addr < self.frame_buffer_end:
-            x, y, word = self.cpu_to_screen(addr - self.frame_buffer_start)
-            word //= 4
+            word = self.cpu_to_screen(addr - self.frame_buffer_start) // 4
             self.pixel_data_words[word // 4][word & 3] = value
-            cell_x = x // self.cell_size
-            cell_y = y // self.cell_size
-            cell = (cell_y * self.width) + cell_x
-            for i in range(4):
-                try:
-                    self.dirty.remove(cell + i)
-                except KeyError:
-                    pass
-
             return 0
 
         for i in range(4):
@@ -699,7 +686,7 @@ class Display(armv2.Device):
             pos = addr - self.font_start
             return self.font_data[pos // 8][pos & 7]
         elif addr < self.frame_buffer_end:
-            x, y, pos = self.cpu_to_screen(addr - self.frame_buffer_start)
+            pos = self.cpu_to_screen(addr - self.frame_buffer_start)
             word = pos // 4
             word = self.pixel_data_words[word // 4][word & 3]
             byte = pos & 3
@@ -728,16 +715,7 @@ class Display(armv2.Device):
             if pos // 8 >= 0x80:
                 self.font_data[pos // 8][7-(pos & 7)] = value
         elif addr < self.frame_buffer_end:
-            #any cell we touch directly does not need updating with letter data
-
-            x, y, pos = self.cpu_to_screen(addr - self.frame_buffer_start)
-            cell_x = x // self.cell_size
-            cell_y = y // self.cell_size
-            cell = (cell_y * self.width) + cell_x
-            try:
-                self.dirty.remove(cell)
-            except KeyError:
-                pass
+            pos = self.cpu_to_screen(addr - self.frame_buffer_start)
             word = pos // 4
             old_word = self.pixel_data_words[word // 4][word & 3]
             shift = (pos & 3) * 8
