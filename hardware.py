@@ -521,10 +521,13 @@ class Display(armv2.Device):
 
     Mapped memory looks like this:
 
-    0x000 - 0x4b0 : Letter array, 1 byte for every pixel starting at the bottom left, where the high nibble
-                    represents the background colour and the low nibble the foreground colour
-    0x4b0 - 0x960 : Same as above, but each byte represents the ascii code for the character displayed
+    0x0000 - 0x04b0 : Letter array, 1 byte for every pixel starting at the bottom left, where the high nibble
+                      represents the background colour and the low nibble the foreground colour
+    0x04b0 - 0x0960 : Same as above, but each byte represents the ascii code for the character displayed
 
+    0x0960 - 0x1160 : font data, 256 8 byte words, each of which is a bitmask for that character
+
+    0x1160 - 0x36e0 : pixel data
     """
 
     class Colours:
@@ -620,9 +623,6 @@ class Display(armv2.Device):
             self.redraw_colours(pos)
             self.redraw(pos)
 
-        self.dirty = set()
-        self.dirty_colours = set()
-
     def power_down(self):
         self.powered_on = False
 
@@ -700,16 +700,16 @@ class Display(armv2.Device):
                 # no change, ignore
                 return 0
             self.palette_data[pos] = value
-            #self.redraw_colours(pos)
-            self.dirty_colours.add(pos)
+            self.redraw_colours(pos)
+            #self.dirty_colours.add(pos)
         elif addr < self.letter_end:
             pos = addr - self.letter_start
             if value == self.letter_data[pos]:
                 # no change, ignore
                 return 0
             self.letter_data[pos] = value
-            #self.redraw(pos)
-            self.dirty.add(pos)
+            self.redraw(pos)
+            #self.dirty.add(pos)
         elif addr < self.font_end:
             pos = addr - self.font_start
             if pos // 8 >= 0x80:
@@ -742,14 +742,14 @@ class Display(armv2.Device):
     def new_frame(self):
         drawing.new_crt_frame(self.crt_buffer)
         # self.crt_buffer.bind_for_writing()
-        redraw = self.dirty
-        redraw_colours = self.dirty_colours
-        self.dirty = set()
-        self.dirty_colours = set()
-        for pos in redraw:
-            self.redraw(pos)
-        for pos in redraw_colours:
-            self.redraw_colours(pos)
+        # redraw = self.dirty
+        # redraw_colours = self.dirty_colours
+        # self.dirty = set()
+        # self.dirty_colours = set()
+        # for pos in redraw:
+        #     self.redraw(pos)
+        # for pos in redraw_colours:
+        #     self.redraw_colours(pos)
 
         #self.dirty = set()
         if self.powered_on:
