@@ -60,6 +60,7 @@ class Debugger(object):
         self.machine.tape_drive.register_callback(self.set_need_symbols)
         self.connection = None
         self.open_fds = {}
+        self.current_file = None
         try:
             self.load_symbols()
             self.mem_watches = {}
@@ -99,9 +100,6 @@ class Debugger(object):
                 continue
             self.open_fds[fd] = self.get_file()
             self.connection.send(messages.FileResponse(fd))
-
-            with open('/tmp/bob', 'wb') as f:
-                f.write(self.open_fds[fd])
             return
 
         for fd in self.open_fds:
@@ -137,8 +135,11 @@ class Debugger(object):
             self.connection.send(messages.FileResponse(-1))
             return
 
-    def get_file(self):
+    def get_file(self, override=False):
         #Return an elf file that represents the current machine
+        if not override and self.current_file is not None:
+            return self.current_file
+
         elf = melf.ELF(e_machine=melf.EM.EM_ARM, e_data=melf.ELFDATA.ELFDATA2LSB)
         libs = self.machine.cpu.loaded_libraries()
         sections = []
@@ -402,6 +403,10 @@ class Debugger(object):
         self.symbols = symbols
         # pretend they just requested the symbols
         #self.handle_request_symbols(self.symbols)
+        self.current_file = self.get_file(override=True)
+        with open('/tmp/current_file', 'wb') as f:
+            f.write(self.current_file)
+
 
     def add_breakpoint(self, addr):
         print(f'Add breakpoint {addr=:x}')
