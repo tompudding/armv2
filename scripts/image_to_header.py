@@ -1,6 +1,8 @@
 from PIL import Image
 import sys
 import numpy
+import zlib
+import lzma
 
 def rgb(r, g, b, a=0):
     return r << 16 | g << 8 | b
@@ -94,6 +96,9 @@ for cell_y in range(height):
 
 palette_data = bytes(palette_data)
 pixel_data   = bytes(pixel_data)
+
+jim = palette_data + pixel_data
+print(len(jim), len(zlib.compress(jim)), len(lzma.compress(jim)))
 
 out_data = [f'uint8_t wolf_palette_data[{len(palette_data)}] = {{']
 for pos in range(0, len(palette_data), 16):
