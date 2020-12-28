@@ -704,9 +704,11 @@ class Display(armv2.Device):
             #self.dirty_colours.add(pos)
         elif addr < self.letter_end:
             pos = addr - self.letter_start
-            if value == self.letter_data[pos]:
-                # no change, ignore
-                return 0
+            # It would be nice if we could skip things that were staying the same, but what if there has been
+            #a direct write to video memory in this cell? computing which cells to mark as changed for every
+            #pixel is quite expensive, so skip this optimization for now
+            # if value == self.letter_data[pos]: #no change
+            #     return 0
             self.letter_data[pos] = value
             self.redraw(pos)
             #self.dirty.add(pos)
