@@ -64,6 +64,7 @@ int tape_next_byte(uint8_t *out);
 int tape_next_word(uint32_t *out);
 enum tape_codes load_tape(uint8_t *symbols_area, void **entry_point_out);
 enum tape_codes load_tape_symbols( uint8_t *tape_area, uint8_t *symbols_area );
+void write_to_screen(char *text, int x, int y, uint8_t colour);
 
 #include <xprintf.h>
 #define printf xprintf

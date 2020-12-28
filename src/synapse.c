@@ -62,6 +62,16 @@ size_t dump_text(char *text, size_t cursor_pos) {
     return cursor_pos;
 }
 
+void write_to_screen(char *text, int x, int y, uint8_t colour) {
+    size_t cursor_pos = (WIDTH * y) + x;
+
+    while(*text){
+        letter_data[cursor_pos] = *text++;
+        palette_data[cursor_pos] = colour;
+        cursor_pos++;
+    }
+}
+
 void crash_handler(uint32_t type, uint32_t pc, uint32_t sp, uint32_t lr) {
     char *p;
     uint32_t *registers = (void*)(crash_handler_word + 1);

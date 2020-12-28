@@ -13,11 +13,12 @@
 
 #include "xprintf.h"
 
+extern int putchar(int);
 
 #if _USE_XFUNC_OUT
 #include <stdarg.h>
 void (*xfunc_out)(unsigned char);	/* Pointer to the output stream */
-static char *outptr;
+static char *outptr = 0;
 
 /* /\*----------------------------------------------*\/ */
 /* /\* Put a character                              *\/ */
@@ -27,9 +28,17 @@ static char *outptr;
 /* /\* Put a null-terminated string                 *\/ */
 /* /\*----------------------------------------------*\/ */
 
-#define xputc putchar
+//#define xputc putchar
 #define xfputs fputs
 
+void xputc(char c) {
+    if( 0 == outptr ) {
+        putchar(c);
+    }
+    else {
+        *outptr++ = c;
+    }
+}
 void xputs (					/* Put a string to the default device */
 	const char* str				/* Pointer to the string */
 )
@@ -156,7 +165,7 @@ void xprintf (			/* Put a formatted string to the default device */
 )
 {
 	va_list arp;
-
+    outptr = 0;
 
 	va_start(arp, fmt);
 	xvprintf(fmt, arp);
