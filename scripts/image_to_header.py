@@ -3,6 +3,7 @@ import sys
 import numpy
 import zlib
 import lzma
+import subprocess
 
 def rgb(r, g, b, a=0):
     return r << 16 | g << 8 | b
@@ -98,17 +99,30 @@ palette_data = bytes(palette_data)
 pixel_data   = bytes(pixel_data)
 
 jim = palette_data + pixel_data
-print(len(jim), len(zlib.compress(jim)), len(lzma.compress(jim)))
+with open('/tmp/bin','wb') as file:
+    file.write(jim)
 
-out_data = [f'uint8_t wolf_palette_data[{len(palette_data)}] = {{']
-for pos in range(0, len(palette_data), 16):
-    out_data.append(', '.join( (f'0x{b:02x}' for b in palette_data[pos:pos+16]) ) + ',')
+subprocess.check_call(['lzg','-9','/tmp/bin','/tmp/jim'])
 
-out_data.append(f'}};\nuint8_t wolf_pixel_data[{len(pixel_data)}] = {{')
+with open('/tmp/jim','rb') as file:
+    jim_compressed = file.read()
 
-for pos in range(0, len(pixel_data), 16):
-    out_data.append(', '.join( (f'0x{b:02x}' for b in pixel_data[pos:pos+16]) ) + ',')
-out_data.append('};\n')
+out_data = [f'size_t wolf_uncompressed_len = {len(jim)};']
+out_data.append(f'uint8_t wolf_compressed[{len(jim_compressed)}] = {{')
+
+for pos in range(0, len(jim_compressed), 16):
+    out_data.append(', '.join( (f'0x{b:02x}' for b in jim_compressed[pos:pos+16]) ) + ',')
+out_data.append('};')
+
+# out_data = [f'uint8_t wolf_palette_data[{len(palette_data)}] = {{']
+# for pos in range(0, len(palette_data), 16):
+#     out_data.append(', '.join( (f'0x{b:02x}' for b in palette_data[pos:pos+16]) ) + ',')
+
+# out_data.append(f'}};\nuint8_t wolf_pixel_data[{len(pixel_data)}] = {{')
+
+# for pos in range(0, len(pixel_data), 16):
+#     out_data.append(', '.join( (f'0x{b:02x}' for b in pixel_data[pos:pos+16]) ) + ',')
+# out_data.append('};\n')
 
 with open(out_filename, 'w') as file:
     file.write('\n'.join(out_data))
