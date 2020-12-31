@@ -27,7 +27,7 @@ def new_machine(boot_rom):
 
 class Emulator(object):
     #Speeds are cycles per ms
-    speeds = [1024, 512, 256, 16, 2]
+    speeds = [0x400, 0x200, 0x100, 16, 2]
     clock_rate = None
     def __init__(self, callback=None, boot_rom='build/boot.rom', tapes=None):
         self.last = 0
