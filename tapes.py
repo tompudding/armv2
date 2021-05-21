@@ -9,17 +9,19 @@ import io
 import struct
 import traceback
 import globals
+
 try:
     from . import popcnt
 except ImportError:
-    #We also need to import this from create.py as a top-level package
+    # We also need to import this from create.py as a top-level package
     import popcnt
 
+
 def butter_bandpass(lowcut, highcut, fs, order=5):
-    nyq  = 0.5 * fs
-    low  = lowcut / nyq
+    nyq = 0.5 * fs
+    low = lowcut / nyq
     high = highcut / nyq
-    b, a = butter(order, [low, high], btype='band')
+    b, a = butter(order, [low, high], btype="band")
     return b, a
 
 
@@ -32,7 +34,7 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
 def butter_lowpass(cutoff, fs, order=5):
     nyq = 0.5 * fs
     normal_cutoff = cutoff // nyq
-    b, a = butter(order, normal_cutoff, btype='low', analog=True)
+    b, a = butter(order, normal_cutoff, btype="low", analog=True)
     return b, a
 
 
@@ -44,12 +46,13 @@ def butter_lowpass_filter(data, cutoff, fs, order=5):
 
 class Tape(object):
     """Instances of this class represent tapes that can be loaded into computers, including their binary data,
-       sound file, name, and tape image (if one is provided)"""
-    data_filename  = 'data.bin'
-    info_filename  = 'info.cfg'
-    image_filename = 'image.png'
+    sound file, name, and tape image (if one is provided)"""
 
-    metadata_section = 'metadata'
+    data_filename = "data.bin"
+    info_filename = "info.cfg"
+    image_filename = "image.png"
+
+    metadata_section = "metadata"
 
     pilot_length = 2
 
@@ -64,17 +67,17 @@ class Tape(object):
         self.pause_bits = [0 for i in range(1024)]
 
         if filename is None:
-            assert(data is not None)
+            assert data is not None
             self.data = data
             self.info = info
             self.image = image
         else:
             with zipfile.ZipFile(filename) as zf:
-                config_bytes = io.StringIO(zf.read(self.info_filename).decode('ascii'))
+                config_bytes = io.StringIO(zf.read(self.info_filename).decode("ascii"))
                 self.data = zf.read(self.data_filename)
                 self.info = configparser.ConfigParser()
                 self.info.read_file(config_bytes)
-                #self.image = pygame.image.load(zf.read(self.image_filename))
+                # self.image = pygame.image.load(zf.read(self.image_filename))
                 # TODO: Worry about the image later as we'll need to bake them into the computer atlas at runtime
                 # if we want them to be definable here
                 self.image = None
@@ -84,7 +87,7 @@ class Tape(object):
         self.info.write(config_bytes)
         config_bytes.seek(0)
         with tempfile.SpooledTemporaryFile() as tmp:
-            with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as archive:
+            with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as archive:
                 archive.writestr(self.data_filename, self.data)
                 archive.writestr(self.info_filename, config_bytes.read())
 
@@ -94,22 +97,23 @@ class Tape(object):
 
     @property
     def name(self):
-        return self.info[self.metadata_section]['name']
+        return self.info[self.metadata_section]["name"]
 
     def play_sound(self):
         self.sound.play()
 
     def stop_sound(self):
         self.sound.stop()
-        #As we might want to resume playing, we rebuild the sound from the current position
+        # As we might want to resume playing, we rebuild the sound from the current position
         self.build_sound()
 
 
 class ProgramTape(Tape):
     cache_seconds = 1
+
     def __init__(self, filename):
 
-        #Position in the tape in milliseconds
+        # Position in the tape in milliseconds
         self.position = 0
         self.current_block = 0
         self.current_bit = 0
@@ -119,13 +123,13 @@ class ProgramTape(Tape):
         self.data_blocks = []
         pos = 0
         while pos < len(self.data):
-            word = self.data[pos:pos+4]
+            word = self.data[pos : pos + 4]
             if len(word) != 4:
                 # We're done
                 break
-            size = struct.unpack('>I', word)[0]
-            self.data_blocks.append(self.data[pos+4:pos+4+size])
-            pos += size+4
+            size = struct.unpack(">I", word)[0]
+            self.data_blocks.append(self.data[pos + 4 : pos + 4 + size])
+            pos += size + 4
 
         self.build_samples()
         self.build_sound()
@@ -141,9 +145,9 @@ class ProgramTape(Tape):
 
     def fast_forward(self):
         self.position = self.end_time
-        self.current_block = len(self.data_blocks)-1
-        self.current_bit = len(self.bit_times[self.current_block])-1
-        self.block_pos = len(self.data_blocks[self.current_block])-1
+        self.current_block = len(self.data_blocks) - 1
+        self.current_bit = len(self.bit_times[self.current_block]) - 1
+        self.block_pos = len(self.data_blocks[self.current_block]) - 1
         self.block_start = self.end_time
         self.build_sound()
 
@@ -155,25 +159,25 @@ class ProgramTape(Tape):
 
         # We'll want a pilot signal first as it will go before all data segments
         num_pilot_samples = 22050 * self.pilot_length
-        pilot_samples = numpy.zeros(shape=num_pilot_samples, dtype='float64')
+        pilot_samples = numpy.zeros(shape=num_pilot_samples, dtype="float64")
         popcnt.create_tone(pilot_samples, set_length)
 
         # And before the first pilot segment, we want some tape noise to sell the illusion
         raw_samples = globals.sounds.noise.get_raw()
-        #That's a bytes object
+        # That's a bytes object
 
         self.byte_samples = []
-        self.bit_times    = []
-        self.bits         = []
+        self.bit_times = []
+        self.bits = []
 
-        all_samples = [numpy.frombuffer(raw_samples, dtype='int16')]
+        all_samples = [numpy.frombuffer(raw_samples, dtype="int16")]
         total_samples = len(all_samples[0])
 
-        self.noise_len = (1000*total_samples) / freq
-        self.preamble_len = self.noise_len + self.pilot_length*1000
+        self.noise_len = (1000 * total_samples) / freq
+        self.preamble_len = self.noise_len + self.pilot_length * 1000
 
         for block in self.data_blocks:
-            data = numpy.fromstring(block, dtype='uint32')
+            data = numpy.fromstring(block, dtype="uint32")
             set_bits = popcnt.count_array(data)
             clr_bits = (len(data) * 32) - set_bits
             # The sigmals we're using are either 8 (4 on 4 off) or 16 samples at 22050 Hz, which is
@@ -183,15 +187,16 @@ class ProgramTape(Tape):
             total_samples += block_samples
             total_samples += num_pilot_samples
 
-            samples = numpy.zeros(shape=block_samples, dtype='float64')
+            samples = numpy.zeros(shape=block_samples, dtype="float64")
             # print 'ones={ones} zeros={zeros} length={l}'.format(ones=set_bits, zeros=clr_bits, l=float(block_samples) // freq)
             # The position in samples that each byte starts
-            byte_samples = numpy.zeros(shape=len(data) * 4, dtype='uint32')
+            byte_samples = numpy.zeros(shape=len(data) * 4, dtype="uint32")
             # The number of milliseconds that each bit should
-            bit_times = numpy.zeros(shape=len(data) * 4 * 8, dtype='uint32')
-            bits = numpy.zeros(shape=len(data) * 4 * 9, dtype='uint8')
-            popcnt.create_samples(data, samples, byte_samples, bit_times, bits,
-                                  clr_length, set_length, float(1000) / 22050)
+            bit_times = numpy.zeros(shape=len(data) * 4 * 8, dtype="uint32")
+            bits = numpy.zeros(shape=len(data) * 4 * 9, dtype="uint8")
+            popcnt.create_samples(
+                data, samples, byte_samples, bit_times, bits, clr_length, set_length, float(1000) / 22050
+            )
             all_samples.append(pilot_samples)
             all_samples.append(samples)
             self.byte_samples.append(byte_samples)
@@ -200,7 +205,7 @@ class ProgramTape(Tape):
 
         samples = numpy.concatenate(all_samples)
         # bandpass filter it to make it less harsh
-        self.samples = butter_bandpass_filter(samples, 500, 2700, freq).astype('int16')
+        self.samples = butter_bandpass_filter(samples, 500, 2700, freq).astype("int16")
 
         if num_channels != 1:
             # Duplicate it into the required number of channels
@@ -238,7 +243,7 @@ class ProgramTape(Tape):
         return ready
 
     def trim_cache(self, pos):
-        print('Trim cache')
+        print("Trim cache")
         pos_sample = pos * self.sample_rate
 
         while pos_sample > self.byte_samples[self.current_block][self.block_pos] + self.cache_samples:
@@ -246,7 +251,6 @@ class ProgramTape(Tape):
             if self.block_pos >= len(self.byte_samples[self.current_block]):
                 self.advance_block()
                 return
-
 
     def get_byte(self):
         try:
@@ -307,7 +311,11 @@ class ProgramTape(Tape):
                 self.current_bit += 1
         except IndexError:
             self.current_bit = len(self.bit_times[self.current_block])
-        return self.bits[self.current_block][self.current_bit:self.current_bit + num_required], TapeStage.data
+        return (
+            self.bits[self.current_block][self.current_bit : self.current_bit + num_required],
+            TapeStage.data,
+        )
+
 
 class TapeStage:
     no_data = 0

@@ -7,33 +7,33 @@ import struct
 import bisect
 from . import comms
 
+
 class Error(Exception):
     pass
 
 
 class Types(comms.Types):
-    STOP            =  0
-    RESUME          =  1
-    STEP            =  2
-    RESTART         =  3
-    SETBKPT         =  4
-    UNSETBKPT       =  5
-    MEMDATA         =  6
-    MEMWATCH        =  7
-    UNWATCH         =  8
-    STATE           =  9
-    DISASSEMBLY     = 10
+    STOP = 0
+    RESUME = 1
+    STEP = 2
+    RESTART = 3
+    SETBKPT = 4
+    UNSETBKPT = 5
+    MEMDATA = 6
+    MEMWATCH = 7
+    UNWATCH = 8
+    STATE = 9
+    DISASSEMBLY = 10
     DISASSEMBLYDATA = 11
-    TAPEREQUEST     = 12
-    TAPE_LIST       = 13
-    TAPE_LOAD       = 14
-    TAPE_UNLOAD     = 15
-    SYMBOL_DATA     = 16
-    NEXT            = 17
-    CONNECT         = 18
-    DISCONNECT      = 19
-    UNKNOWN         = 20
-
+    TAPEREQUEST = 12
+    TAPE_LIST = 13
+    TAPE_LOAD = 14
+    TAPE_UNLOAD = 15
+    SYMBOL_DATA = 16
+    NEXT = 17
+    CONNECT = 18
+    DISCONNECT = 19
+    UNKNOWN = 20
 
 
 class DynamicObject(object):
@@ -44,7 +44,7 @@ class Message(object):
     type = Types.UNKNOWN
 
     def to_binary(self):
-        return struct.pack('>I', self.type.value)
+        return struct.pack(">I", self.type.value)
 
 
 class Handshake(Message):
@@ -56,13 +56,13 @@ class Handshake(Message):
 
     def to_binary(self):
         first = super(Handshake, self).to_binary()
-        last = struct.pack('>H', self.port) + self.host.encode('ascii')
+        last = struct.pack(">H", self.port) + self.host.encode("ascii")
         return first + last
 
     @staticmethod
     def from_binary(data):
-        port = struct.unpack('>H', data[:2])[0]
-        host = data[2:].decode('ascii')
+        port = struct.unpack(">H", data[:2])[0]
+        host = data[2:].decode("ascii")
         return Handshake(host, port)
 
 
@@ -77,17 +77,17 @@ class MachineState(Message):
 
     def to_binary(self):
         first = super(MachineState, self).to_binary()
-        regs = b''.join(struct.pack('>I', reg) for reg in self.registers)
-        mode = struct.pack('>I', self.mode)
-        pc = struct.pack('>I', self.pc)
-        is_waiting = b'1' if self.is_waiting else b'\x00'
+        regs = b"".join(struct.pack(">I", reg) for reg in self.registers)
+        mode = struct.pack(">I", self.mode)
+        pc = struct.pack(">I", self.pc)
+        is_waiting = b"1" if self.is_waiting else b"\x00"
         return first + regs + mode + pc + is_waiting
 
     @staticmethod
     def from_binary(data):
-        regs = [struct.unpack('>I', data[i * 4:(i + 1) * 4])[0] for i in range(16)]
-        mode, pc = struct.unpack('>II', data[16 * 4:16 * 4 + 8])
-        is_waiting = True if data[16 * 4 + 8] == '1' else False
+        regs = [struct.unpack(">I", data[i * 4 : (i + 1) * 4])[0] for i in range(16)]
+        mode, pc = struct.unpack(">II", data[16 * 4 : 16 * 4 + 8])
+        is_waiting = True if data[16 * 4 + 8] == "1" else False
         return MachineState(regs, mode, pc, is_waiting)
 
 
@@ -95,9 +95,9 @@ class MemView(Message):
     type = Types.MEMWATCH
 
     class Types:
-        MEMDUMP     = 0
+        MEMDUMP = 0
         DISASSEMBLY = 1
-        TAPES       = 2
+        TAPES = 2
 
     def __init__(self, id, start, size, watch_start=0, watch_size=0):
         self.id = id
@@ -108,12 +108,12 @@ class MemView(Message):
 
     def to_binary(self):
         first = super(MemView, self).to_binary()
-        data = struct.pack('>IIIII', self.id, self.start, self.size, self.watch_start, self.watch_size)
+        data = struct.pack(">IIIII", self.id, self.start, self.size, self.watch_start, self.watch_size)
         return first + data
 
     @staticmethod
     def from_binary(data):
-        id, start, size, watch_start, watch_size = struct.unpack('>IIIII', data)
+        id, start, size, watch_start, watch_size = struct.unpack(">IIIII", data)
         return MemView(id, start, size, watch_start, watch_size)
 
 
@@ -133,12 +133,12 @@ class TapesView(MemView):
 
     def to_binary(self):
         first = super(MemView, self).to_binary()
-        data = struct.pack('>III', self.id, self.start, self.size)
+        data = struct.pack(">III", self.id, self.start, self.size)
         return first + data
 
     @staticmethod
     def from_binary(data):
-        id, start, size = struct.unpack('>III', data)
+        id, start, size = struct.unpack(">III", data)
         return TapesView(start, size)
 
 
@@ -152,15 +152,19 @@ class TapeReply(TapesView):
 
     def to_binary(self):
         first = super(TapeReply, self).to_binary()
-        return first + struct.pack('>I', self.max) + b'\x00'.join((tape.name.encode('ascii') for tape in self.tape_list))
+        return (
+            first
+            + struct.pack(">I", self.max)
+            + b"\x00".join((tape.name.encode("ascii") for tape in self.tape_list))
+        )
 
     @staticmethod
     def from_binary(data):
-        id, start, size, num_tapes = struct.unpack('>IIII', data[:16])
+        id, start, size, num_tapes = struct.unpack(">IIII", data[:16])
         data = data[16:]
-        tape_list = [tape.decode('ascii') for tape in data.split(b'\x00')]
+        tape_list = [tape.decode("ascii") for tape in data.split(b"\x00")]
         if len(tape_list) != size:
-            print('Error tape_list mismatch lengths %d %d' % (len(tape_list), size))
+            print("Error tape_list mismatch lengths %d %d" % (len(tape_list), size))
             return None
         return TapeReply(id, start, tape_list, num_tapes)
 
@@ -174,15 +178,15 @@ class MemViewReply(MemView):
 
     def to_binary(self):
         first = super(MemView, self).to_binary()
-        data = struct.pack('>III', self.id, self.start, self.size)
+        data = struct.pack(">III", self.id, self.start, self.size)
         return first + data + self.data
 
     @staticmethod
     def from_binary(data):
-        id, start, size = struct.unpack('>III', data[:12])
+        id, start, size = struct.unpack(">III", data[:12])
         data = data[12:]
         if len(data) != size:
-            print('Error mismatch lengths %d %d' % (len(data), size))
+            print("Error mismatch lengths %d %d" % (len(data), size))
             return None
         return MemViewReply(id, start, data)
 
@@ -197,7 +201,7 @@ class DisassemblyView(MemView):
 
     @staticmethod
     def from_binary(data):
-        id, start, size, watch_start, watch_size = struct.unpack('>IIIII', data)
+        id, start, size, watch_start, watch_size = struct.unpack(">IIIII", data)
         return DisassemblyView(start, size, watch_start, watch_size)
 
 
@@ -205,26 +209,26 @@ class DisassemblyViewReply(Message):
     type = Types.DISASSEMBLYDATA
 
     def __init__(self, start, memory, lines):
-        self.start  = start
+        self.start = start
         self.memory = memory
-        self.lines  = lines
+        self.lines = lines
 
     def to_binary(self):
         first = super(DisassemblyViewReply, self).to_binary()
-        start = struct.pack('>I', self.start)
-        mem   = struct.pack('>I', len(self.memory)) + self.memory
-        lines = b'\n'.join((line.encode('ascii') for line in self.lines))
+        start = struct.pack(">I", self.start)
+        mem = struct.pack(">I", len(self.memory)) + self.memory
+        lines = b"\n".join((line.encode("ascii") for line in self.lines))
         return first + start + mem + lines
 
     @staticmethod
     def from_binary(data):
-        start, mem_length = struct.unpack('>II', data[:8])
-        mem = data[8:8 + mem_length]
+        start, mem_length = struct.unpack(">II", data[:8])
+        mem = data[8 : 8 + mem_length]
         if mem_length != len(mem):
-            raise Error('Dissasembly length mismatch %d %d' % (mem_length, len(mem)))
-        lines = [line.decode('ascii') for line in data[8 + mem_length:].split(b'\n')]
+            raise Error("Dissasembly length mismatch %d %d" % (mem_length, len(mem)))
+        lines = [line.decode("ascii") for line in data[8 + mem_length :].split(b"\n")]
         if len(lines) != mem_length // 4:
-            raise Error('Dissasembly num_lines %d should be %d' % (len(lines), mem_length // 4))
+            raise Error("Dissasembly num_lines %d should be %d" % (len(lines), mem_length // 4))
         return DisassemblyViewReply(start, mem, lines)
 
 
@@ -233,16 +237,16 @@ class Symbols(Message):
 
     def __init__(self, symbols_list):
         self.symbols_list = symbols_list
-        self.addrs   = [addr for (addr, name) in symbols_list]
-        self.lookup  = dict(self.symbols_list)
+        self.addrs = [addr for (addr, name) in symbols_list]
+        self.lookup = dict(self.symbols_list)
         self.names = dict(((name, addr) for (addr, name) in symbols_list))
 
     def to_binary(self):
         first = super(Symbols, self).to_binary()
         data = []
         for addr, name in self.symbols_list:
-            data.append(struct.pack('>I', addr) + name.encode('ascii') + b'\x00')
-        return first + b''.join(data)
+            data.append(struct.pack(">I", addr) + name.encode("ascii") + b"\x00")
+        return first + b"".join(data)
 
     def get_symbol_and_offset(self, addr):
         index = bisect.bisect_left(self.addrs, addr)
@@ -291,9 +295,9 @@ class Symbols(Message):
     def from_binary(data):
         symbols = []
         while data:
-            addr = struct.unpack('>I', data[:4])[0]
-            name, data = data[4:].split(b'\x00', 1)
-            symbols.append((addr, name.decode('ascii')))
+            addr = struct.unpack(">I", data[:4])[0]
+            name, data = data[4:].split(b"\x00", 1)
+            symbols.append((addr, name.decode("ascii")))
         return Symbols(symbols)
 
 
@@ -305,12 +309,12 @@ class SetBreakpoint(Message):
 
     def to_binary(self):
         first = super(SetBreakpoint, self).to_binary()
-        last = struct.pack('>I', self.addr)
+        last = struct.pack(">I", self.addr)
         return first + last
 
     @staticmethod
     def from_binary(data):
-        addr = struct.unpack('>I', data[:4])[0]
+        addr = struct.unpack(">I", data[:4])[0]
         return SetBreakpoint(addr)
 
 
@@ -319,7 +323,7 @@ class UnsetBreakpoint(SetBreakpoint):
 
     @staticmethod
     def from_binary(data):
-        addr = struct.unpack('>I', data[:4])[0]
+        addr = struct.unpack(">I", data[:4])[0]
         return UnsetBreakpoint(addr)
 
 
@@ -375,12 +379,12 @@ class TapeLoad(SetBreakpoint):
 
     def to_binary(self):
         first = super(SetBreakpoint, self).to_binary()
-        last = struct.pack('>I', self.num)
+        last = struct.pack(">I", self.num)
         return first + last
 
     @staticmethod
     def from_binary(data):
-        num = struct.unpack('>I', data[:4])[0]
+        num = struct.unpack(">I", data[:4])[0]
         return TapeLoad(num)
 
 
@@ -392,29 +396,32 @@ class TapeUnload(Message):
         return TapeUnload()
 
 
-messages_by_type = {Types.CONNECT: Handshake,
-                    Types.STATE: MachineState,
-                    Types.MEMWATCH: MemView,
-                    Types.MEMDATA: MemViewReply,
-                    Types.SETBKPT: SetBreakpoint,
-                    Types.UNSETBKPT: UnsetBreakpoint,
-                    Types.DISASSEMBLY: DisassemblyView,
-                    Types.DISASSEMBLYDATA: DisassemblyViewReply,
-                    Types.STOP: Stop,
-                    Types.RESUME: Resume,
-                    Types.RESTART: Restart,
-                    Types.STEP: Step,
-                    Types.TAPEREQUEST: TapesView,
-                    Types.TAPE_LIST: TapeReply,
-                    Types.TAPE_LOAD: TapeLoad,
-                    Types.TAPE_UNLOAD: TapeUnload,
-                    Types.SYMBOL_DATA: Symbols,
-                    Types.NEXT: Next,
-                    }
+messages_by_type = {
+    Types.CONNECT: Handshake,
+    Types.STATE: MachineState,
+    Types.MEMWATCH: MemView,
+    Types.MEMDATA: MemViewReply,
+    Types.SETBKPT: SetBreakpoint,
+    Types.UNSETBKPT: UnsetBreakpoint,
+    Types.DISASSEMBLY: DisassemblyView,
+    Types.DISASSEMBLYDATA: DisassemblyViewReply,
+    Types.STOP: Stop,
+    Types.RESUME: Resume,
+    Types.RESTART: Restart,
+    Types.STEP: Step,
+    Types.TAPEREQUEST: TapesView,
+    Types.TAPE_LIST: TapeReply,
+    Types.TAPE_LOAD: TapeLoad,
+    Types.TAPE_UNLOAD: TapeUnload,
+    Types.SYMBOL_DATA: Symbols,
+    Types.NEXT: Next,
+}
+
 
 class BaseHandler(object):
     select_timeout = 0.5
     total_timeout = 1.0
+
     def read_message(self):
         ready = select.select([self.request], [], [], self.select_timeout)
         if ready[0]:
@@ -426,7 +433,7 @@ class BaseHandler(object):
     def set_needed(self):
         self.needed = None
         if len(self.data) > 4:
-            self.needed = struct.unpack('>I', self.data[:4])[0]
+            self.needed = struct.unpack(">I", self.data[:4])[0]
             self.data = self.data[4:]
             # print 'Got needed %d' % self.needed
 
@@ -435,36 +442,37 @@ class BaseHandler(object):
         if self.needed == None:
             self.set_needed()
         while self.needed != None and len(self.data) >= self.needed:
-            message = self.message_factory(self.data[:self.needed])
-            self.data = self.data[self.needed:]
+            message = self.message_factory(self.data[: self.needed])
+            self.data = self.data[self.needed :]
             self.set_needed()
             if message:
                 self.server.comms.handle(message)
 
     def handle(self):
         try:
-            print('Handling message!')
-            self.data = b''
+            print("Handling message!")
+            self.data = b""
             self.needed = None
             self.server.comms.set_connected(self.request)
             while not self.server.comms.done:
                 self.read_message()
         except socket.error as e:
-            print('Got socket error')
+            print("Got socket error")
             self.server.comms.disconnect()
 
     def message_factory(self, data):
-        type = struct.unpack('>I', data[:4])[0]
+        type = struct.unpack(">I", data[:4])[0]
         try:
             return messages_by_type[type].from_binary(data[4:])
         except KeyError:
-            print('Unknown message type %d' % type)
+            print("Unknown message type %d" % type)
         except Error as e:
-            print('Error (%s) while receiving message of type %d' % (e, type))
+            print("Error (%s) while receiving message of type %d" % (e, type))
 
 
 class Client(comms.Client):
     factory_class = BaseHandler
+
     def initiate_connection(self):
         try:
             self.connect(self.remote_host, self.remote_port)
@@ -475,7 +483,7 @@ class Client(comms.Client):
 
     def start_handshake(self):
         # Send a handshake message with our listen port
-        print('Sending a handshake message with', (self.host, self.port))
+        print("Sending a handshake message with", (self.host, self.port))
         handshake = Handshake(self.host, self.port)
         self.send(handshake)
         if self.connected:
@@ -488,6 +496,7 @@ class Client(comms.Client):
 
 class Server(comms.Server):
     factory_class = BaseHandler
+
     def handle(self, message):
         if message.type.value == Types.CONNECT:
             self.connect(message.host, message.port)

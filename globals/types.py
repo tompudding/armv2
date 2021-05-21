@@ -34,7 +34,7 @@ class Point(object):
         return (self.x, self.y)[index]
 
     def __setitem__(self, index, value):
-        setattr(self, ('x', 'y')[index], value)
+        setattr(self, ("x", "y")[index], value)
 
     def __iter__(self):
         return self
@@ -43,11 +43,11 @@ class Point(object):
         return str(self)
 
     def __str__(self):
-        return '(%.2f,%.2f)' % (self.x, self.y)
+        return "(%.2f,%.2f)" % (self.x, self.y)
 
     def __cmp__(self, other):
         try:
-            #a = cmp(abs(self.x*self.y),abs(other.x*other.y))
+            # a = cmp(abs(self.x*self.y),abs(other.x*other.y))
             # if a != 0:
             #    return a
             a = cmp(self.x, other.x)
@@ -58,7 +58,7 @@ class Point(object):
             return -1  # It's not equal if it's not a point
 
     def __hash__(self):
-        return (int(self.x) << 16 | int(self.y))
+        return int(self.x) << 16 | int(self.y)
 
     def to_float(self):
         return Point(float(self.x), float(self.y))
@@ -76,10 +76,10 @@ class Point(object):
         return out
 
     def length(self):
-        return math.sqrt(self.x**2 + self.y**2)
+        return math.sqrt(self.x ** 2 + self.y ** 2)
 
     def SquareLength(self):
-        return self.x**2 + self.y**2
+        return self.x ** 2 + self.y ** 2
 
     def unit_vector(self):
         return self / self.length()
@@ -97,5 +97,5 @@ class Point(object):
 class Directories:
     def __init__(self, base):
         self.resource = base
-        for name in 'tiles', 'sprites', 'foreground', 'maps', 'fonts':
+        for name in "tiles", "sprites", "foreground", "maps", "fonts":
             setattr(self, name, os.path.join(base, name))

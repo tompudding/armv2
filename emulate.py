@@ -12,13 +12,14 @@ from pygame.locals import *
 from optparse import OptionParser
 from . import sounds
 
+
 def new_machine(boot_rom):
     machine = hardware.Machine(cpu_size=1 << 18, cpu_rom=boot_rom)
     try:
-        machine.add_hardware(hardware.Keyboard(machine), name='keyboard')
-        machine.add_hardware(hardware.Display(machine, scale_factor=1), name='display')
-        machine.add_hardware(hardware.Clock(machine), name='clock')
-        machine.add_hardware(hardware.TapeDrive(machine), name='tape_drive')
+        machine.add_hardware(hardware.Keyboard(machine), name="keyboard")
+        machine.add_hardware(hardware.Display(machine, scale_factor=1), name="display")
+        machine.add_hardware(hardware.Clock(machine), name="clock")
+        machine.add_hardware(hardware.TapeDrive(machine), name="tape_drive")
     except:
         machine.delete()
         raise
@@ -26,10 +27,11 @@ def new_machine(boot_rom):
 
 
 class Emulator(object):
-    #Speeds are cycles per ms
+    # Speeds are cycles per ms
     speeds = [0x400, 0x200, 0x100, 16, 2]
     clock_rate = None
-    def __init__(self, callback=None, boot_rom='build/boot.rom', tapes=None):
+
+    def __init__(self, callback=None, boot_rom="build/boot.rom", tapes=None):
         self.last = 0
         self.boot_rom = boot_rom
         self.powered_on = True
@@ -42,12 +44,12 @@ class Emulator(object):
             raise
         self.speed_index = 0
         self.clock_rate = self.speeds[self.speed_index]
-        print(f'Set speed to {self.clock_rate}')
+        print(f"Set speed to {self.clock_rate}")
 
     def cycle_speed(self):
         self.speed_index = (self.speed_index + 1) % len(self.speeds)
         self.clock_rate = self.speeds[self.speed_index]
-        print(f'Set speed to {self.clock_rate}')
+        print(f"Set speed to {self.clock_rate}")
 
     def __enter__(self):
         return self
@@ -67,7 +69,7 @@ class Emulator(object):
 
         finally:
             self.dbg.exit()
-            armv2.debug_log('deleting machine')
+            armv2.debug_log("deleting machine")
             try:
                 self.dbg.machine.delete()
             except:
@@ -77,16 +79,16 @@ class Emulator(object):
         if self.dbg.stopped:
             return
 
-        if key == ord('\r'):
-            key = ord('\n')
+        if key == ord("\r"):
+            key = ord("\n")
         self.dbg.machine.keyboard.key_up(key)
 
     def key_down(self, key):
         if self.dbg.stopped:
             return
 
-        if key == ord('\r'):
-            key = ord('\n')
+        if key == ord("\r"):
+            key = ord("\n")
         self.dbg.machine.keyboard.key_down(key)
 
     def step_num(self, num):
@@ -99,14 +101,14 @@ class Emulator(object):
         self.machine.display.end_frame()
 
     def restart(self):
-        #breakpoints = self.dbg.breakpoints
+        # breakpoints = self.dbg.breakpoints
         self.power_off()
         self.power_on()
 
     def power_off(self):
-        #self.machine.delete()
-        #self.machine = None
-        #self.dbg.update()
+        # self.machine.delete()
+        # self.machine = None
+        # self.dbg.update()
         if self.machine.tape_drive:
             self.machine.tape_drive.power_down()
         if self.machine.display:
@@ -121,7 +123,7 @@ class Emulator(object):
         # copy the state of those things with state (like the tape drive) across manually
         self.machine.tape_drive.copy_from(old_machine.tape_drive)
         old_machine.delete()
-        #FIXME: Handle taking ownership of the hardware properly
+        # FIXME: Handle taking ownership of the hardware properly
         self.dbg.new_machine(self.machine)
         self.dbg.update()
         self.dbg.load_symbols()
@@ -152,8 +154,8 @@ class Emulator(object):
                     key = ord(event.unicode)
                 except (TypeError, AttributeError):
                     pass
-                if key == ord('\r'):
-                    key = ord('\n')
+                if key == ord("\r"):
+                    key = ord("\n")
                 if key < 256:
                     self.dbg.machine.keyboard.key_down(key)
             elif event.type == pygame.locals.KEYUP:
@@ -164,8 +166,8 @@ class Emulator(object):
                     key = ord(event.unicode)
                 except (TypeError, AttributeError):
                     pass
-                if key == ord('\r'):
-                    key = ord('\n')
+                if key == ord("\r"):
+                    key = ord("\n")
                 if key < 256:
                     self.dbg.machine.keyboard.key_up(key)
         # elapsed = globals.t - self.last
@@ -191,16 +193,16 @@ def init(width, height, do_screen=True):
         os.chdir(sys._MEIPASS)
 
     pygame.init()
-    pygame.display.set_caption('Synapse')
+    pygame.display.set_caption("Synapse")
     # pygame.mouse.set_visible(0)
     pygame.key.set_repeat(500, 50)
     globals.sounds = sounds.Sounds()
     globals.screen = Point(width, height)
-    globals.dirs = globals.types.Directories(os.path.join(os.path.dirname(__file__),'resource'))
-    globals.screen_quadbuffer     = drawing.QuadBuffer(16)
-    globals.screen.full_quad      = drawing.Quad(globals.screen_quadbuffer)
+    globals.dirs = globals.types.Directories(os.path.join(os.path.dirname(__file__), "resource"))
+    globals.screen_quadbuffer = drawing.QuadBuffer(16)
+    globals.screen.full_quad = drawing.Quad(globals.screen_quadbuffer)
     globals.screen.full_quad.set_vertices(Point(0, 0), globals.screen, 0.01)
-    #globals.screen.full_quad.set_vertices(globals.screen*0.5, globals.screen,0.01)
+    # globals.screen.full_quad.set_vertices(globals.screen*0.5, globals.screen,0.01)
     if do_screen:
         screen = pygame.display.set_mode((width, height), pygame.OPENGL | pygame.DOUBLEBUF)
     drawing.init(width, height, hardware.Display.pixel_size)

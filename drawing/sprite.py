@@ -23,14 +23,16 @@ class SpriteFrame(object):
         self.tex_coords = tex_coords
         sf = 1.05
         self.outline_vertices = numpy.array(
-            ((0, 0, 0), (0, size.y * sf, 0), (size.x * sf, size.y * sf, 0), (size.x * sf, 0, 0)), numpy.float32)
-        self.width         = size.x
-        self.height        = size.y
-        self.size          = size
-        self.light_pos     = light_pos
-        self.outline_size  = self.size * sf
-        self.offset        = offset
-        self.opacity       = opacity
+            ((0, 0, 0), (0, size.y * sf, 0), (size.x * sf, size.y * sf, 0), (size.x * sf, 0, 0)),
+            numpy.float32,
+        )
+        self.width = size.x
+        self.height = size.y
+        self.size = size
+        self.light_pos = light_pos
+        self.outline_size = self.size * sf
+        self.offset = offset
+        self.opacity = opacity
         self.outline_offset = Point(float(self.width) / 40, float(self.height) / 40)
 
 
@@ -41,8 +43,8 @@ class StaticSprite(object):
     """
 
     def __init__(self, name, tex_coords, offset, light_pos, size, movement_cost=0, opacity=0):
-        self.frame         = SpriteFrame(tex_coords, offset, light_pos, size, opacity)
-        self.name          = name
+        self.frame = SpriteFrame(tex_coords, offset, light_pos, size, opacity)
+        self.name = name
         self.movement_cost = movement_cost
 
     def get_frame(self, time):
@@ -57,16 +59,17 @@ class StaticSpriteContainer(dict):
     """
     Contains all the sprites (directions and actions) for a static object
     """
+
     pass
 
 
 class AnimatedSprite(object):
     def __init__(self, name, eventType, fps):
-        self.name           = name
-        self.event_type     = eventType
-        self.fps            = fps
+        self.name = name
+        self.event_type = eventType
+        self.fps = fps
         self.frame_duration = float(1) / fps
-        self.frames         = []
+        self.frames = []
 
     def add_frame(self, frame):
         self.frames.append(frame)
@@ -83,4 +86,5 @@ class animated_sprite_container(dict):
     """
     Contains all the sprites (directions and actions) for an animated object
     """
+
     pass

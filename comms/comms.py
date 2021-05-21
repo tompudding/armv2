@@ -8,9 +8,9 @@ import bisect
 import traceback
 import enum
 
+
 class Types(enum.IntEnum):
     pass
-
 
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
@@ -22,12 +22,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 def get_factory_class(inc, factory):
     class temp(factory, inc):
         def __init__(self, *args, **kwargs):
-            #How do I get super to call both parent classes? I'm too tired to figure this out today
+            # How do I get super to call both parent classes? I'm too tired to figure this out today
             factory.__init__(self, *args, **kwargs)
             inc.__init__(self, *args, **kwargs)
-            #super().__init__(*args, **kwargs)
+            # super().__init__(*args, **kwargs)
 
     return temp
+
 
 class ThreadedTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
@@ -39,14 +40,16 @@ class Comms(object):
         self.callback = callback
         self.connected = False
         self.socket = None
-        self.server = ThreadedTCPServer(('0.0.0.0', self.port), get_factory_class(ThreadedTCPRequestHandler, self.factory_class))
+        self.server = ThreadedTCPServer(
+            ("0.0.0.0", self.port), get_factory_class(ThreadedTCPRequestHandler, self.factory_class)
+        )
         self.server.comms = self
         self.done = False
         self.thread = threading.Thread(target=self.server.serve_forever)
 
     def start(self):
         self.thread.start()
-        print('Server loop running in thread:', self.thread.name)
+        print("Server loop running in thread:", self.thread.name)
 
     def __enter__(self):
         self.start()
@@ -64,20 +67,19 @@ class Comms(object):
             self.socket.close()
             self.socket = None
             self.connected = False
-        #If the machine is stopped, we need to resume it and disable the breakpoints and stuff
-
+        # If the machine is stopped, we need to resume it and disable the breakpoints and stuff
 
     def send(self, message):
         if self.connected:
             try:
                 m = message.to_binary()
-                print('send message',m)
+                print("send message", m)
                 self.socket.send(m)
             except socket.error:
                 self.connected = False
-                print('got disconnected')
+                print("got disconnected")
         else:
-            #print('lost',type(message))
+            # print('lost',type(message))
             pass
 
     def handle(self, message):
@@ -90,32 +92,34 @@ class Comms(object):
             self.done = True
             self.server.shutdown()
             self.server.server_close()
-        print('joining thread')
+        print("joining thread")
         self.thread.join()
-        print('joined')
+        print("joined")
 
 
 class Server(Comms):
     def connect(self, host, port):
         pass
 
+
 class Wrapper(object):
     def __init__(self, comms):
         self.comms = comms
+
 
 class Client(Comms):
     reconnect_interval = 0.1
     factory_class = None
 
     def __init__(self, host, port, callback):
-        #super(Client, self).__init__(port=0, callback=callback)
+        # super(Client, self).__init__(port=0, callback=callback)
         # Clients still need a thread for listening to server responses and acting on them, but they don't
         # need a separate socket
         self.callback = callback
         self.server = None
         self.host = host
         self.port = port
-        self.host = '127.0.0.1'
+        self.host = "127.0.0.1"
         self.remote_host = host
         self.remote_port = port
         self.socket = None
@@ -152,7 +156,7 @@ class Client(Comms):
             self.cv.notify()
 
     def set_connected(self, socket):
-        print('Yo set connected',socket, self.socket)
+        print("Yo set connected", socket, self.socket)
 
     def connect_thread_main(self):
         while not self.done:
