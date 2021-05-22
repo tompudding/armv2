@@ -1,5 +1,5 @@
 import sys
-from . import armv2
+from . import armv2  # type: ignore
 from . import debugger
 from . import hardware
 from . import drawing

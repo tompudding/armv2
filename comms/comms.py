@@ -7,6 +7,7 @@ import struct
 import bisect
 import traceback
 import enum
+from typing import Optional, Type
 
 
 class Types(enum.IntEnum):
@@ -109,7 +110,7 @@ class Wrapper(object):
 
 class Client(Comms):
     reconnect_interval = 0.1
-    factory_class = None
+    factory_class: Optional[Type] = None
 
     def __init__(self, host, port, callback):
         # super(Client, self).__init__(port=0, callback=callback)

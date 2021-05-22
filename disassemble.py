@@ -1,5 +1,6 @@
 import armv2
 import bisect
+from typing import List
 
 registerNames = [("r%d" % i) for i in range(13)] + ["sp", "lr", "pc"]
 shiftTypes = ["LSL", "LSR", "ASR", "ROR"]
@@ -65,7 +66,7 @@ class Instruction(object):
         "NV",
     ]
     mneumonic = "UNK"
-    args = []
+    args: List[str] = []
     sets_lr = False
 
     def __init__(self, addr, word, cpu):
@@ -296,7 +297,7 @@ class CoprocessorDataTransferInstruction(Instruction):
 
 
 class CoprocessorInstruction(Instruction):
-    mneumonic = None
+    mneumonic = ""
 
     def __init__(self, addr, word, cpu):
         super(CoprocessorInstruction, self).__init__(addr, word, cpu)

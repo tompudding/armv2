@@ -14,9 +14,9 @@ from . import constants
 from . import quads
 from . import opengl
 from . import sprite
+from typing import Dict, Tuple
 
-
-cache = {}
+cache: Dict[str, Tuple[str, int, int]] = {}
 global_scale = 1
 
 

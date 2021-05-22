@@ -8,6 +8,7 @@ from ..globals.types import Point
 
 from . import opengl
 from . import constants
+import OpenGL.GL
 
 
 class ShapeBuffer(object):
@@ -89,7 +90,7 @@ class ShapeBuffer(object):
 
 class QuadBuffer(ShapeBuffer):
     num_points = 4
-    draw_type = opengl.GL_QUADS
+    draw_type = OpenGL.GL.GL_QUADS
 
     def __init__(self, size, ui=False, mouse_relative=False):
         self.is_ui = ui
@@ -131,7 +132,7 @@ class ShadowQuadBuffer(QuadBuffer):
 
 class VertexBuffer(ShapeBuffer):
     num_points = 1
-    draw_type = opengl.GL_POINTS
+    draw_type = OpenGL.GL.GL_POINTS
 
     def __init__(self, size, ui=False, mouse_relative=False):
         self.is_ui = ui

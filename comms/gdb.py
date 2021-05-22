@@ -147,11 +147,6 @@ class Detach(Message):
     type = Types.DETACH
 
 
-class OK(Message):
-    def to_binary(self):
-        return format_gdb_message(b"OK")
-
-
 class Connect(EmptyMessage):
     type = Types.CONNECTED
 
@@ -468,9 +463,6 @@ class UnsetReadWatchpoint(SetBreakpoint):
 
 class UnsetAccessWatchpoint(SetBreakpoint):
     type = Types.DEL_ACCESS_WP
-
-
-messages_by_type = {}
 
 
 def format_type(t):

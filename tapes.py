@@ -11,7 +11,7 @@ import traceback
 import globals
 
 try:
-    from . import popcnt
+    from . import popcnt  # type: ignore
 except ImportError:
     # We also need to import this from create.py as a top-level package
     import popcnt
