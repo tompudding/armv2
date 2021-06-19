@@ -158,7 +158,7 @@ class ProgramTape(Tape):
         set_length = int(tone_length * 2)
 
         # We'll want a pilot signal first as it will go before all data segments
-        num_pilot_samples = 22050 * self.pilot_length
+        num_pilot_samples = freq * self.pilot_length
         pilot_samples = numpy.zeros(shape=num_pilot_samples, dtype="float64")
         popcnt.create_tone(pilot_samples, set_length)
 
@@ -195,7 +195,7 @@ class ProgramTape(Tape):
             bit_times = numpy.zeros(shape=len(data) * 4 * 8, dtype="uint32")
             bits = numpy.zeros(shape=len(data) * 4 * 9, dtype="uint8")
             popcnt.create_samples(
-                data, samples, byte_samples, bit_times, bits, clr_length, set_length, float(1000) / 22050
+                data, samples, byte_samples, bit_times, bits, clr_length, set_length, float(1000) / freq
             )
             all_samples.append(pilot_samples)
             all_samples.append(samples)
