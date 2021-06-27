@@ -202,6 +202,7 @@ def init(width, height, do_screen=True):
     globals.screen_quadbuffer = drawing.QuadBuffer(16)
     globals.screen.full_quad = drawing.Quad(globals.screen_quadbuffer)
     globals.screen.full_quad.set_vertices(Point(0, 0), globals.screen, 0.01)
+    globals.crt_buffer = drawing.opengl.CrtBuffer(*hardware.Display.pixel_size, 8)
     # globals.screen.full_quad.set_vertices(globals.screen*0.5, globals.screen,0.01)
     if do_screen:
         screen = pygame.display.set_mode((width, height), pygame.OPENGL | pygame.DOUBLEBUF)

@@ -8,7 +8,6 @@ import random
 from . import drawing
 import os
 import numpy
-import wave
 import struct
 
 from . import globals
@@ -475,7 +474,7 @@ class TapeDrive(armv2.Device):
                 # stripe_pos += steps*2
                 stripe_pos += 1
 
-        drawing.draw_no_texture(self.quad_buffer)
+        drawing.draw_no_texture(self.quad_buffer, self.cpu.display.crt_index.x, self.cpu.display.crt_index.y)
 
     def write_byte_callback(self, addr, value):
         if addr == 0:
@@ -616,7 +615,8 @@ class Display(armv2.Device):
         self.pixel_data = self.pixel_data_words.view(dtype=numpy.uint8).reshape(
             (self.pixel_size[1], (self.pixel_size[0] // 8))
         )
-        self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
+        # self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
+        self.crt_index = globals.crt_buffer.get()
         self.powered_on = True
 
         for pos, quad in enumerate(self.cell_quads):
@@ -764,7 +764,7 @@ class Display(armv2.Device):
         self.pixel_data[y * 8 : (y + 1) * 8, x] = letter_bits
 
     def new_frame(self):
-        drawing.new_crt_frame(self.crt_buffer)
+        # drawing.new_crt_frame(globals.crt_buffer)
         # self.crt_buffer.bind_for_writing()
         # redraw = self.dirty
         # redraw_colours = self.dirty_colours
@@ -777,14 +777,17 @@ class Display(armv2.Device):
 
         # self.dirty = set()
         if self.powered_on:
-            drawing.draw_pixels(self.cell_quads_buffer, self.pixel_data_words)
+            drawing.draw_pixels(
+                self.cell_quads_buffer, self.pixel_data_words, self.crt_index.x, self.crt_index.y
+            )
             # drawing.draw_no_texture(self.fore_vertex_buffer)
 
     def end_frame(self):
-        drawing.end_crt_frame(self.crt_buffer)
+        # drawing.end_crt_frame(globals.crt_buffer)
+        pass
 
     def draw_to_screen(self):
-        drawing.draw_crt_to_screen(self.crt_buffer)
+        drawing.draw_crt_to_screen(globals.crt_buffer)
 
 
 class Clock(armv2.Device):
