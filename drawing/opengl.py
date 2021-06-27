@@ -83,16 +83,17 @@ class CrtBuffer(object):
     NUM_TEXTURES = 1
     # WIDTH               = 1024
     # HEIGHT              = 256
+    GRID_NUM = 5
 
-    def __init__(self, width, height, num):
-        self.num_screens_x = num
-        self.max = (num * num) - 1
-        self.available = set(range(num))
+    def __init__(self, width, height):
+        self.num_screens_x = self.GRID_NUM
+        self.max = (self.num_screens_x * self.num_screens_x) - 1
+        self.available = list(range(self.max))
         self.fbo = glGenFramebuffers(1)
         self.bind_for_writing()
         self.screen_size = Point(width, height)
         try:
-            self.init_bound(width * num, height * num)
+            self.init_bound(width * self.num_screens_x, height * self.num_screens_x)
         finally:
             self.unbind()
         self.texture = FBOTexture(self.textures[0])
@@ -138,14 +139,15 @@ class CrtBuffer(object):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
 
     def get(self):
-        index = self.available.pop()
-
-        return Point(index % self.num_screens_x, index // self.num_screens_x)
+        index = self.available.pop(0)
+        point = Point(index % self.num_screens_x, index // self.num_screens_x)
+        print(f"Use index {index=} {point=}")
+        return point
 
     def put(self, index):
         if index > self.max:
             raise ValueError()
-        self.available.add((index.y * self.screen_size.x) + index.x)
+        self.available.append((index.y * self.screen_size.x) + index.x)
 
 
 default_shader = ShaderData()
@@ -215,8 +217,6 @@ def draw_crt_to_screen(crt_buffer, x, y, num):
     # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glEnableVertexAttribArray(crt_shader.locations.vertex_data)
     glEnableVertexAttribArray(crt_shader.locations.tc_data)
-    # glUniform2f(crt_shader.locations.scale, 0.33333, 0.3333)
-    print("bobbins", x / num, y / num)
     glUniform2f(crt_shader.locations.screen_index, x / num, y / num)
     glVertexAttribPointer(
         crt_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, globals.screen_quadbuffer.vertex_data
@@ -307,7 +307,6 @@ def draw_pixels(quad_buffer, pixel_data, screen_index_x, screen_index_y):
     # The quad buffer should be a set of quads that cover all the cells
     glUniform1i(screen_shader.locations.using_textures, 0)
     glUniform4uiv(screen_shader.locations.pixels, len(pixel_data), pixel_data)
-    # print("nobbins", screen_index_x, screen_index_y)
     glUniform2f(screen_shader.locations.translation, screen_index_x, screen_index_y)
 
     glEnableVertexAttribArray(screen_shader.locations.vertex_data)

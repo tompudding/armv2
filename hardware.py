@@ -474,7 +474,7 @@ class TapeDrive(armv2.Device):
                 # stripe_pos += steps*2
                 stripe_pos += 1
 
-        drawing.draw_no_texture(self.quad_buffer, self.cpu.display.crt_index.x, self.cpu.display.crt_index.y)
+        drawing.draw_no_texture(self.quad_buffer, self.cpu.display.crt_pos.x, self.cpu.display.crt_pos.y)
 
     def write_byte_callback(self, addr, value):
         if addr == 0:

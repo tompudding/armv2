@@ -44,12 +44,10 @@ class Emulator(object):
             raise
         self.speed_index = 0
         self.clock_rate = self.speeds[self.speed_index]
-        print(f"Set speed to {self.clock_rate}")
 
     def cycle_speed(self):
         self.speed_index = (self.speed_index + 1) % len(self.speeds)
         self.clock_rate = self.speeds[self.speed_index]
-        print(f"Set speed to {self.clock_rate}")
 
     def __enter__(self):
         return self
@@ -202,7 +200,7 @@ def init(width, height, do_screen=True):
     globals.screen_quadbuffer = drawing.QuadBuffer(16)
     globals.screen.full_quad = drawing.Quad(globals.screen_quadbuffer)
     globals.screen.full_quad.set_vertices(Point(0, 0), globals.screen, 0.01)
-    globals.crt_buffer = drawing.opengl.CrtBuffer(*hardware.Display.pixel_size, 8)
+    globals.crt_buffer = drawing.opengl.CrtBuffer(*hardware.Display.pixel_size)
     # globals.screen.full_quad.set_vertices(globals.screen*0.5, globals.screen,0.01)
     if do_screen:
         screen = pygame.display.set_mode((width, height), pygame.OPENGL | pygame.DOUBLEBUF)

@@ -13,7 +13,7 @@ in vec3 screen_dimensions;
 out vec4 out_colour;
 
 //TODO: set this dynamically?
-#define NUM_SCREENS 8
+#define NUM_SCREENS 5
 
 /* void main() */
 /* { */
