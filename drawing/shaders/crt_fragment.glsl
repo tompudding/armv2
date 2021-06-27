@@ -6,10 +6,14 @@
 
 uniform sampler2D tex;
 uniform float global_time;
+uniform vec2 screen_index;
 in vec2 texcoord;
 in vec3 screen_dimensions;
 
 out vec4 out_colour;
+
+//TODO: set this dynamically?
+#define NUM_SCREENS 8
 
 /* void main() */
 /* { */
@@ -26,22 +30,29 @@ vec2 curve(vec2 uv)
 	uv =  uv *0.92 + 0.04;
 	return uv;
 }
+
+vec2 adjust_tc(vec2 uv, vec2 screen_index) {
+    return screen_index + (uv/NUM_SCREENS);
+}
+
 void main()
 {
     vec2 q = texcoord;
     vec2 uv = q;
     //float global_time = 1.0;
     uv = curve( uv );
-    vec3 oricol = texture2D( tex, vec2(q.x,q.y) ).xyz;
+    //vec3 oricol = texture2D( tex, vec2(q.x*2,q.y*2) ).xyz;
     vec3 col;
     float x = 0.00;// sin(0.3*global_time+uv.y*21.0)*sin(0.7*global_time+uv.y*29.0)*sin(0.3+0.33*global_time+uv.y*31.0)*0.0017;
+    float screen_x = 1;
+    float screen_y = 0;
 
-    col.r = texture2D(tex,vec2(x+uv.x+0.001,uv.y+0.001)).x+0.05;
-    col.g = texture2D(tex,vec2(x+uv.x+0.000,uv.y-0.002)).y+0.05;
-    col.b = texture2D(tex,vec2(x+uv.x-0.002,uv.y+0.000)).z+0.05;
-    col.r += 0.08*texture2D(tex,0.75*vec2(x+0.025, -0.027)+vec2(uv.x+0.001,uv.y+0.001)).x;
-    col.g += 0.05*texture2D(tex,0.75*vec2(x+-0.022, -0.02)+vec2(uv.x+0.000,uv.y-0.002)).y;
-    col.b += 0.08*texture2D(tex,0.75*vec2(x+-0.02, -0.018)+vec2(uv.x-0.002,uv.y+0.000)).z;
+    col.r = texture2D(tex, adjust_tc(vec2(x+uv.x+0.001,uv.y+0.001), screen_index)).x+0.05;
+    col.g = texture2D(tex, adjust_tc(vec2(x+uv.x+0.000,uv.y-0.002), screen_index)).y+0.05;
+    col.b = texture2D(tex, adjust_tc(vec2(x+uv.x-0.002,uv.y+0.000), screen_index)).z+0.05;
+    col.r += 0.08*texture2D(tex,adjust_tc(0.75* vec2(x+0.025, -0.027)+vec2(uv.x+0.001,uv.y+0.001), screen_index)).x;
+    col.g += 0.05*texture2D(tex,adjust_tc(0.75* vec2(x+-0.022, -0.02)+vec2(uv.x+0.000,uv.y-0.002), screen_index)).y;
+    col.b += 0.08*texture2D(tex,adjust_tc(0.75* vec2(x+-0.02, -0.018)+vec2(uv.x-0.002,uv.y+0.000), screen_index)).z;
 
     col = clamp(col*0.6+0.4*col*col*1.0,0.0,1.0);
 

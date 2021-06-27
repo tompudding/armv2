@@ -617,6 +617,7 @@ class Display(armv2.Device):
         )
         # self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
         self.crt_index = globals.crt_buffer.get()
+        self.crt_pos = self.crt_index * globals.crt_buffer.screen_size
         self.powered_on = True
 
         for pos, quad in enumerate(self.cell_quads):
@@ -777,9 +778,7 @@ class Display(armv2.Device):
 
         # self.dirty = set()
         if self.powered_on:
-            drawing.draw_pixels(
-                self.cell_quads_buffer, self.pixel_data_words, self.crt_index.x, self.crt_index.y
-            )
+            drawing.draw_pixels(self.cell_quads_buffer, self.pixel_data_words, self.crt_pos.x, self.crt_pos.y)
             # drawing.draw_no_texture(self.fore_vertex_buffer)
 
     def end_frame(self):
@@ -787,7 +786,9 @@ class Display(armv2.Device):
         pass
 
     def draw_to_screen(self):
-        drawing.draw_crt_to_screen(globals.crt_buffer)
+        drawing.draw_crt_to_screen(
+            globals.crt_buffer, self.crt_index.x, self.crt_index.y, globals.crt_buffer.num_screens_x
+        )
 
 
 class Clock(armv2.Device):

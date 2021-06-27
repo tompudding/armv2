@@ -140,7 +140,7 @@ class CrtBuffer(object):
     def get(self):
         index = self.available.pop()
 
-        return Point(index % self.num_screens_x, index // self.num_screens_x) * self.screen_size
+        return Point(index % self.num_screens_x, index // self.num_screens_x)
 
     def put(self, index):
         if index > self.max:
@@ -171,7 +171,7 @@ def init(w, h, pixel_size):
 
     crt_shader.load(
         "crt",
-        uniforms=("tex", "translation", "scale", "screen_dimensions", "global_time"),
+        uniforms=("tex", "translation", "scale", "screen_dimensions", "global_time", "screen_index"),
         attributes=("vertex_data", "tc_data"),
     )
 
@@ -208,7 +208,7 @@ def end_crt_frame(crt_buffer):
     return
 
 
-def draw_crt_to_screen(crt_buffer):
+def draw_crt_to_screen(crt_buffer, x, y, num):
     crt_shader.use()
     glUniform1f(crt_shader.locations.global_time, globals.t / 1000.0)
     crt_buffer.bind_for_reading(0)
@@ -216,6 +216,8 @@ def draw_crt_to_screen(crt_buffer):
     glEnableVertexAttribArray(crt_shader.locations.vertex_data)
     glEnableVertexAttribArray(crt_shader.locations.tc_data)
     # glUniform2f(crt_shader.locations.scale, 0.33333, 0.3333)
+    print("bobbins", x / num, y / num)
+    glUniform2f(crt_shader.locations.screen_index, x / num, y / num)
     glVertexAttribPointer(
         crt_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, globals.screen_quadbuffer.vertex_data
     )
@@ -249,6 +251,7 @@ def init_drawing():
     glUniform1i(crt_shader.locations.tex, 0)
     glUniform2f(crt_shader.locations.translation, 0, 0)
     glUniform2f(crt_shader.locations.scale, 1, 1)
+    glUniform2f(crt_shader.locations.screen_index, 0, 0)
 
 
 def draw_all(quad_buffer, texture):
