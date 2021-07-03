@@ -617,7 +617,10 @@ class Display(armv2.Device):
         )
         # self.crt_buffer = drawing.opengl.CrtBuffer(*self.pixel_size)
         self.crt_index = globals.crt_buffer.get()
+        if self.crt_index is None:
+            raise ValueError("No more CRTs available")
         self.crt_pos = self.crt_index * globals.crt_buffer.screen_size
+        print(f"NEW CRT {self.crt_index=} {self.crt_pos=}")
         self.powered_on = True
 
         for pos, quad in enumerate(self.cell_quads):
@@ -649,6 +652,10 @@ class Display(armv2.Device):
 
     def power_down(self):
         self.powered_on = False
+        globals.crt_buffer.put(self.crt_index)
+        # Even though we've given up the crt_buffer, we leave it set and draw from it to the screen so that we
+        # get a nice clean black area (it's black because its pixels aren't being written to). It won't be
+        # reused until this screen is cancelled
 
     def read_callback(self, addr, value):
         # The display has a secret RNG, did you know that?

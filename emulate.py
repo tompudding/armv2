@@ -31,11 +31,12 @@ class Emulator(object):
     speeds = [0x400, 0x200, 0x100, 16, 2]
     clock_rate = None
 
-    def __init__(self, callback=None, boot_rom="build/boot.rom", tapes=None):
+    def __init__(self, callback=None, boot_rom="build/boot.rom", tapes=None, owner=None):
         self.last = 0
         self.boot_rom = boot_rom
         self.powered_on = True
         self.machine = new_machine(self.boot_rom)
+        self.owner = owner
 
         try:
             self.dbg = debugger.Debugger(self.machine, tapes)
@@ -112,6 +113,8 @@ class Emulator(object):
         if self.machine.display:
             self.machine.display.power_down()
         self.powered_on = False
+        if self.owner:
+            self.owner.power_off()
 
     def power_on(self):
         old_machine = self.machine
@@ -126,6 +129,8 @@ class Emulator(object):
         self.dbg.update()
         self.dbg.load_symbols()
         self.powered_on = True
+        if self.owner:
+            self.owner.power_on()
 
     def skip_loading(self):
         self.dbg.machine.tape_drive.skip_loading()

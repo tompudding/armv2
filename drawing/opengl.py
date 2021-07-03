@@ -139,15 +139,19 @@ class CrtBuffer(object):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
 
     def get(self):
-        index = self.available.pop(0)
+        try:
+            index = self.available.pop(0)
+        except IndexError:
+            return None
         point = Point(index % self.num_screens_x, index // self.num_screens_x)
         print(f"Use index {index=} {point=}")
         return point
 
-    def put(self, index):
+    def put(self, point):
+        index = point.x + (point.y * self.num_screens_x)
         if index > self.max:
             raise ValueError()
-        self.available.append((index.y * self.screen_size.x) + index.x)
+        self.available.insert(0, index)
 
 
 default_shader = ShaderData()
