@@ -124,6 +124,9 @@ class ProgramTape(Tape):
         self.block_pos = 0
 
         super(ProgramTape, self).__init__(filename)
+
+    def from_binary(self, data):
+        super().from_binary(data)
         self.data_blocks = []
         pos = 0
         while pos < len(self.data):
