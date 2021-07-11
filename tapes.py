@@ -72,15 +72,19 @@ class Tape(object):
             self.info = info
             self.image = image
         else:
-            with zipfile.ZipFile(filename) as zf:
-                config_bytes = io.StringIO(zf.read(self.info_filename).decode("ascii"))
-                self.data = zf.read(self.data_filename)
-                self.info = configparser.ConfigParser()
-                self.info.read_file(config_bytes)
-                # self.image = pygame.image.load(zf.read(self.image_filename))
-                # TODO: Worry about the image later as we'll need to bake them into the computer atlas at runtime
-                # if we want them to be definable here
-                self.image = None
+            with open(filename, "rb") as file:
+                self.from_binary(file.read())
+
+    def from_binary(self, data):
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            config_bytes = io.StringIO(zf.read(self.info_filename).decode("ascii"))
+            self.data = zf.read(self.data_filename)
+            self.info = configparser.ConfigParser()
+            self.info.read_file(config_bytes)
+            # self.image = pygame.image.load(zf.read(self.image_filename))
+            # TODO: Worry about the image later as we'll need to bake them into the computer atlas at runtime
+            # if we want them to be definable here
+            self.image = None
 
     def to_binary(self):
         config_bytes = io.StringIO()
