@@ -17,6 +17,13 @@ except ImportError:
     import popcnt
 
 
+def pad(data, align):
+    extra = align - (len(data) % align)
+    if extra == align:
+        return data
+    return data + (b"\x00" * extra)
+
+
 def butter_bandpass(lowcut, highcut, fs, order=5):
     nyq = 0.5 * fs
     low = lowcut / nyq
@@ -75,15 +82,20 @@ class Tape(object):
             with open(filename, "rb") as file:
                 self.from_binary(file.read())
 
-    def from_binary(self, data):
-        with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            config_bytes = io.StringIO(zf.read(self.info_filename).decode("ascii"))
-            self.data = zf.read(self.data_filename)
-            self.info = configparser.ConfigParser()
-            self.info.read_file(config_bytes)
-            # self.image = pygame.image.load(zf.read(self.image_filename))
-            # TODO: Worry about the image later as we'll need to bake them into the computer atlas at runtime
-            # if we want them to be definable here
+    def from_binary(self, data, name="unknown"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                config_bytes = io.StringIO(zf.read(self.info_filename).decode("ascii"))
+                self.data = zf.read(self.data_filename)
+                self.info = configparser.ConfigParser()
+                self.info.read_file(config_bytes)
+                # self.image = pygame.image.load(zf.read(self.image_filename))
+                # TODO: Worry about the image later as we'll need to bake them into the computer atlas at runtime
+                # if we want them to be definable here
+                self.image = None
+        except zipfile.BadZipFile:
+            self.data = data
+            self.info[self.metadata_section]["name"] = name
             self.image = None
 
     def to_binary(self):
@@ -125,8 +137,8 @@ class ProgramTape(Tape):
 
         super(ProgramTape, self).__init__(filename)
 
-    def from_binary(self, data):
-        super().from_binary(data)
+    def from_binary(self, data, name="unknown"):
+        super().from_binary(data, name)
         self.data_blocks = []
         pos = 0
         while pos < len(self.data):
@@ -184,6 +196,7 @@ class ProgramTape(Tape):
         self.preamble_len = self.noise_len + self.pilot_length * 1000
 
         for block in self.data_blocks:
+            block = pad(block, 4)
             data = numpy.fromstring(block, dtype="uint32")
             set_bits = popcnt.count_array(data)
             clr_bits = (len(data) * 32) - set_bits
