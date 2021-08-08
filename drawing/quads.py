@@ -292,9 +292,10 @@ def setverticesvertex(self, vertex, start, end, z):
 
 
 def setcolourquad(self, colour, value):
-    for i in range(4):
-        for j in range(4):
-            colour[i][j] = value[j]
+    # colour[:][:] = value * 4
+    # for i in range(4):
+    #    colour[i][:] = value
+    colour[0:4] = value
 
 
 def setcolourline(self, colour, value):

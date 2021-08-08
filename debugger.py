@@ -25,6 +25,7 @@ class Debugger(object):
         self.machine = machine
         self.breakpoints = {}
         self.next_breakpoint = None
+        self.last_time = None
         self.handlers = {
             messages.Types.STOP: self.handle_stop,
             messages.Types.READ_REGISTERS: self.handle_get_regs,
@@ -383,6 +384,14 @@ class Debugger(object):
             # self.connection.send(messages.MemViewReply(message.id, message.watch_start, data))
 
     def set_need_symbols(self):
+        if self.last_time is None:
+            self.last_time = time.time()
+        else:
+            now = time.time()
+            diff = now - self.last_time
+            print(f"Time taken {diff}")
+            self.last_time = now
+
         print("NEED SYMBOLS")
         self.need_symbols = True
 
@@ -411,9 +420,9 @@ class Debugger(object):
         self.symbols = symbols
         # pretend they just requested the symbols
         # self.handle_request_symbols(self.symbols)
-        self.current_file = self.get_file(override=True)
-        with open("/tmp/current_file", "wb") as f:
-            f.write(self.current_file)
+        # self.current_file = self.get_file(override=True)
+        # with open("/tmp/current_file", "wb") as f:
+        #    f.write(self.current_file)
 
     def add_breakpoint(self, addr):
         print(f"Add breakpoint {addr=:x}")

@@ -9,6 +9,7 @@ from . import drawing
 import os
 import numpy
 import struct
+import cProfile
 
 from . import globals
 from .globals.types import Point
@@ -160,6 +161,7 @@ class TapeDrive(armv2.Device):
         self.last_time = None
         self.wind_time = None
         self.pause_start = None
+        # self.profiler = cProfile.Profile()
 
         screen_width = self.cpu.display.pixel_width()
         screen_height = self.cpu.display.pixel_height()
@@ -230,6 +232,7 @@ class TapeDrive(armv2.Device):
             self.tape.play_sound()
         self.skipped = False
         self.playing = True
+        # self.profiler.enable()
         self.start_time = globals.t
         self.last_time = self.start_time
 
@@ -241,6 +244,8 @@ class TapeDrive(armv2.Device):
         self.playing = False
         self.start_time = None
         self.last_time = None
+        # self.profiler.disable()
+        # self.profiler.dump_stats("stats.bin")
 
     def pause(self):
         self.paused = True
@@ -335,7 +340,7 @@ class TapeDrive(armv2.Device):
         if not self.tape or not self.playing:
             return False
 
-        return self.tape.byte_ready() or self.skipped
+        return self.skipped or self.tape.byte_ready()
 
     def feed_byte(self):
         try:
@@ -515,6 +520,10 @@ class TapeDrive(armv2.Device):
         self.power_down()
 
 
+def colour_to_quad(colour):
+    return numpy.array([colour] * 4, numpy.float32)
+
+
 class Display(armv2.Device):
     """
     A Display
@@ -594,6 +603,8 @@ class Display(armv2.Device):
         self.dirty_rects = {}
         self.scale_factor = scale_factor
         # self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts', 'petscii.png'))
+
+        self.colour_quads = [colour_to_quad(colour) for colour in self.Colours.palette]
 
         self.cell_quads_buffer = drawing.QuadBuffer(self.width * self.height)
         self.fore_vertex_buffer = drawing.VertexBuffer(self.pixel_size[0] * self.pixel_size[1])
@@ -757,8 +768,8 @@ class Display(armv2.Device):
 
     def redraw_colours(self, pos):
         palette = self.palette_data[pos]
-        back_colour = self.Colours.palette[(palette >> 4) & 0xF]
-        fore_colour = self.Colours.palette[(palette) & 0xF]
+        back_colour = self.colour_quads[(palette >> 4) & 0xF]
+        fore_colour = self.colour_quads[(palette) & 0xF]
         self.cell_quads[pos].set_colour(fore_colour)
         self.cell_quads[pos].set_back_colour(back_colour)
 
