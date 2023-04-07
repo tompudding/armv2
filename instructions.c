@@ -31,18 +31,19 @@ static uint32_t OperandShift(armv2_t *cpu, uint32_t bits, uint32_t type_flag, ui
 
 void flog(char* fmt, ...)
 {
-    static FILE *f = NULL;
-    if(NULL == f) {
-        f = fopen("/tmp/armv2.debug.log","wb");
-        if(NULL == f) {
-            return;
-        }
-    }
-    va_list args;
-    va_start(args,fmt);
-    vfprintf(f,fmt,args);
-    va_end(args);
-    fflush(f);
+    return;
+    /* static FILE *f = NULL; */
+    /* if(NULL == f) { */
+    /*     f = fopen("/tmp/armv2.debug.log","wb"); */
+    /*     if(NULL == f) { */
+    /*         return; */
+    /*     } */
+    /* } */
+    /* va_list args; */
+    /* va_start(args,fmt); */
+    /* vfprintf(f,fmt,args); */
+    /* va_end(args); */
+    /* fflush(f); */
 }
 
 uint32_t OperandShift(armv2_t *cpu, uint32_t bits, uint32_t type_flag, uint32_t *carry) {

@@ -1,0 +1,6 @@
+wheel
+pygame==1.9.6
+PyOpenGl==3.0.2
+numpy==1.7.1
+cython==0.29.16
+pyelftools==0.26

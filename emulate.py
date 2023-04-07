@@ -12,28 +12,27 @@ from globals.types import Point
 from pygame.locals import *
 from optparse import OptionParser
 
-width,height = (960, 720)
-globals.screen = Point(width,height)
+width, height = (960, 720)
+globals.screen = Point(width, height)
 
-translations = {pygame.K_LEFT : 250,
-                pygame.K_RIGHT : 251,
-                pygame.K_UP : 252,
-                pygame.K_DOWN : 253}
+translations = {pygame.K_LEFT: 250, pygame.K_RIGHT: 251, pygame.K_UP: 252, pygame.K_DOWN: 253}
+
 
 def new_machine():
-    machine = hardware.Machine(cpu_size = 1<<21, cpu_rom = 'boot.rom')
+    machine = hardware.Machine(cpu_size=1 << 21, cpu_rom="boot.rom")
     try:
-        machine.AddHardware(hardware.Keyboard(machine), name='keyboard')
-        machine.AddHardware(hardware.Display(machine,scale_factor=1),name='display')
-        machine.AddHardware(hardware.Clock(machine), name='clock')
-        machine.AddHardware(hardware.TapeDrive(machine), name='tape_drive')
+        machine.AddHardware(hardware.Keyboard(machine), name="keyboard")
+        machine.AddHardware(hardware.Display(machine, scale_factor=1), name="display")
+        machine.AddHardware(hardware.Clock(machine), name="clock")
+        machine.AddHardware(hardware.TapeDrive(machine), name="tape_drive")
     except:
         machine.Delete()
         raise
     return machine
 
+
 class Emulator(object):
-    def __init__(self,callback=None):
+    def __init__(self, callback=None):
 
         self.machine = new_machine()
 
@@ -51,7 +50,7 @@ class Emulator(object):
 
         finally:
             self.dbg.exit()
-            armv2.DebugLog('deleting machine')
+            armv2.DebugLog("deleting machine")
             try:
                 self.dbg.machine.Delete()
             except:
@@ -95,10 +94,10 @@ class Emulator(object):
             if event.type == pygame.locals.KEYDOWN:
                 key = event.key
                 try:
-                    #Try to use the unicode field instead. If it doesn't work for some reason,
-                    #use the old value
+                    # Try to use the unicode field instead. If it doesn't work for some reason,
+                    # use the old value
                     key = ord(event.unicode)
-                except (TypeError,AttributeError):
+                except (TypeError, AttributeError):
                     pass
                 try:
                     key = translations[key]
@@ -109,10 +108,10 @@ class Emulator(object):
             elif event.type == pygame.locals.KEYUP:
                 key = event.key
                 try:
-                    #Try to use the unicode field instead. If it doesn't work for some reason,
-                    #use the old value
+                    # Try to use the unicode field instead. If it doesn't work for some reason,
+                    # use the old value
                     key = ord(event.unicode)
-                except (TypeError,AttributeError):
+                except (TypeError, AttributeError):
                     pass
                 if key < 256:
                     self.dbg.machine.keyboard.KeyUp(key)
@@ -127,32 +126,35 @@ class Emulator(object):
                 callback = None
         return False
 
+
 def init():
     if hasattr(sys, "_MEIPASS"):
         os.chdir(sys._MEIPASS)
 
     pygame.init()
-    pygame.display.set_caption('One Letter Werewolf')
-    #pygame.mouse.set_visible(0)
-    pygame.key.set_repeat(200,100)
-    globals.dirs = globals.types.Directories('resource')
-    globals.screen_quadbuffer     = drawing.QuadBuffer(16)
-    globals.screen.full_quad      = drawing.Quad(globals.screen_quadbuffer)
-    globals.screen.full_quad.SetVertices(Point(0,0),globals.screen,0.01)
+    pygame.display.set_caption("One Letter Werewolf")
+    # pygame.mouse.set_visible(0)
+    pygame.key.set_repeat(200, 100)
+    globals.dirs = globals.types.Directories("resource")
+    globals.screen_quadbuffer = drawing.QuadBuffer(16)
+    globals.screen.full_quad = drawing.Quad(globals.screen_quadbuffer)
+    globals.screen.full_quad.SetVertices(Point(0, 0), globals.screen, 0.01)
 
-    screen = pygame.display.set_mode((width, height), pygame.OPENGL|pygame.DOUBLEBUF)
+    screen = pygame.display.set_mode((width, height), pygame.OPENGL | pygame.DOUBLEBUF)
     drawing.Init(width, height, hardware.Display.pixel_size)
     drawing.InitDrawing()
 
-if __name__ == '__main__':
-    #from multiprocessing import Process
-    #import peripherals,time
 
-    #p = Process(target=peripherals.run)
-    #p.start()
+if __name__ == "__main__":
+    print("go for init")
+    # from multiprocessing import Process
+    # import peripherals,time
+
+    # p = Process(target=peripherals.run)
+    # p.start()
     init()
+    print("init done")
     emulator = Emulator()
     emulator.run()
     pygame.display.quit()
-    #p.join()
-
+    # p.join()
