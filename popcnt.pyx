@@ -30,7 +30,7 @@ cdef void _create_samples(uint32_t[:] data, double[:] samples, uint32_t[:] byte_
     cdef int l
     cdef int p = 0
     cdef int steps
-    
+
     for i in xrange(data.shape[0]):
         for j in xrange(4):
             for k in xrange(8):
@@ -44,7 +44,7 @@ cdef void _create_samples(uint32_t[:] data, double[:] samples, uint32_t[:] byte_
                 bits[i*32 + j*8 + k] = (data[i] >> (j*8 + k)) & 1
 
                 p += 2*steps
-                
+
             byte_samples[i*4 + j] = p
 
 @cython.boundscheck(False)
@@ -53,7 +53,7 @@ cdef void _create_tone(double[:] samples, int length) nogil:
     cdef int i
     cdef int j
 
-    for i in xrange(samples.shape[0]/(length*2)):
+    for i in xrange(samples.shape[0]//(length*2)):
         for j in xrange(length):
             samples[i*length*2 + j]     = -10000
             samples[i*length*2 + length + j] = 10000

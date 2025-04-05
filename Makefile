@@ -48,4 +48,4 @@ clean:
 	rm -rf build/temp*
 	rm -f build/*
 	rm -df build
-	python2 setup.py clean
+	python setup.py clean
