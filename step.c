@@ -129,9 +129,9 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
             continue;
         case COND_VC: //V clear
             if(FLAG_CLEAR(cpu, V)) {
-                continue;
+                break;
             }
-            break;
+            continue;
         case COND_HI: //C set and Z clear
             if(FLAG_SET(cpu, C) && FLAG_CLEAR(cpu, Z)) {
                 break;
