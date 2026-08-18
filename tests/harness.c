@@ -105,7 +105,7 @@ void t_reset_ram(uint32_t ram_size)
 void t_map(uint32_t addr)
 {
     if( NULL == cpu->page_tables[PAGEOF(addr)] ) {
-        t_fault(addr & ~(uint32_t)PAGE_MASK);
+        t_fault(addr);
     }
 }
 

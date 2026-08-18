@@ -309,7 +309,7 @@ enum armv2_status fault(struct armv2 *cpu, uint32_t addr)
     }
     page_info->flags |= (PERM_READ | PERM_EXECUTE | PERM_WRITE);
 
-    if(addr == 0) {
+    if(PAGEOF(addr) == 0) {
         //the first page is never writable, we'll put the boot rom there.
         page_info->flags &= (~PERM_WRITE);
     }
