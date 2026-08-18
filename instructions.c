@@ -584,7 +584,7 @@ enum armv2_exception branch_instruction(struct armv2 *cpu, uint32_t instruction)
     if( (instruction >> 24 & 1) ) {
         GETREG(cpu, LR) = ((cpu->pc + 4) & 0x03fffffc) | GETMODEPSR(cpu);
     }
-    cpu->pc = (cpu->pc + 8 + ((instruction & 0xffffff) << 2) - 4) & 0xffffff;
+    cpu->pc = (cpu->pc + 8 + ((instruction & 0xffffff) << 2) - 4) & 0x3ffffff;
     //+8 due to the weird prefetch thing, -4 for the hack as we're going to add 4 in the next loop
 
     return EXCEPT_NONE;
