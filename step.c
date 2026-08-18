@@ -79,7 +79,7 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
         if(cpu->page_tables[PAGEOF(cpu->pc)] == NULL) {
             //Trying to execute an unmapped page!
             //some sort of exception
-            if( ARMV2STATUS_OK != fault(cpu, PAGEOF(cpu->pc)) ) {
+            if( ARMV2STATUS_OK != fault(cpu, cpu->pc) ) {
                 exception = EXCEPT_PREFETCH_ABORT;
                 goto handle_exception;
             }
@@ -238,7 +238,7 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
             }
             struct exception_handler ex_handler = cpu->exception_handlers[exception];
             cpu->regs.actual[ex_handler.save_reg] = cpu->regs.actual[PC];
-            cpu->regs.actual[PC] = ((cpu->regs.actual[PC]) & 0xfffffffc) | ex_handler.mode;
+            cpu->regs.actual[PC] = ((cpu->regs.actual[PC]) & 0x03fffffc) | ex_handler.mode | ex_handler.flags;
             cpu->pc = ex_handler.pc - 4;
         }
 
