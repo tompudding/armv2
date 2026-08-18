@@ -122,7 +122,7 @@ uint32_t operand_shift(struct armv2 *cpu, uint32_t bits, uint32_t type_flag, uin
             op2 = (uint32_t)(((int32_t)op2) >> shift_amount);
         }
         else {
-            shift_c = (shift_amount >> 31) & 1;
+            shift_c = (op2 >> 31) & 1;
             op2 = shift_c * 0xffffffff;
         }
         break;
