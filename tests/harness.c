@@ -86,14 +86,6 @@ void t_reset(void)
 
 void t_reset_ram(uint32_t ram_size)
 {
-    /* cleanup_armv2() frees the page_info structs but not the pages they point
-     * at, so unmap them ourselves rather than leaking one set per test */
-    if( CPU_INITIALISED(cpu) ) {
-        for( uint32_t page = 0; page < NUM_PAGE_TABLES; page++ ) {
-            t_unmap(page * PAGE_SIZE);
-        }
-    }
-
     mute();
     (void)cleanup_armv2(cpu);
     if( ARMV2STATUS_OK != init(cpu, ram_size) ) {

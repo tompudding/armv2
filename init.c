@@ -119,6 +119,17 @@ static void clean_bitmask(uint64_t **bm) {
     }
 }
 
+static void cleanup_page_info(struct page_info **info) {
+    if( NULL == info ) {
+        return;
+    }
+    if( NULL != (*info)->memory && MAP_FAILED != (*info)->memory) {
+        munmap((*info)->memory, PAGE_SIZE);
+    }
+    (void)free(*info);
+    *info = NULL;
+}
+
 enum armv2_status cleanup_armv2(struct armv2 *cpu)
 {
     LOG("ARMV2 cleanup\n");
@@ -133,8 +144,7 @@ enum armv2_status cleanup_armv2(struct armv2 *cpu)
 
     for( uint32_t i = 0;i < NUM_PAGE_TABLES; i++ ) {
         if(NULL != cpu->page_tables[i]) {
-            free(cpu->page_tables[i]);
-            cpu->page_tables[i] = NULL;
+            cleanup_page_info(&cpu->page_tables[i]);
         }
     }
     return ARMV2STATUS_OK;
