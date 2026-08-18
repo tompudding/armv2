@@ -1,0 +1,23 @@
+# Formatting and linting for the emulator's python. Settings live in
+# pyproject.toml. Type checking is done by the parent project, for the reason
+# explained at the bottom of that file.
+#
+# Install with:  pre-commit install
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.3
+    hooks:
+      # Lint first so the formatter gets the last word on anything it rewrites
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(build|src|resource)/
+      - id: end-of-file-fixer
+        exclude: ^(build|src|resource)/
+      - id: check-merge-conflict
+      - id: check-yaml

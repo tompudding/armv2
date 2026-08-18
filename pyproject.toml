@@ -1,0 +1,36 @@
+# Tooling configuration only. The build is driven by the Makefile and
+# setup.py; nothing in here affects it.
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["build", "src"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP"]
+ignore = [
+    # Deliberate style, or not worth the churn
+    "F403",  # "from x import *" is used all over this codebase
+    "F405",  # ...so a great many names legitimately come from those imports
+    "E501",  # the formatter owns line width; what is left is unsplittable strings
+    "UP031", # printf style formatting, and a lot of it
+
+    # Pending a cleanup pass. Each of these wants eyes on it rather than an
+    # automatic fix, so they are off until someone works through them.
+    "F401",  # unused imports, but star imports make removal risky
+    "UP035", # typing.List and friends, now unused since UP006 rewrote their uses
+    "F841",  # unused variables, where the right hand side may still matter
+    "E711",  # "== None", which is not always the same as "is None"
+    "E722",  # bare excepts
+]
+
+# There is deliberately no mypy configuration here, and no mypy hook in
+# .pre-commit-config.yaml. This directory is a python package in its own right:
+# __init__.py re-exports the submodules, and thirteen of the twenty-two files
+# import from ".." , so they only resolve as armv2_emulator.something. A type
+# checker therefore has to run from the directory *above* this one, which is
+# what the parent project's hook does -- it checks armv2_emulator as a
+# subpackage along with its own code.
+#
+# Making this repository checkable on its own would mean changing those
+# relative imports to absolute ones.
