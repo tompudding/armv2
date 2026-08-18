@@ -17,11 +17,11 @@ except ImportError:
     import popcnt
 
 
-def pad(data, align):
+def pad(data: bytearray, align):
     extra = align - (len(data) % align)
     if extra == align:
         return data
-    return data + (b"\x00" * extra)
+    data.extend([b"\x00" * extra])
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
@@ -147,7 +147,7 @@ class ProgramTape(Tape):
                 # We're done
                 break
             size = struct.unpack(">I", word)[0]
-            self.data_blocks.append(self.data[pos + 4 : pos + 4 + size])
+            self.data_blocks.append(bytearray(self.data[pos + 4 : pos + 4 + size]))
             pos += size + 4
 
         self.build_samples()
@@ -197,7 +197,7 @@ class ProgramTape(Tape):
 
         for block in self.data_blocks:
             block = pad(block, 4)
-            data = numpy.fromstring(block, dtype="uint32")
+            data = numpy.frombuffer(block, dtype="uint32")
             set_bits = popcnt.count_array(data)
             clr_bits = (len(data) * 32) - set_bits
             # The sigmals we're using are either 8 (4 on 4 off) or 16 samples at 22050 Hz, which is
