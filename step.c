@@ -47,7 +47,7 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
                 for(uint32_t i = 8; i < 15; i++) {
                     cpu->regs.effective[i] = &cpu->regs.actual[R8_F + (i - 8)];
                 }
-                cpu->pc = 0x1c - 4;
+                cpu->pc = g_vector_table[EXCEPT_FIQ] - 4;
                 continue;
             }
         }
@@ -63,7 +63,7 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
                 SETFLAG(cpu, I);
                 //in case it's waiting for an interrupt
                 CLEARCPUFLAG(cpu, WAIT);
-                cpu->pc = 0x18 - 4;
+                cpu->pc = g_vector_table[EXCEPT_IRQ] - 4;
 
                 for(uint32_t i = 8;i < 13; i++) {
                     cpu->regs.effective[i] = &cpu->regs.actual[i];

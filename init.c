@@ -93,7 +93,7 @@ enum armv2_status init(struct armv2 *cpu, uint32_t memsize)
     //Set up the exception conditions
     for(uint32_t i=0;i<EXCEPT_NONE;i++) {
         cpu->exception_handlers[i].mode     = MODE_SUP;
-        cpu->exception_handlers[i].pc       = i * 4;
+        cpu->exception_handlers[i].pc       = g_vector_table[i];
         cpu->exception_handlers[i].flags    = FLAG_I;
         cpu->exception_handlers[i].save_reg = LR_S;
     }

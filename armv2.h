@@ -150,6 +150,17 @@ enum armv2_exception {
     EXCEPT_MAX,
 };
 
+__attribute__((weak)) uint32_t g_vector_table[] = {
+    [EXCEPT_RST] = 0x0,
+    [EXCEPT_UNDEFINED_INSTRUCTION] = 0x4,
+    [EXCEPT_SOFTWARE_INTERRUPT]    = 0x8,
+    [EXCEPT_PREFETCH_ABORT]        = 0xc,
+    [EXCEPT_DATA_ABORT]            = 0x10,
+    [EXCEPT_ADDRESS]               = 0x14,
+    [EXCEPT_IRQ]                   = 0x18,
+    [EXCEPT_FIQ]                   = 0x1c,
+};
+
 struct exception_handler {
     uint32_t mode;
     uint32_t pc;
