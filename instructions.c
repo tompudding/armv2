@@ -700,7 +700,7 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
                 else {
                     cpu->regs.actual[PC] = value;
                 }
-                cpu->pc = GETPC(cpu);
+                cpu->pc = GETPC(cpu) - 4;
             }
             else {
                 if( user_bank ) {
