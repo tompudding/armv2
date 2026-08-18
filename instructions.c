@@ -1,6 +1,7 @@
 #include "armv2.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #define ALU_TYPE_IMM   0x02000000
 #define MUL_TYPE_MLA   0x00200000
@@ -601,10 +602,11 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
     uint32_t rn         = (instruction>>16) & 0xf;
     uint32_t ldm        = instruction & MDT_LDM;
     uint32_t write_back = instruction & MDT_WRITE_BACK;
-    uint32_t setflags   = instruction & MDT_HAT;
+    bool pc_in_transfer_list = (instruction >> PC) & 1;
+    bool setflags   = false;
     uint32_t offset     = instruction & MDT_OFFSET_ADD;
     uint32_t preindex   = instruction & MDT_PREINDEX;
-    uint32_t user_bank  = GETMODE(cpu) ? setflags : MDT_HAT;
+    bool user_bank  = (GETMODE(cpu) == MODE_USR);
     uint32_t address;
     uint32_t num_registers = __builtin_popcount(instruction & 0xffff);
     int rs;
@@ -612,6 +614,19 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
     uint32_t write_back_old = 0;
     uint32_t write_back_value = 0;
     uint32_t first_reg = INVALID_REG;
+
+    // user_bank is currently set only if we're in usermode, but when the PC is not in the transfer-list
+    // setflags is re-purposed to indicate we should use the user_bank.
+    if( GETMODE(cpu) != MODE_USR ) {
+        if( !ldm || !pc_in_transfer_list) {
+            user_bank = instruction & MDT_HAT;
+        }
+        else if( ldm && pc_in_transfer_list ) {
+            // For ldm instructions when the pc is in the transfer list, that's when S changes meaning and
+            // indicates we should set the flags
+            setflags = instruction & MDT_HAT;
+        }
+    }
 
     if( rn == PC ) {
         //psr bits are used, so that's an exception if the flags aren't set, weird
@@ -695,13 +710,20 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
             }
 
             if( rs == PC ) {
-                //this means we update the whole register, except for prohibited flags in user mode
-                if( GETMODE(cpu) == MODE_USR ) {
-                    cpu->regs.actual[PC] = (cpu->regs.actual[PC] & PC_PROTECTED_BITS)
-                        | ((value - 4) & PC_UNPROTECTED_BITS);
+                if( setflags ) {
+                    //this means we update the whole register, except for prohibited flags in user mode
+                    if( GETMODE(cpu) == MODE_USR ) {
+                        // This is currently unreachable, setflags needs to be set in this case
+                        cpu->regs.actual[PC] = (cpu->regs.actual[PC] & PC_PROTECTED_BITS)
+                            | ((value - 4) & PC_UNPROTECTED_BITS);
+                    }
+                    else {
+                        cpu->regs.actual[PC] = value;
+                    }
                 }
                 else {
-                    cpu->regs.actual[PC] = value;
+                    // In this case we want to strip the flags and mode
+                    SETPC(cpu, value);
                 }
                 cpu->pc = GETPC(cpu) - 4;
             }
