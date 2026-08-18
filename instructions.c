@@ -129,8 +129,12 @@ uint32_t operand_shift(struct armv2 *cpu, uint32_t bits, uint32_t type_flag, uin
 
     case ALU_SHIFT_ROR:
         if( shift_amount > 32 ) {
-            //This is not clear to me from the spec. Should this do the same as 32 or as 0? Go with zero for now
             shift_amount &= 0x1f;
+            // It's important we don't set shift_amount to 0 here because it will think it's RRX; a shift
+            // amount of a multiple of 32 isn't the same as a shift of 0, it's the same as a shift of 32
+            if( shift_amount == 0 ) {
+                shift_amount = 32;
+            }
         }
         if( shift_amount == 0 ) {
             if( type_flag == 0 ) {

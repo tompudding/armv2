@@ -201,10 +201,7 @@ TEST(shift_asr_register_32_or_more)
 }
 
 /* Any non zero multiple of 32 rotates the word back to where it started and
- * puts bit 31 in the carry, exactly like a rotate of 32.
- *
- * Known to fail: operand_shift reduces the amount modulo 32 first, so a rotate
- * of 64 is treated as a rotate of zero and reports no carry out. */
+ * puts bit 31 in the carry, exactly like a rotate of 32. */
 TEST(shift_ror_register_multiple_of_32)
 {
     static const struct shift_case cases[] = {
