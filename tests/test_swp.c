@@ -16,10 +16,7 @@ TEST(swp_word)
     CHECK_REG(2, DATA_ADDR);
 }
 
-/* The usual atomic exchange, where the source and destination are the same.
- *
- * Known to fail: swap_instruction writes rd before it reads rm, so the value
- * it has just loaded is what gets stored back. */
+/* The usual atomic exchange, where the source and destination are the same. */
 TEST(swp_same_register)
 {
     t_write(DATA_ADDR, 0x0000dead);
@@ -53,10 +50,6 @@ TEST(swpb_at_the_start_of_a_page)
     CHECK_MEM(DATA_ADDR, 0x112233ff);
 }
 
-/* Known to fail: the byte merge in swap_instruction indexes page->memory with
- * the byte offset instead of the word offset, so it merges in a word from
- * further up the page, and reads past the end of the page altogether for byte
- * offsets above 0x400 */
 TEST(swpb_elsewhere_in_a_page)
 {
     t_write(DATA_ADDR + 0, 0x11223344);

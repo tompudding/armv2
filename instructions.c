@@ -789,7 +789,8 @@ enum armv2_exception swap_instruction(struct armv2 *cpu, uint32_t instruction)
     uint32_t rd   = (instruction >> 12) & 0xf;
     uint32_t rn   = (instruction >> 16) & 0xf;
     uint32_t byte = instruction & SDT_LOAD_BYTE;
-    uint32_t value;
+    uint32_t store_value = 0;
+    uint32_t load_value = 0;
     struct page_info *page;
 
     uint32_t address = rn == PC ? (cpu->pc | GETMODEPSR(cpu)) : GETREG(cpu, rn);
@@ -816,34 +817,35 @@ enum armv2_exception swap_instruction(struct armv2 *cpu, uint32_t instruction)
     }
 
     //First load
-    if( ARMV2STATUS_OK != perform_load(page, address, &value, 0) ) {
+    if( ARMV2STATUS_OK != perform_load(page, address, &load_value, 0) ) {
         return EXCEPT_DATA_ABORT;
     }
     if( byte ) {
-        value = (value >> ((address & 3) << 3)) & 0xff;
+        load_value = (load_value >> ((address & 3) << 3)) & 0xff;
+    }
+
+    //Save off the store value before we read the load value in case they're the same
+    if( rm == PC ) {
+        store_value = ((cpu->pc + 4) & 0x03fffffc) | GETMODEPSR(cpu);
+    }
+    else {
+        store_value = GETREG(cpu, rm);
     }
 
     if( rd == PC ) {
         //don't set any of the flags
-        cpu->pc = value - 4;
-        SETPC(cpu, value); //the -4 is a hack because we increment on the next loop
+        cpu->pc = load_value - 4;
+        SETPC(cpu, load_value); //the -4 is a hack because we increment on the next loop
     }
     else {
-        GETREG(cpu, rd) = value;
+        GETREG(cpu, rd) = load_value;
     }
 
-    //Now store
-    if( rm == PC ) {
-        value = ((cpu->pc + 4) & 0x03fffffc) | GETMODEPSR(cpu);
-    }
-    else {
-        value = GETREG(cpu, rm);
-    }
 
     if( byte ) {
         uint32_t byte_mask = 0xff << ((address & 3) << 3);
         uint32_t rest_mask = ~byte_mask;
-        value = (page->memory[INPAGE(address)] & rest_mask) | ((value & 0xff) << ((address & 3) << 3));
+        store_value = (page->memory[WORDINPAGE(address)] & rest_mask) | ((store_value & 0xff) << ((address & 3) << 3));
     }
     else {
         //must be aligned
@@ -852,7 +854,7 @@ enum armv2_exception swap_instruction(struct armv2 *cpu, uint32_t instruction)
         }
     }
 
-    (void) perform_store(page, address, value, 1);
+    (void) perform_store(page, address, store_value, 1);
     if( HAS_WRITE_WATCHPOINT(cpu, address) || HAS_READ_WATCHPOINT(cpu, address) ) {
         SETCPUFLAG(cpu, WATCHPOINT);
     }
