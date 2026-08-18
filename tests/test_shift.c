@@ -172,11 +172,7 @@ TEST(shift_ror_register)
     run_shift_reg(SH_ROR, "ror", CASES(cases));
 }
 
-/* A shift of zero passes rm through untouched and leaves the carry alone.
- *
- * Known to fail: operand_shift works the carry out for lsl out as
- * (op2 >> (32 - shift_amount)), which is undefined in C for a shift of zero
- * and in practice leaves bit 0 of rm in C. */
+// A shift of zero passes rm through untouched and leaves the carry alone.
 TEST(shift_lsl_zero_preserves_carry)
 {
     static const struct shift_case imm_cases[] = {
@@ -192,11 +188,8 @@ TEST(shift_lsl_zero_preserves_carry)
     run_shift_reg(SH_LSL, "lsl", CASES(reg_cases));
 }
 
-/* An arithmetic shift right by 32 or more fills the whole word with the sign
- * bit, which also ends up in the carry.
- *
- * Known to fail: operand_shift takes that bit from the shift amount rather than
- * from rm, so negative values come out as 0 with the carry clear. */
+// An arithmetic shift right by 32 or more fills the whole word with the sign
+// bit, which also ends up in the carry.
 TEST(shift_asr_register_32_or_more)
 {
     static const struct shift_case cases[] = {
