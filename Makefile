@@ -7,9 +7,20 @@ BUILD_DIR  = build
 TAPE_SRC := $(wildcard src/*.cpp)
 OBJ_FILES := $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
 ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc -Os
+TEST_SRCS := $(wildcard tests/*.c)
+TEST_HDRS := $(wildcard tests/*.h)
+TESTFLAGS  = ${CFLAGS} -g -I. -Itests
 .PRECIOUS: build/% #Don't delete our intermediate object files, they're useful for debugging
+.PHONY: all test clean
 
 all: armv2.so build/boot.rom
+
+#Unit tests for the cpu core. Run a single group with e.g. ./build/run_tests alu
+test: build/run_tests
+	./build/run_tests
+
+build/run_tests: ${TEST_SRCS} ${TEST_HDRS} libarmv2.a armv2.h | build
+	${CC} ${TESTFLAGS} -o $@ ${TEST_SRCS} libarmv2.a
 
 armv2.so: libarmv2.a armv2.pyx carmv2.pxd
 	python setup.py build_ext --inplace
