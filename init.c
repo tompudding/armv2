@@ -145,6 +145,7 @@ enum armv2_status cleanup_armv2(struct armv2 *cpu)
     for( uint32_t i = 0;i < NUM_PAGE_TABLES; i++ ) {
         if(NULL != cpu->page_tables[i]) {
             cleanup_page_info(&cpu->page_tables[i]);
+            cpu->free_ram += PAGE_SIZE;
         }
     }
     return ARMV2STATUS_OK;
