@@ -6,6 +6,7 @@
 #define SP    13
 #define LR    14
 #define PC    15
+#define INVALID_REG 32
 #define SP_S  16
 #define LR_S  17
 #define SP_I  18

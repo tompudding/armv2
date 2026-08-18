@@ -611,7 +611,7 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
     enum armv2_exception retval = EXCEPT_NONE;
     uint32_t write_back_old = 0;
     uint32_t write_back_value = 0;
-    uint32_t first_loop = 1;
+    uint32_t first_reg = INVALID_REG;
 
     if( rn == PC ) {
         //psr bits are used, so that's an exception if the flags aren't set, weird
@@ -657,11 +657,14 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
     }
     //shitty hack, cancel the increment we're about to do
     address -= 4;
-    for(rs = 0; rs < 16; rs++, first_loop = 0) {
+    for(rs = 0; rs < 16; rs++) {
         uint32_t value;
         struct page_info *page;
         if( ((instruction >> rs) & 1) == 0 ) {
             continue;
+        }
+        if( first_reg == INVALID_REG ) {
+            first_reg = rs;
         }
         address += 4;
 
@@ -728,7 +731,7 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
                 //slight quirk, if this is the first register we're storing and it's the writeback register, we must
                 //use it's old value
                 value = user_bank ? GETUSERREG(cpu, rs) : GETREG(cpu, rs);
-                if( write_back && first_loop && rs == rn ) {
+                if( write_back && (rs == first_reg) && rs == rn ) {
                     value = write_back_old;
                 }
             }

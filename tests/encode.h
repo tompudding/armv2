@@ -52,6 +52,7 @@
 #define R_SP 13u
 #define R_LR 14u
 #define R_PC 15u
+#define R_INVALID 17u
 
 /* cond 00 1 opcode S rn rd rotate imm8 -- operand 2 is imm8 ROR (2 * rotate) */
 static inline uint32_t dp_imm(uint32_t cond, uint32_t opcode, uint32_t s, uint32_t rn, uint32_t rd,

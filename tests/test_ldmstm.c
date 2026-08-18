@@ -138,11 +138,7 @@ TEST(register_list_order_is_by_register_number)
 }
 
 /* When the write back register is the first one stored, the value written to
- * memory is its old value.
- *
- * Known to fail for the r1 case: the "is this the first register" flag is
- * cleared by the transfer loop's increment even for registers that are not in
- * the list, so the old base value is only stored when the base is r0. */
+ * memory is its old value.  */
 TEST(stm_with_base_first_in_list_stores_old_base)
 {
     t_setreg(0, DATA_ADDR);
