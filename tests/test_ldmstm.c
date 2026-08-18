@@ -291,7 +291,7 @@ TEST(ldmstm_address_exception)
     /* stmia r1!, {r0, r2} */
     t_exec(mdt(C_AL, 0, 1, 0, 1, 0, 1, REG(0) | REG(2)));
 
-    CHECK_HEX("exception vector", t_nextpc(), 0x14);
+    CHECK_HEX("exception vector", t_nextpc(), g_vector_table[EXCEPT_ADDRESS]);
     /* the base is still written back before the exception is taken */
     CHECK_REG(1, 0x04000008);
 }
@@ -305,6 +305,6 @@ TEST(ldmstm_unaligned_base_aborts)
     /* ldmia r1, {r0} */
     t_exec(mdt(C_AL, 0, 1, 0, 0, 1, 1, REG(0)));
 
-    CHECK_HEX("exception vector", t_nextpc(), 0x10);
+    CHECK_HEX("exception vector", t_nextpc(), g_vector_table[EXCEPT_DATA_ABORT]);
     CHECK_REG(0, 0xdeadbeef);
 }

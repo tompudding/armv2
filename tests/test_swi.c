@@ -7,7 +7,7 @@ TEST(swi_enters_supervisor_mode_at_the_vector)
     t_setflags("NzCv");
     t_exec(swi(C_AL, 0x12));
 
-    CHECK_PC(0x08);
+    CHECK_PC(g_vector_table[EXCEPT_SOFTWARE_INTERRUPT]);
     CHECK_HEX("mode", t_getmode(), MODE_SUP);
     /* the return address and the psr are saved in the supervisor r14 */
     CHECK_HEX("supervisor r14", t_getactual(LR_S),
@@ -24,7 +24,7 @@ TEST(swi_from_user_mode_banks_the_registers)
     t_write(CODE_ADDR + 4, swi(C_AL, 0));
     t_run(CODE_ADDR, 2);
 
-    CHECK_PC(0x08);
+    CHECK_PC(g_vector_table[EXCEPT_SOFTWARE_INTERRUPT]);
     CHECK_HEX("mode", t_getmode(), MODE_SUP);
     CHECK_HEX("r13", t_getreg(R_SP), 0x22222222);
     CHECK_HEX("supervisor r14", t_getactual(LR_S), (CODE_ADDR + 12) | MODE_USR);
@@ -35,7 +35,7 @@ TEST(swi_from_user_mode_banks_the_registers)
 TEST(swi_ignores_the_comment_field)
 {
     t_exec(swi(C_AL, 0x00ffffff));
-    CHECK_PC(0x08);
+    CHECK_PC(g_vector_table[EXCEPT_SOFTWARE_INTERRUPT]);
 }
 
 TEST(swi_is_conditional)
@@ -139,7 +139,12 @@ TEST(watchpoints_can_be_removed)
     CHECK_PC(CODE_ADDR + 4);
 }
 
-/* Each exception has its own vector at the bottom of memory */
+/* Each exception has its own vector at the bottom of memory.
+ *
+ * These are deliberately written out rather than taken from g_vector_table:
+ * this is the test that pins the numbers down, and the vectors have to keep
+ * matching the branch table at the top of src/boot.S. Comparing the table with
+ * itself would assert nothing. */
 TEST(exception_vectors)
 {
     static const struct { const char *name; uint32_t vector; } expected[] = {

@@ -2,9 +2,9 @@
 #include "harness.h"
 #include "encode.h"
 
-static void check_exception(uint32_t vector)
+static void check_exception(enum armv2_exception exception)
 {
-    CHECK_HEX("exception vector", t_nextpc(), vector);
+    CHECK_HEX("exception vector", t_nextpc(), g_vector_table[exception]);
     CHECK_HEX("mode", t_getmode(), MODE_SUP);
     CHECK_HEX("saved pc", t_getactual(LR_S) & 0x03fffffc, CODE_ADDR + 8);
 }
@@ -190,14 +190,14 @@ TEST(unaligned_word_transfers_abort)
 {
     t_setreg(1, DATA_ADDR + 2);
     t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 1, 1, 0, 0));       /* ldr r0, [r1] */
-    check_exception(0x10);
+    check_exception(EXCEPT_DATA_ABORT);
 
     t_reset();
     t_write(DATA_ADDR, 0x11111111);
     t_setreg(0, 0x22222222);
     t_setreg(1, DATA_ADDR + 1);
     t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 0, 1, 0, 0));       /* str r0, [r1] */
-    check_exception(0x10);
+    check_exception(EXCEPT_DATA_ABORT);
     CHECK_MEM(DATA_ADDR, 0x11111111);
 }
 
@@ -206,7 +206,7 @@ TEST(aborted_transfer_does_not_write_back)
 {
     t_setreg(1, DATA_ADDR + 2);
     t_exec(sdt(C_AL, 0, 0, 1, 0, 0, 1, 1, 0, 4));       /* ldr r0, [r1], #4 */
-    check_exception(0x10);
+    check_exception(EXCEPT_DATA_ABORT);
     CHECK_REG(1, DATA_ADDR + 2);
 }
 
@@ -226,13 +226,13 @@ TEST(address_exception_above_64mb)
 {
     t_setreg(1, 0x04000000);
     t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 1, 1, 0, 0));       /* ldr r0, [r1] */
-    check_exception(0x14);
+    check_exception(EXCEPT_ADDRESS);
 
     t_reset();
     t_setreg(0, 0x11111111);
     t_setreg(1, 0xfffffffc);
     t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 0, 1, 0, 0));       /* str r0, [r1] */
-    check_exception(0x14);
+    check_exception(EXCEPT_ADDRESS);
 }
 
 /* Pages are faulted in on demand, until the machine runs out of memory */
@@ -241,7 +241,7 @@ TEST(data_abort_when_out_of_memory)
     t_reset_ram(2 * PAGE_SIZE);                          /* only the code and data pages fit */
     t_setreg(1, 0x00400000);
     t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 1, 1, 0, 0));       /* ldr r0, [r1] */
-    check_exception(0x10);
+    check_exception(EXCEPT_DATA_ABORT);
 }
 
 /* Page zero holds the boot rom and is never writable, which user mode code
@@ -256,7 +256,7 @@ TEST(user_mode_write_to_read_only_page_aborts)
     t_write(CODE_ADDR + 4, sdt(C_AL, 0, 1, 1, 0, 0, 0, 1, 0, 0));   /* str r0, [r1] */
     t_run(CODE_ADDR, 2);
 
-    CHECK_HEX("exception vector", t_nextpc(), 0x10);
+    CHECK_HEX("exception vector", t_nextpc(), g_vector_table[EXCEPT_DATA_ABORT]);
     CHECK_HEX("mode", t_getmode(), MODE_SUP);
     CHECK_MEM(0x40, 0);
 
@@ -289,7 +289,7 @@ TEST(page_zero_is_read_only_however_it_is_faulted_in)
     t_write(CODE_ADDR + 4, sdt(C_AL, 0, 1, 1, 0, 0, 0, 1, 0, 0));   /* str r0, [r1] */
     t_run(CODE_ADDR, 2);
 
-    CHECK_HEX("exception vector", t_nextpc(), 0x10);
+    CHECK_HEX("exception vector", t_nextpc(), g_vector_table[EXCEPT_DATA_ABORT]);
     CHECK_MEM(0x40, 0);
 }
 
