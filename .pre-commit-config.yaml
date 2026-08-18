@@ -15,9 +15,15 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # src/libc and rijndael-alg-fst.h are vendored from elsewhere. Leave them
+      # exactly as upstream has them so they stay diffable against it.
       - id: trailing-whitespace
-        exclude: ^(build|src|resource)/
+        exclude: &vendored ^(build/|src/|resource/|rijndael-alg-fst\.h$)
       - id: end-of-file-fixer
-        exclude: ^(build|src|resource)/
+        exclude: *vendored
+      - id: mixed-line-ending
+        exclude: *vendored
       - id: check-merge-conflict
       - id: check-yaml
+      - id: check-toml
+      - id: debug-statements
