@@ -335,12 +335,7 @@ enum armv2_status map_memory(struct armv2 *cpu, uint32_t device_num, uint32_t st
             return ARMV2STATUS_MEMORY_ERROR;
         }
         page = cpu->page_tables[page_pos];
-        if( page == NULL ) {
-            //That's OK, that means this page is currently completely unmapped. We can make a page just for this
-            continue;
-        }
-        if( page->read_callback || page->write_callback ||
-           page->read_byte_callback || page->write_byte_callback ) {
+        if( page != NULL ) {
             return ARMV2STATUS_ALREADY_MAPPED;
         }
     }
