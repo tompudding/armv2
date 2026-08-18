@@ -316,7 +316,7 @@ enum armv2_exception alu_instruction(struct armv2 *cpu, uint32_t instruction)
         result64 = ((uint64_t)op2) + op1 + carry;
         result = result64 & 0xffffffff;
         shift_c = result64 >> 32;
-        arith_v = (result ^ rn_val) & 0x80000000;
+        arith_v = (op1 ^ op2 ^ 0x80000000) & (op1 ^ result) & 0x80000000;
         break;
 
     case ALU_OPCODE_ORR:
