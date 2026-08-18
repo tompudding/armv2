@@ -287,6 +287,10 @@ enum armv2_status fault(struct armv2 *cpu, uint32_t addr)
         LOG("Error\n");
         return ARMV2STATUS_INVALID_ARGS;
     }
+    if( cpu->page_tables[PAGEOF(addr)] ) {
+        LOG("Fault called on mapped page\n");
+        return ARMV2STATUS_FAULT_FAULT;
+    }
     enum armv2_status result = ARMV2STATUS_OK;
 
     // We need at least a page of free RAM
