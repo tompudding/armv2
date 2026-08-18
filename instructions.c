@@ -69,7 +69,11 @@ uint32_t operand_shift(struct armv2 *cpu, uint32_t bits, uint32_t type_flag, uin
 
     switch( shift_type ) {
     case ALU_SHIFT_LSL:
-        if( shift_amount < 32 ) {
+        if( shift_amount == 0 ) {
+            // This is a special case from the spec and we have to preserve the old carry
+            shift_c = GETPSR(cpu) & FLAG_C;
+        }
+        else if( shift_amount < 32 ) {
             shift_c = (op2 >> (32 - shift_amount)) & 1;
             op2 <<= shift_amount;
         }
