@@ -275,6 +275,43 @@ TEST(ldm_into_pc_without_psr_bit_keeps_the_psr)
     CHECK_HEX("mode", t_getmode(), MODE_SUP);
 }
 
+/* User mode is allowed to load its own condition flags with the S bit, but not
+ * the interrupt disables or the mode bits */
+TEST(ldm_into_pc_with_psr_bit_in_user_mode_sets_the_flags)
+{
+    /* the word user code has arranged to load: all four flags set, interrupts
+     * enabled and supervisor mode requested */
+    t_write(DATA_ADDR, 0xf0000000 | 0x300 | MODE_SUP);
+    t_setreg(1, DATA_ADDR);
+    t_setreg(2, (CODE_ADDR + 4) | FLAG_I | MODE_USR);
+
+    t_write(CODE_ADDR, MOVS_PC(2));                                 /* into user mode */
+    t_write(CODE_ADDR + 4, mdt(C_AL, 0, 1, 1, 0, 1, 1, REG(15)));   /* ldmia r1, {pc}^ */
+    t_run(CODE_ADDR, 2);
+
+    CHECK_PC(0x300);
+    CHECK_FLAGS("NZCV");
+    CHECK_MSG(t_getmode() == MODE_USR, "mode is %u, user code must not be able to change it",
+              t_getmode());
+    CHECK_MSG(t_get_i_flag(), "the I flag must not be clearable from user mode");
+}
+
+/* Without the S bit the flags are left alone in user mode too */
+TEST(ldm_into_pc_without_psr_bit_in_user_mode_keeps_the_flags)
+{
+    t_write(DATA_ADDR, 0x00000300);
+    t_setreg(1, DATA_ADDR);
+    t_setreg(2, (CODE_ADDR + 4) | FLAG_N | FLAG_C | FLAG_I | MODE_USR);
+
+    t_write(CODE_ADDR, MOVS_PC(2));                                 /* into user mode */
+    t_write(CODE_ADDR + 4, mdt(C_AL, 0, 1, 0, 0, 1, 1, REG(15)));   /* ldmia r1, {pc} */
+    t_run(CODE_ADDR, 2);
+
+    CHECK_PC(0x300);
+    CHECK_FLAGS("NzCv");
+    CHECK_MSG(t_getmode() == MODE_USR, "mode is %u, expected user mode", t_getmode());
+}
+
 TEST(ldmstm_address_exception)
 {
     t_setreg(0, 0x11111111);

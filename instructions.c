@@ -606,10 +606,10 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
     bool setflags   = false;
     uint32_t offset     = instruction & MDT_OFFSET_ADD;
     uint32_t preindex   = instruction & MDT_PREINDEX;
-    bool user_bank  = (GETMODE(cpu) == MODE_USR);
-    uint32_t address;
+    bool user_bank  = false;
+    uint32_t address = 0;
     uint32_t num_registers = __builtin_popcount(instruction & 0xffff);
-    int rs;
+    int rs = 0;
     enum armv2_exception retval = EXCEPT_NONE;
     uint32_t write_back_old = 0;
     uint32_t write_back_value = 0;
@@ -618,14 +618,21 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
     // user_bank is currently set only if we're in usermode, but when the PC is not in the transfer-list
     // setflags is re-purposed to indicate we should use the user_bank.
     if( GETMODE(cpu) != MODE_USR ) {
+        // For all stms, and ldms where the pc is not in the transfer list, then the MDT_HAT bit indicates
+        // whether we should use the user bank
         if( !ldm || !pc_in_transfer_list) {
             user_bank = instruction & MDT_HAT;
         }
         else if( ldm && pc_in_transfer_list ) {
-            // For ldm instructions when the pc is in the transfer list, that's when S changes meaning and
-            // indicates we should set the flags
+            // For ldm instructions when the pc is in the transfer list, that's when MDT_HAT changes meaning
+            // and indicates we should set the flags
             setflags = instruction & MDT_HAT;
         }
+    }
+    else {
+        // user mode: always use the user_bank and the MDT_HAT bit indicates whether we should set the flags
+        user_bank = true;
+        setflags = instruction & MDT_HAT;
     }
 
     if( rn == PC ) {
@@ -715,7 +722,7 @@ enum armv2_exception multi_data_transfer_instruction(struct armv2 *cpu, uint32_t
                     if( GETMODE(cpu) == MODE_USR ) {
                         // This is currently unreachable, setflags needs to be set in this case
                         cpu->regs.actual[PC] = (cpu->regs.actual[PC] & PC_PROTECTED_BITS)
-                            | ((value - 4) & PC_UNPROTECTED_BITS);
+                            | (value & PC_UNPROTECTED_BITS);
                     }
                     else {
                         cpu->regs.actual[PC] = value;
