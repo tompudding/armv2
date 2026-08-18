@@ -246,10 +246,6 @@ TEST(stm_with_psr_bit_uses_user_bank)
     CHECK_MEM(DATA_ADDR, 0x11112222);
 }
 
-/* Known to fail: multi_data_transfer_instruction sets cpu->pc to the loaded
- * address, where every other write to the pc sets it to the address minus four
- * to allow for the increment at the top of the run loop, so execution resumes
- * one instruction late */
 TEST(ldm_into_pc_returns_to_the_loaded_address)
 {
     t_write(DATA_ADDR, 0x00000300);
