@@ -366,10 +366,13 @@ TEST(alu_write_to_pc_with_s_bit_sets_psr)
 /* In user mode the interrupt disable bits and the mode bits are protected */
 TEST(alu_write_to_pc_with_s_bit_in_user_mode)
 {
-    t_setmode(MODE_USR);
-    t_setflags("nzcvIf");
+    /* into user mode with the flags clear and interrupts still disabled */
+    t_setreg(0, (CODE_ADDR + 4) | FLAG_I | MODE_USR);
     t_setreg(1, 0xf0000000 | 0x200 | MODE_SUP);
-    t_exec(dp_reg(C_AL, OP_MOV, 1, 0, R_PC, 1, SH_LSL, 0));
+
+    t_write(CODE_ADDR, MOVS_PC(0));
+    t_write(CODE_ADDR + 4, dp_reg(C_AL, OP_MOV, 1, 0, R_PC, 1, SH_LSL, 0));  /* movs pc, r1 */
+    t_run(CODE_ADDR, 2);
 
     CHECK_PC(0x200);
     CHECK_FLAGS("NZCV");

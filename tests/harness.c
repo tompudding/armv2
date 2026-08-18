@@ -233,35 +233,6 @@ int t_get_i_flag(void)
     return FLAG_SET(cpu, I) ? 1 : 0;
 }
 
-void t_setmode(uint32_t mode)
-{
-    SETMODE(cpu, mode);
-
-    /* Do the banking the run loop would have done on a mode change */
-    for( uint32_t i = 8; i < NUM_EFFECTIVE_REGS; i++ ) {
-        cpu->regs.effective[i] = &cpu->regs.actual[i];
-    }
-    switch( mode ) {
-    case MODE_SUP:
-        for( uint32_t i = 13; i < 15; i++ ) {
-            cpu->regs.effective[i] = &cpu->regs.actual[R13_S + (i - 13)];
-        }
-        break;
-    case MODE_IRQ:
-        for( uint32_t i = 13; i < 15; i++ ) {
-            cpu->regs.effective[i] = &cpu->regs.actual[R13_I + (i - 13)];
-        }
-        break;
-    case MODE_FIQ:
-        for( uint32_t i = 8; i < 15; i++ ) {
-            cpu->regs.effective[i] = &cpu->regs.actual[R8_F + (i - 8)];
-        }
-        break;
-    default:
-        break;
-    }
-}
-
 uint32_t t_nextpc(void)
 {
     return (cpu->pc + 4) & 0x03fffffc;

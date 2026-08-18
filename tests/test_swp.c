@@ -94,11 +94,13 @@ TEST(swp_address_exception)
 TEST(swp_on_read_only_page_aborts_in_user_mode)
 {
     t_write(0x40, 0x11111111);
-    t_setmode(MODE_USR);
     t_setreg(1, 0x22222222);
     t_setreg(2, 0x40);
+    t_setreg(3, (CODE_ADDR + 4) | MODE_USR);
 
-    t_exec(swp(C_AL, 0, 2, 0, 1));
+    t_write(CODE_ADDR, MOVS_PC(3));                     /* into user mode */
+    t_write(CODE_ADDR + 4, swp(C_AL, 0, 2, 0, 1));      /* swp r0, r1, [r2] */
+    t_run(CODE_ADDR, 2);
 
     CHECK_HEX("exception vector", t_nextpc(), 0x10);
     CHECK_HEX("mode", t_getmode(), MODE_SUP);

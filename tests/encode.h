@@ -148,4 +148,10 @@ static inline uint32_t mrc_mcr(uint32_t cond, uint32_t load, uint32_t cp_num, ui
 #define MOV_REG(rd, rm)         dp_reg(C_AL, OP_MOV, 0, 0, (rd), (rm), SH_LSL, 0)
 #define NOP                     dp_reg(C_AL, OP_MOV, 0, 0, 0, 0, SH_LSL, 0)
 
+/* movs pc, rm writes the pc and the psr together, so rm holds the address to
+ * carry on at with the new flags and mode bits in the top and bottom of it.
+ * This is how a privileged mode drops into user mode, as at usr_mode in
+ * boot.S. */
+#define MOVS_PC(rm)             dp_reg(C_AL, OP_MOV, 1, 0, R_PC, (rm), SH_LSL, 0)
+
 #endif

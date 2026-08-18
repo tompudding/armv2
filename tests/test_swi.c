@@ -16,17 +16,18 @@ TEST(swi_enters_supervisor_mode_at_the_vector)
 
 TEST(swi_from_user_mode_banks_the_registers)
 {
-    t_setmode(MODE_USR);
     t_setactual(R_SP, 0x11111111);          /* user r13 */
     t_setactual(R13_S, 0x22222222);         /* supervisor r13 */
-    t_setflags("nzcvi");
+    t_setreg(0, (CODE_ADDR + 4) | MODE_USR);
 
-    t_exec(swi(C_AL, 0));
+    t_write(CODE_ADDR, MOVS_PC(0));         /* into user mode with the flags clear */
+    t_write(CODE_ADDR + 4, swi(C_AL, 0));
+    t_run(CODE_ADDR, 2);
 
     CHECK_PC(0x08);
     CHECK_HEX("mode", t_getmode(), MODE_SUP);
     CHECK_HEX("r13", t_getreg(R_SP), 0x22222222);
-    CHECK_HEX("supervisor r14", t_getactual(LR_S), (CODE_ADDR + 8) | MODE_USR);
+    CHECK_HEX("supervisor r14", t_getactual(LR_S), (CODE_ADDR + 12) | MODE_USR);
     CHECK_HEX("user r13", t_getactual(R_SP), 0x11111111);
 }
 

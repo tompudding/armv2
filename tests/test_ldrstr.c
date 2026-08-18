@@ -248,10 +248,13 @@ TEST(data_abort_when_out_of_memory)
  * finds out about the hard way */
 TEST(user_mode_write_to_read_only_page_aborts)
 {
-    t_setmode(MODE_USR);
     t_setreg(0, 0x12345678);
     t_setreg(1, 0x40);
-    t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 0, 1, 0, 0));       /* str r0, [r1] */
+    t_setreg(2, (CODE_ADDR + 4) | MODE_USR);
+
+    t_write(CODE_ADDR, MOVS_PC(2));                     /* into user mode */
+    t_write(CODE_ADDR + 4, sdt(C_AL, 0, 1, 1, 0, 0, 0, 1, 0, 0));   /* str r0, [r1] */
+    t_run(CODE_ADDR, 2);
 
     CHECK_HEX("exception vector", t_nextpc(), 0x10);
     CHECK_HEX("mode", t_getmode(), MODE_SUP);
@@ -260,27 +263,31 @@ TEST(user_mode_write_to_read_only_page_aborts)
     /* reading it is fine */
     t_reset();
     t_write(0x40, 0x99887766);
-    t_setmode(MODE_USR);
     t_setreg(1, 0x40);
-    t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 1, 1, 0, 0));       /* ldr r0, [r1] */
+    t_setreg(2, (CODE_ADDR + 4) | MODE_USR);
+
+    t_write(CODE_ADDR, MOVS_PC(2));
+    t_write(CODE_ADDR + 4, sdt(C_AL, 0, 1, 1, 0, 0, 1, 1, 0, 0));   /* ldr r0, [r1] */
+    t_run(CODE_ADDR, 2);
+
     CHECK_REG(0, 0x99887766);
     CHECK_HEX("mode", t_getmode(), MODE_USR);
 }
 
 /* Page zero holds the boot rom, so it must come out read only whichever
- * address in it is touched first.
- *
- * Known to fail: fault() compares the faulting address with zero rather than
- * the page number. */
+ * address in it is touched first */
 TEST(page_zero_is_read_only_however_it_is_faulted_in)
 {
     t_unmap(0);
     t_fault(CODE_ADDR);          /* fault page zero in via an address inside it */
 
-    t_setmode(MODE_USR);
     t_setreg(0, 0x12345678);
     t_setreg(1, 0x40);
-    t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 0, 1, 0, 0));       /* str r0, [r1] */
+    t_setreg(2, (CODE_ADDR + 4) | MODE_USR);
+
+    t_write(CODE_ADDR, MOVS_PC(2));                     /* into user mode */
+    t_write(CODE_ADDR + 4, sdt(C_AL, 0, 1, 1, 0, 0, 0, 1, 0, 0));   /* str r0, [r1] */
+    t_run(CODE_ADDR, 2);
 
     CHECK_HEX("exception vector", t_nextpc(), 0x10);
     CHECK_MEM(0x40, 0);

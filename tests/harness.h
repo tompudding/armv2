@@ -46,7 +46,10 @@ void        t_setflags(const char *flags);
 void        t_setflags_bits(uint32_t nzcv);    /* bit3 = N ... bit0 = V */
 const char *t_flags(void);
 
-void     t_setmode(uint32_t mode);             /* also re-banks the registers */
+/* There is no setter for the mode: a test that wants to be in another mode
+ * executes the instruction that gets it there, so that the register banking is
+ * done by the cpu rather than by a copy of it living here. MOVS_PC() in
+ * encode.h is the usual way in. */
 uint32_t t_getmode(void);
 void     t_set_i_flag(int on);
 int      t_get_i_flag(void);
