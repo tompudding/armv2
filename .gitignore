@@ -12,4 +12,7 @@ tapes/*.tape
 armv2.so
 libarmv2.a
 armv2.c
+popcnt.c
+*.cpython-*.so
+a.out
 __pycache__
