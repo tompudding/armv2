@@ -312,6 +312,26 @@ TEST(ldm_into_pc_without_psr_bit_in_user_mode_keeps_the_flags)
     CHECK_MSG(t_getmode() == MODE_USR, "mode is %u, expected user mode", t_getmode());
 }
 
+/* With r15 in the list the S bit means "restore the psr", so the other
+ * registers come from the current bank rather than the user one. That is what
+ * makes it usable as an exception return: the handler restores its own
+ * registers and the psr in one instruction. */
+TEST(ldm_with_psr_bit_and_pc_uses_the_current_bank)
+{
+    t_setactual(13, 0x11111111);             /* user r13 */
+    t_setactual(R13_S, 0x22222222);          /* supervisor r13 */
+    t_write(DATA_ADDR + 0, 0x0000abcd);
+    t_write(DATA_ADDR + 4, 0x300 | MODE_SUP);
+    t_setreg(1, DATA_ADDR);
+
+    /* ldmia r1, {r13, pc}^ */
+    t_exec(mdt(C_AL, 0, 1, 1, 0, 1, 1, REG(13) | REG(15)));
+
+    CHECK_PC(0x300);
+    CHECK_HEX("supervisor r13", t_getactual(R13_S), 0x0000abcd);
+    CHECK_HEX("user r13", t_getactual(13), 0x11111111);
+}
+
 TEST(ldmstm_address_exception)
 {
     t_setreg(0, 0x11111111);

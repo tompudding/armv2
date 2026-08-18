@@ -139,6 +139,49 @@ TEST(watchpoints_can_be_removed)
     CHECK_PC(CODE_ADDR + 4);
 }
 
+/* Code pages are faulted in on demand, the same as data pages. A freshly
+ * faulted page is zeroed, and an all zero word is "andeq r0, r0, r0", which
+ * with Z clear does nothing at all -- so all this checks is that we carried on
+ * rather than aborting. */
+TEST(executing_an_unmapped_page_faults_it_in)
+{
+    CHECK_MSG(NULL == cpu->page_tables[PAGEOF(0x9000)], "test setup: page 9 should start unmapped");
+
+    t_run(0x9000, 1);
+
+    CHECK_PC(0x9004);
+    CHECK_MSG(NULL != cpu->page_tables[PAGEOF(0x9000)], "page 9 should have been faulted in");
+    CHECK_HEX("mode", t_getmode(), MODE_SUP);
+}
+
+/* ...but if there is no memory left to fault it in with, that is a prefetch
+ * abort */
+TEST(prefetch_abort_when_the_page_cannot_be_faulted_in)
+{
+    t_reset_ram(2 * PAGE_SIZE);              /* the code and data pages use it all */
+
+    t_run(0x00400000, 1);
+
+    CHECK_PC(g_vector_table[EXCEPT_PREFETCH_ABORT]);
+    CHECK_HEX("mode", t_getmode(), MODE_SUP);
+    CHECK_HEX("saved pc", t_getactual(LR_S) & 0x03fffffc, 0x00400008);
+}
+
+/* Taking an exception masks irqs, so that a handler can save what it needs to
+ * before it can be interrupted itself */
+TEST(exception_entry_masks_interrupts)
+{
+    t_setflags("i");                         /* interrupts enabled */
+    t_exec(swi(C_AL, 0));
+    CHECK_MSG(t_get_i_flag(), "swi entry must mask irqs");
+
+    t_reset();
+    t_setflags("i");
+    t_setreg(1, DATA_ADDR + 2);
+    t_exec(sdt(C_AL, 0, 1, 1, 0, 0, 1, 1, 0, 0));   /* unaligned ldr, so a data abort */
+    CHECK_MSG(t_get_i_flag(), "data abort entry must mask irqs");
+}
+
 /* Each exception has its own vector at the bottom of memory.
  *
  * These are deliberately written out rather than taken from g_vector_table:
