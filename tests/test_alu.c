@@ -216,8 +216,7 @@ TEST(alu_rsc)
 
 /* V is set when the operands have different signs and the result does not have
  * the sign of operand 2, the same rule as every other subtraction.
- *
- * Known to fail: rsc computes V as (result ^ rn) & 0x80000000 instead. */
+ */
 TEST(alu_rsc_overflow_flag)
 {
     static const struct alu_case cases[] = {

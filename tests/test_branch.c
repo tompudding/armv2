@@ -88,9 +88,7 @@ TEST(branch_with_link_uses_banked_lr)
 }
 
 /* bl saves the psr in r14 along with the return address, so that a subroutine
- * can return with "movs pc, lr" and restore the flags its caller had.
- *
- * Known to fail: branch_instruction only saves the address. */
+ * can return with "movs pc, lr" and restore the flags its caller had. */
 TEST(branch_with_link_saves_psr_in_lr)
 {
     t_setflags("NzCvI");
