@@ -227,7 +227,7 @@ TEST(alu_rsc_overflow_flag)
         /* 0 - (-1) = 1, no overflow, but the emulator sets V */
         {0xffffffff, 0,          "nzCv", 1,          "nzcv"},
         /* 1 - (-2^31) does overflow, but the emulator clears V */
-        {0x80000000, 1,          "nzCv", 0x80000001, "Nzcv"},
+        {0x80000000, 1,          "nzCv", 0x80000001, "NzcV"},
     };
     run_reg_cases(OP_RSC, "rscs", CASES(cases));
 }
