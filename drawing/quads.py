@@ -1,3 +1,5 @@
+import ctypes
+
 import numpy
 
 # import globals as globals
@@ -11,14 +13,24 @@ from . import constants
 import OpenGL.GL
 
 
-class ShapeBuffer(object):
+# The name and size of each vertex attribute, at the location given by its position in this list. Every shader
+# binds these locations, so that a buffer's vertex array object works with all of them
+ATTRIBUTES = (("vertex_data", 3), ("tc_data", 2), ("colour_data", 4), ("back_colour_data", 4))
+
+
+class ShapeBuffer:
     """
     Keeps track of a potentially large number of quads that are kept in a single contiguous array for
     efficient rendering.
 
     It is used by instantiating it and then passing it as an argument to the quad constructor. The quad
     then remembers where it's vertices and other data are in the large buffers
+
+    The numpy arrays are the master copy. They're uploaded to the GPU by the next draw after they've changed,
+    and the GL objects are created by the first draw because buffers can be made before there's a GL context.
     """
+
+    element_pattern: tuple[int, ...] = ()
 
     def __init__(self, size):
         self.vertex_data = numpy.zeros((size * self.num_points, 3), numpy.float32)
@@ -36,6 +48,43 @@ class ShapeBuffer(object):
         self.current_size = 0
         self.max_size = size * self.num_points
         self.vacant = set()
+        self.vao = None
+        self.vbos = None
+        self.element_vbo = None
+        self.dirty = True
+
+    def create_gl_objects(self):
+        self.vao = OpenGL.GL.glGenVertexArrays(1)
+        self.vbos = OpenGL.GL.glGenBuffers(len(ATTRIBUTES))
+        self.element_vbo = OpenGL.GL.glGenBuffers(1)
+        OpenGL.GL.glBindVertexArray(self.vao)
+        for location, (name, size) in enumerate(ATTRIBUTES):
+            OpenGL.GL.glBindBuffer(OpenGL.GL.GL_ARRAY_BUFFER, self.vbos[location])
+            OpenGL.GL.glEnableVertexAttribArray(location)
+            OpenGL.GL.glVertexAttribPointer(location, size, OpenGL.GL.GL_FLOAT, OpenGL.GL.GL_FALSE, 0, None)
+        OpenGL.GL.glBindBuffer(OpenGL.GL.GL_ELEMENT_ARRAY_BUFFER, self.element_vbo)
+
+    def upload(self):
+        for vbo, (name, size) in zip(self.vbos, ATTRIBUTES):
+            OpenGL.GL.glBindBuffer(OpenGL.GL.GL_ARRAY_BUFFER, vbo)
+            OpenGL.GL.glBufferData(
+                OpenGL.GL.GL_ARRAY_BUFFER, getattr(self, name)[: self.current_size], OpenGL.GL.GL_DYNAMIC_DRAW
+            )
+        shapes = self.indices[: self.current_size].reshape(-1, self.num_points)
+        elements = shapes[:, self.element_pattern].ravel()
+        OpenGL.GL.glBufferData(OpenGL.GL.GL_ELEMENT_ARRAY_BUFFER, elements, OpenGL.GL.GL_DYNAMIC_DRAW)
+        self.dirty = False
+
+    def draw(self):
+        if self.current_size == 0:
+            return
+        if self.vao is None:
+            self.create_gl_objects()
+        OpenGL.GL.glBindVertexArray(self.vao)
+        if self.dirty:
+            self.upload()
+        count = self.current_size // self.num_points * len(self.element_pattern)
+        OpenGL.GL.glDrawElements(self.draw_type, count, OpenGL.GL.GL_UNSIGNED_INT, ctypes.c_void_p(0))
 
     def __next__(self):
         """
@@ -51,12 +100,14 @@ class ShapeBuffer(object):
                 self.indices[out + i] = out + i
                 for j in range(4):
                     self.colour_data[out + i][j] = 1
+            self.dirty = True
             return out
 
+        self.dirty = True
         out = self.current_size
         self.current_size += self.num_points
         if self.current_size > self.max_size:
-            raise NotImplemented
+            raise NotImplementedError
             # self.max_size *= 2
             # self.vertex_data.resize( (self.max_size,3) )
             # self.tc_data.resize    ( (self.max_size,2) )
@@ -71,8 +122,9 @@ class ShapeBuffer(object):
         self.current_size = n
         for i in range(self.size * self.num_points):
             self.indices[i] = i
-        self.colour_data = numpy.ones((self.max_size, 4), numpy.float32)  # RGBA default is white opaque
+        self.colour_data[:] = 1  # RGBA default is white opaque
         self.vacant = set()
+        self.dirty = True
 
     def remove_shape(self, index):
         """A quad is no longer needed. Because it can be in the middle of our nice block and we can't be spending
@@ -82,6 +134,7 @@ class ShapeBuffer(object):
 
         """
         self.vacant.add(index)
+        self.dirty = True
         for i in range(self.num_points):
             self.indices[index + i] = 0
             for j in range(3):
@@ -90,12 +143,13 @@ class ShapeBuffer(object):
 
 class QuadBuffer(ShapeBuffer):
     num_points = 4
-    draw_type = OpenGL.GL.GL_QUADS
+    draw_type = OpenGL.GL.GL_TRIANGLES
+    element_pattern = (0, 1, 2, 0, 2, 3)
 
     def __init__(self, size, ui=False, mouse_relative=False):
         self.is_ui = ui
         self.mouse_relative = mouse_relative
-        super(QuadBuffer, self).__init__(size)
+        super().__init__(size)
 
     def sort_for_depth(self):
         depths = [
@@ -116,6 +170,7 @@ class QuadBuffer(ShapeBuffer):
                 new_indices[pos + j] = self.indices[i + j]
             pos += 4
         self.indices = new_indices
+        self.dirty = True
 
 
 class ShadowQuadBuffer(QuadBuffer):
@@ -133,27 +188,32 @@ class ShadowQuadBuffer(QuadBuffer):
 class VertexBuffer(ShapeBuffer):
     num_points = 1
     draw_type = OpenGL.GL.GL_POINTS
+    element_pattern = (0,)
 
     def __init__(self, size, ui=False, mouse_relative=False):
         self.is_ui = ui
         self.mouse_relative = mouse_relative
-        super(VertexBuffer, self).__init__(size)
+        super().__init__(size)
 
 
-class ShapeVertex(object):
+class ShapeVertex:
     """Convenience object to allow nice slicing of the parent buffer"""
 
-    def __init__(self, index, buffer):
+    def __init__(self, index, buffer, source):
         self.index = index
         self.buffer = buffer
+        self.source = source
 
     def __getitem__(self, i):
+        # What comes back is a view that can be written to, so this has to count as a change
+        self.source.dirty = True
         if isinstance(i, slice):
             start, stop, stride = i.indices(len(self.buffer) - self.index)
             return self.buffer[self.index + start : self.index + stop : stride]
         return self.buffer[self.index + i]
 
     def __setitem__(self, i, value):
+        self.source.dirty = True
         if isinstance(i, slice):
             start, stop, stride = i.indices(len(self.buffer) - self.index)
             self.buffer[self.index + start : self.index + stop : stride] = value
@@ -161,7 +221,7 @@ class ShapeVertex(object):
             self.buffer[self.index + i] = value
 
 
-class Shape(object):
+class Shape:
     """
     Object representing a quad. Called with a quad buffer argument that the quad is allocated from
     """
@@ -172,10 +232,10 @@ class Shape(object):
         else:
             self.index = index
         self.source = source
-        self.vertex = ShapeVertex(self.index, source.vertex_data)
-        self.tc = ShapeVertex(self.index, source.tc_data)
-        self.colour = ShapeVertex(self.index, source.colour_data)
-        self.back_colour = ShapeVertex(self.index, source.back_colour_data)
+        self.vertex = ShapeVertex(self.index, source.vertex_data, source)
+        self.tc = ShapeVertex(self.index, source.tc_data, source)
+        self.colour = ShapeVertex(self.index, source.colour_data, source)
+        self.back_colour = ShapeVertex(self.index, source.back_colour_data, source)
         if vertex is not None:
             self.vertex[0 : self.num_points] = vertex
         if tc is not None:
@@ -327,7 +387,7 @@ class Vertex(Shape):
     setcolour = setcolourvertex
 
 
-class QuadBorder(object):
+class QuadBorder:
     """Class that draws the outline of a rectangle"""
 
     def __init__(self, source, line_width, colour=None):

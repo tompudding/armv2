@@ -26,7 +26,7 @@ def new_machine(boot_rom):
     return machine
 
 
-class Emulator(object):
+class Emulator:
     # Speeds are cycles per ms
     speeds = [0x400, 0x200, 0x100, 16, 2]
     clock_rate = None
@@ -203,11 +203,14 @@ def init(width, height, do_screen=True):
     globals.screen = Point(width, height)
     globals.dirs = globals.types.Directories(os.path.join(os.path.dirname(__file__), "resource"))
     globals.screen_quadbuffer = drawing.QuadBuffer(16)
-    globals.screen.full_quad = drawing.Quad(globals.screen_quadbuffer)
+    globals.screen.full_quad = drawing.Quad(globals.screen_quadbuffer, tc=drawing.constants.full_tc)
     globals.screen.full_quad.set_vertices(Point(0, 0), globals.screen, 0.01)
-    globals.crt_buffer = drawing.opengl.CrtBuffer(*hardware.Display.pixel_size)
     # globals.screen.full_quad.set_vertices(globals.screen*0.5, globals.screen,0.01)
     if do_screen:
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
+        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
         screen = pygame.display.set_mode((width, height), pygame.OPENGL | pygame.DOUBLEBUF)
+    globals.crt_buffer = drawing.opengl.CrtBuffer(*hardware.Display.pixel_size)
     drawing.init(width, height, hardware.Display.pixel_size)
     drawing.init_drawing()

@@ -1,5 +1,4 @@
-#version 130
-#extension GL_ARB_explicit_attrib_location : require
+#version 330 core
 
 uniform sampler2D tex;
 uniform int using_textures;

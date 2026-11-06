@@ -4,7 +4,6 @@ from OpenGL.arrays import numpymodule
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GL import shaders
-from OpenGL.GL.framebufferobjects import *
 
 from .. import globals
 from ..globals.types import Point
@@ -13,17 +12,15 @@ from ..globals.types import Point
 import sys
 import time
 from . import constants
+from . import quads
 from . import texture
 
 numpymodule.NumpyHandler.ERROR_ON_COPY = True
 
 
-class ShaderLocations(object):
+class ShaderLocations:
     def __init__(self):
         self.tex = None
-        self.vertex_data = None
-        self.tc_data = None
-        self.colour_data = None
         self.using_textures = None
         self.screen_dimensions = None
         self.translation = None
@@ -31,7 +28,7 @@ class ShaderLocations(object):
         self.pixels = None
 
 
-class ShaderData(object):
+class ShaderData:
     def __init__(self):
         self.program = None
         self.locations = ShaderLocations()
@@ -41,7 +38,7 @@ class ShaderData(object):
     def use(self):
         shaders.glUseProgram(self.program)
 
-    def load(self, name, uniforms, attributes):
+    def load(self, name, uniforms):
         vertex_name, fragment_name = (
             os.path.join("shaders", "%s_%s.glsl" % (name, typeof)) for typeof in ("vertex", "fragment")
         )
@@ -56,6 +53,8 @@ class ShaderData(object):
         shads = (VERTEX_SHADER, FRAGMENT_SHADER)
         for shader in shads:
             glAttachShader(self.program, shader)
+        for location, (attribute, size) in enumerate(quads.ATTRIBUTES):
+            glBindAttribLocation(self.program, location, attribute)
         self.fragment_shader_attrib_binding()
         self.program = shaders.ShaderProgram(self.program)
         glLinkProgram(self.program)
@@ -64,10 +63,8 @@ class ShaderData(object):
         for shader in shads:
             glDeleteShader(shader)
         # self.program    = shaders.compileProgram(VERTEX_SHADER,FRAGMENT_SHADER)
-        for (namelist, func) in ((uniforms, glGetUniformLocation), (attributes, glGetAttribLocation)):
-            for name in namelist:
-                setattr(self.locations, name, func(self.program, name))
-                print(name, getattr(self.locations, name))
+        for name in uniforms:
+            setattr(self.locations, name, glGetUniformLocation(self.program, name))
 
     def fragment_shader_attrib_binding(self):
         pass
@@ -78,7 +75,7 @@ class FBOTexture(texture.Texture):
         self.texture = n
 
 
-class CrtBuffer(object):
+class CrtBuffer:
     TEXTURE_TYPE_SHADOW = 0
     NUM_TEXTURES = 1
     # WIDTH               = 1024
@@ -131,9 +128,9 @@ class CrtBuffer(object):
 
     def bind_for_reading(self, offset):
         self.unbind()
-        for i, texture in enumerate(self.textures):
+        for i, tex in enumerate(self.textures):
             glActiveTexture(GL_TEXTURE0 + i + offset)
-            glBindTexture(GL_TEXTURE_2D, texture)
+            glBindTexture(GL_TEXTURE_2D, tex)
 
     def unbind(self):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
@@ -163,13 +160,11 @@ def init(w, h, pixel_size):
     default_shader.load(
         "default",
         uniforms=("tex", "translation", "scale", "screen_dimensions", "using_textures"),
-        attributes=("vertex_data", "tc_data", "colour_data"),
     )
 
     screen_shader.load(
         "screen",
         uniforms=("tex", "translation", "scale", "screen_dimensions", "using_textures", "pixels"),
-        attributes=("vertex_data", "tc_data", "fore_colour_data", "back_colour_data"),
     )
 
     # vao = glGenVertexArrays(1)
@@ -178,7 +173,6 @@ def init(w, h, pixel_size):
     crt_shader.load(
         "crt",
         uniforms=("tex", "translation", "scale", "screen_dimensions", "global_time", "screen_index"),
-        attributes=("vertex_data", "tc_data"),
     )
 
     # crt_buffer = CrtBuffer(*pixel_size)
@@ -186,11 +180,8 @@ def init(w, h, pixel_size):
     glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-    glEnable(GL_TEXTURE_2D)
     glEnable(GL_BLEND)
     glEnable(GL_DEPTH_TEST)
-    # glAlphaFunc(GL_GREATER, 0.25);
-    glEnable(GL_ALPHA_TEST)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 
@@ -219,17 +210,8 @@ def draw_crt_to_screen(crt_buffer, x, y, num):
     glUniform1f(crt_shader.locations.global_time, globals.t / 1000.0)
     crt_buffer.bind_for_reading(0)
     # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glEnableVertexAttribArray(crt_shader.locations.vertex_data)
-    glEnableVertexAttribArray(crt_shader.locations.tc_data)
     glUniform2f(crt_shader.locations.screen_index, x / num, y / num)
-    glVertexAttribPointer(
-        crt_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, globals.screen_quadbuffer.vertex_data
-    )
-    glVertexAttribPointer(crt_shader.locations.tc_data, 2, GL_FLOAT, GL_FALSE, 0, constants.full_tc)
-
-    glDrawElements(
-        GL_QUADS, globals.screen_quadbuffer.current_size, GL_UNSIGNED_INT, globals.screen_quadbuffer.indices
-    )
+    globals.screen_quadbuffer.draw()
 
 
 def init_drawing():
@@ -258,52 +240,11 @@ def init_drawing():
     glUniform2f(crt_shader.locations.screen_index, 0, 0)
 
 
-def draw_all(quad_buffer, texture):
-    # This is a copy paste from the above function, but this is the inner loop of the program, and we need it
-    # to be fast.  I'm not willing to put conditionals around the normal lines, so I made a copy of the
-    # function without them
-    raise Throbbins
-    glActiveTexture(GL_TEXTURE0)
-    glBindTexture(GL_TEXTURE_2D, texture.texture)
-    glUniform1i(default_shader.locations.using_textures, 1)
-
-    glEnableVertexAttribArray(default_shader.locations.vertex_data)
-    glEnableVertexAttribArray(default_shader.locations.tc_data)
-    glEnableVertexAttribArray(default_shader.locations.colour_data)
-
-    glVertexAttribPointer(
-        default_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, quad_buffer.vertex_data
-    )
-    glVertexAttribPointer(default_shader.locations.tc_data, 2, GL_FLOAT, GL_FALSE, 0, quad_buffer.tc_data)
-    glVertexAttribPointer(
-        default_shader.locations.colour_data, 4, GL_FLOAT, GL_FALSE, 0, quad_buffer.colour_data
-    )
-
-    glDrawElements(quad_buffer.draw_type, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
-    glDisableVertexAttribArray(default_shader.locations.vertex_data)
-    glDisableVertexAttribArray(default_shader.locations.tc_data)
-    glDisableVertexAttribArray(default_shader.locations.colour_data)
-
-
 def draw_no_texture(quad_buffer, screen_index_x, screen_index_y):
     default_shader.use()
     glUniform1i(default_shader.locations.using_textures, 0)
-
-    glEnableVertexAttribArray(default_shader.locations.vertex_data)
-    glEnableVertexAttribArray(default_shader.locations.colour_data)
     glUniform2f(default_shader.locations.translation, screen_index_x, screen_index_y)
-
-    glVertexAttribPointer(
-        default_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, quad_buffer.vertex_data
-    )
-    glVertexAttribPointer(
-        default_shader.locations.colour_data, 4, GL_FLOAT, GL_FALSE, 0, quad_buffer.colour_data
-    )
-
-    glDrawElements(quad_buffer.draw_type, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
-
-    glDisableVertexAttribArray(default_shader.locations.vertex_data)
-    glDisableVertexAttribArray(default_shader.locations.colour_data)
+    quad_buffer.draw()
 
 
 def draw_pixels(quad_buffer, pixel_data, screen_index_x, screen_index_y):
@@ -312,23 +253,4 @@ def draw_pixels(quad_buffer, pixel_data, screen_index_x, screen_index_y):
     glUniform1i(screen_shader.locations.using_textures, 0)
     glUniform4uiv(screen_shader.locations.pixels, len(pixel_data), pixel_data)
     glUniform2f(screen_shader.locations.translation, screen_index_x, screen_index_y)
-
-    glEnableVertexAttribArray(screen_shader.locations.vertex_data)
-    glEnableVertexAttribArray(screen_shader.locations.fore_colour_data)
-    glEnableVertexAttribArray(screen_shader.locations.back_colour_data)
-
-    glVertexAttribPointer(
-        screen_shader.locations.vertex_data, 3, GL_FLOAT, GL_FALSE, 0, quad_buffer.vertex_data
-    )
-    glVertexAttribPointer(
-        screen_shader.locations.fore_colour_data, 4, GL_FLOAT, GL_FALSE, 0, quad_buffer.colour_data
-    )
-    glVertexAttribPointer(
-        screen_shader.locations.back_colour_data, 4, GL_FLOAT, GL_FALSE, 0, quad_buffer.back_colour_data
-    )
-
-    glDrawElements(quad_buffer.draw_type, quad_buffer.current_size, GL_UNSIGNED_INT, quad_buffer.indices)
-
-    glDisableVertexAttribArray(screen_shader.locations.vertex_data)
-    glDisableVertexAttribArray(screen_shader.locations.fore_colour_data)
-    glDisableVertexAttribArray(screen_shader.locations.back_colour_data)
+    quad_buffer.draw()

@@ -4,7 +4,6 @@ import numpy
 import glob
 from pygame.locals import *
 from OpenGL.GL import *
-from OpenGL.GL.framebufferobjects import *
 
 from .. import globals
 from ..globals.types import Point
@@ -16,11 +15,11 @@ from . import opengl
 from . import sprite
 from typing import Dict, Tuple
 
-cache: Dict[str, Tuple[str, int, int]] = {}
+cache: dict[str, tuple[str, int, int]] = {}
 global_scale = 1
 
 
-class TextureImage(object):
+class TextureImage:
     """Load a file into a gltexture and store that texture for later use"""
 
     def __init__(self, filename):
@@ -54,7 +53,7 @@ class TextureImage(object):
             glBindTexture(GL_TEXTURE_2D, self.texture)
 
 
-class Texture(object):
+class Texture:
     """Load a (potential) group of textures"""
 
     def __init__(self, filename, normal_filename=None, occlusion_filename=None, displacement_filename=None):
@@ -78,7 +77,7 @@ class Texture(object):
             setattr(self, name, t)
 
 
-class RenderTarget(object):
+class RenderTarget:
     """
     Create a texture for rendering onto. Call Target on the object, do some rendering, then call
     detarget. Hey presto, self.texture is now a texture containing that drawing!
@@ -93,32 +92,28 @@ class RenderTarget(object):
         self.screensize = screensize
         self.texture = glGenTextures(1)
         glActiveTexture(GL_TEXTURE0)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
+        glBindFramebuffer(GL_FRAMEBUFFER, self.fbo)
         glBindTexture(GL_TEXTURE_2D, self.texture)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, self.x, self.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
-        glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, self.depthbuffer)
-        glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, self.x, self.y)
-        glFramebufferRenderbufferEXT(
-            GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER_EXT, self.depthbuffer
-        )
-        glFramebufferTexture2DEXT(
-            GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.texture, 0
-        )
-        if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
+        glBindRenderbuffer(GL_RENDERBUFFER, self.depthbuffer)
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, self.x, self.y)
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self.depthbuffer)
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.texture, 0)
+        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
             print("crapso")
             raise SystemExit
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
     def target(self):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
-        if glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT:
+        glBindFramebuffer(GL_FRAMEBUFFER, self.fbo)
+        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
             print("crapso1")
             raise SystemExit
 
     def detarget(self):
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
 
 # texture atlas code taken from
@@ -126,7 +121,7 @@ class RenderTarget(object):
 # I'm assuming it's open source!
 
 
-class SubImage(object):
+class SubImage:
     def __init__(self, pos, size):
         self.pos = pos
         self.size = size
@@ -139,7 +134,7 @@ class SubImage(object):
         )
 
 
-class TextureAtlas(object):
+class TextureAtlas:
     def __init__(self, image_filename, data_filename):
         extra_names = [
             image_filename[:-4] + extra + image_filename[-4:]
