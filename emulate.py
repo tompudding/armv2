@@ -9,8 +9,9 @@ import pygame
 from . import globals
 from .globals.types import Point
 from pygame.locals import *
-from optparse import OptionParser
+import argparse
 from . import sounds
+from . import tapes
 
 
 def new_machine(boot_rom):
@@ -63,7 +64,9 @@ class Emulator:
     def run(self, callback=None):
         try:
             done = False
+            clock = pygame.time.Clock()
             while not done:
+                clock.tick(60)
                 done = self.mainloop(callback)
 
         finally:
@@ -138,12 +141,31 @@ class Emulator:
     def is_stopped(self):
         return self.dbg.stopped
 
+    def load_tape(self, filename):
+        self.machine.tape_drive.load_tape(tapes.ProgramTape(filename))
+
+    def play_tape(self):
+        self.machine.tape_drive.start_playing()
+
+    # Keys that control the harness rather than going to the guest, used by the standalone runner
+    function_keys = {
+        pygame.K_F5: play_tape,
+        pygame.K_F6: skip_loading,
+        pygame.K_F7: restart,
+        pygame.K_F8: cycle_speed,
+    }
+
     def mainloop(self, callback):
         globals.t = pygame.time.get_ticks()
-        self.dbg.step_num(self.frame_cycles)
+        # Run 16ms worth of cycles per frame, as the game does
+        self.dbg.step_num(16 * self.clock_rate)
         for event in pygame.event.get():
             if event.type == pygame.locals.QUIT:
                 return True
+
+            if event.type == pygame.locals.KEYDOWN and event.key in self.function_keys:
+                self.function_keys[event.key](self)
+                continue
 
             if event.type == pygame.USEREVENT:
                 if self.dbg.wants_interrupt():
@@ -175,10 +197,12 @@ class Emulator:
                     self.dbg.machine.keyboard.key_up(key)
         # elapsed = globals.t - self.last
         # if 1 and elapsed > 20:
-        drawing.opengl.clear_screen()
+        drawing.new_crt_frame(globals.crt_buffer)
         self.dbg.machine.display.new_frame()
         self.dbg.machine.tape_drive.update()
         self.dbg.machine.display.end_frame()
+        globals.crt_buffer.unbind()
+        drawing.opengl.clear_screen()
         self.dbg.machine.display.draw_to_screen()
         pygame.display.flip()
         # self.last = globals.t
@@ -191,7 +215,7 @@ class Emulator:
         return False
 
 
-def init(width, height, do_screen=True):
+def init(width, height, do_screen=True, hidden=False):
     if hasattr(sys, "_MEIPASS"):
         os.chdir(sys._MEIPASS)
 
@@ -210,7 +234,31 @@ def init(width, height, do_screen=True):
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
         pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
-        screen = pygame.display.set_mode((width, height), pygame.OPENGL | pygame.DOUBLEBUF)
+        flags = pygame.OPENGL | pygame.DOUBLEBUF
+        if hidden:
+            flags |= pygame.HIDDEN
+        screen = pygame.display.set_mode((width, height), flags)
     globals.crt_buffer = drawing.opengl.CrtBuffer(*hardware.Display.pixel_size)
     drawing.init(width, height, hardware.Display.pixel_size)
     drawing.init_drawing()
+
+
+def main():
+    """Run a single machine in its own window. Run from the repo root with python -m armv2_emulator.emulate"""
+    parser = argparse.ArgumentParser(description=main.__doc__)
+    parser.add_argument("--rom", default="armv2_emulator/build/boot.rom", help="the boot rom")
+    parser.add_argument("--tape", help="a tape to put in the drive. Type load, then press F5 to play it")
+    parser.add_argument("--scale", type=int, default=3, help="window size as a multiple of 320x240")
+    args = parser.parse_args()
+
+    print("F5 plays the tape, F6 skips the loading, F7 restarts the machine, F8 changes speed")
+    width, height = hardware.Display.pixel_size
+    init(width * args.scale, height * args.scale)
+    emulator = Emulator(boot_rom=args.rom)
+    if args.tape:
+        emulator.load_tape(args.tape)
+    emulator.run()
+
+
+if __name__ == "__main__":
+    main()

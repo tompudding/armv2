@@ -45,7 +45,7 @@ class Keyboard(armv2.Device):
         KEY_UP = 1
 
     def __init__(self, cpu):
-        super(Keyboard, self).__init__(cpu)
+        super().__init__(cpu)
         self.ring_buffer = [0 for i in range(self.ringbuffer_size)]
         self.pos = 0
         self.key_state = 0
@@ -138,7 +138,7 @@ class TapeDrive(armv2.Device):
         READY = 4
 
     def __init__(self, cpu):
-        super(TapeDrive, self).__init__(cpu)
+        super().__init__(cpu)
         self.status = self.Codes.NOT_READY
         self.data_byte = 0
         self.tape = None
@@ -599,7 +599,7 @@ class Display(armv2.Device):
     frame_buffer_end = frame_buffer_start + ((width * cell_size * height * cell_size) // 8)
 
     def __init__(self, cpu, scale_factor):
-        super(Display, self).__init__(cpu)
+        super().__init__(cpu)
         self.dirty_rects = {}
         self.scale_factor = scale_factor
         # self.atlas = drawing.texture.PetsciiAtlas(os.path.join('fonts', 'petscii.png'))
@@ -645,14 +645,14 @@ class Display(armv2.Device):
         self.letter_data = [0 for i in range(self.width * self.height)]
         self.palette_data = [0 for i in range(self.width * self.height)]
 
-        with open(os.path.join(globals.dirs.fonts, "petscii.txt"), "r") as f:
+        with open(os.path.join(globals.dirs.fonts, "petscii.txt")) as f:
             for line in f:
                 i, word = line.strip().split(" : ")
                 i, word = [int(v, 16) for v in (i, word)]
                 # Each 64 bit word reprents all the bits of an 8x8 cell, but it's easier to store them as 8
                 # rows of a byte each as that's how they'll get written to memory
                 self.font_data[i] = numpy.array(
-                    [byte_reverse(((word >> (i * 8)) & 0xFF)) for i in range(8)],
+                    [byte_reverse((word >> (i * 8)) & 0xFF) for i in range(8)],
                     dtype=numpy.uint8,
                 )
 
@@ -815,16 +815,25 @@ class Clock(armv2.Device):
     """
 
     id = 0x92D177B0
+    # The harness drives the clock from its own virtual time instead of a pygame timer
+    use_pygame_timer = True
+
+    def __init__(self, cpu):
+        super().__init__(cpu)
+        # The interval in milliseconds that the guest asked for, with 0 meaning off
+        self.period = 0
 
     def operation_callback(self, arg0, arg1):
-        pygame.time.set_timer(pygame.USEREVENT, arg0)
+        self.period = arg0
+        if self.use_pygame_timer:
+            pygame.time.set_timer(pygame.USEREVENT, arg0)
         return 0
 
     def fired(self):
         self.cpu.interrupt(self.id, 0)
 
 
-class MemPassthrough(object):
+class MemPassthrough:
     def __init__(self, cv, accessor):
         self.cv = cv
         self.accessor = accessor
@@ -843,6 +852,9 @@ class MemPassthrough(object):
 
 
 class Machine:
+    # The harness sets this so that a script that fails without closing the machine still exits
+    daemon_thread = False
+
     def __init__(self, cpu_size, cpu_rom):
         self.rom_filename = cpu_rom
         self.cpu = armv2.Armv2(size=cpu_size, filename=cpu_rom)
@@ -854,7 +866,7 @@ class Machine:
         self.cv = threading.Condition(threading.Lock())
         self.mem = MemPassthrough(self.cv, self.cpu.mem)
         self.memw = MemPassthrough(self.cv, self.cpu.memw)
-        self.thread = threading.Thread(target=self.thread_main)
+        self.thread = threading.Thread(target=self.thread_main, daemon=self.daemon_thread)
         self.tape_drive = None
         self.status = armv2.Status.OK
         self.thread.start()

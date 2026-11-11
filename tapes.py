@@ -8,13 +8,14 @@ import numpy
 import io
 import struct
 import traceback
-import globals
 
 try:
+    from . import globals
     from . import popcnt  # type: ignore
 except ImportError:
-    # We also need to import this from create.py as a top-level package
-    import popcnt
+    # We also need to import these from create.py as a top-level package
+    import globals  # type: ignore[no-redef]
+    import popcnt  # type: ignore[no-redef]
 
 
 def pad(data: bytearray, align):
@@ -51,7 +52,7 @@ def butter_lowpass_filter(data, cutoff, fs, order=5):
     return y
 
 
-class Tape(object):
+class Tape:
     """Instances of this class represent tapes that can be loaded into computers, including their binary data,
     sound file, name, and tape image (if one is provided)"""
 
@@ -135,7 +136,7 @@ class ProgramTape(Tape):
         self.current_bit = 0
         self.block_pos = 0
 
-        super(ProgramTape, self).__init__(filename)
+        super().__init__(filename)
 
     def from_binary(self, data, name="unknown"):
         super().from_binary(data, name)
