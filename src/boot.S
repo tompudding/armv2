@@ -14,12 +14,15 @@ keyboard_device_id        = 0x41414141
 display_device_id         = 0x9d99389e
 tape_device_id            = 0x2730eb6c
 clock_device_id           = 0x92d177b0
+sound_device_id           = 0x51d06581
 keyboard_map_start        = 0x01000000
 keyboard_map_end          = 0x01001000
 display_map_start         = 0x01001000
 display_map_end           = 0x01005000
 tape_map_start            = 0x01005000
 tape_map_end              = 0x01006000
+sound_map_start           = 0x01006000
+sound_map_end             = 0x01007000
 interrupt_ringbuffer      = 0x000bff00
 interrupt_ringbuffer_pos  = 0x000bfefc
 wfi_ringbuffer_pos        = 0x000bfef8
@@ -33,7 +36,7 @@ sys_alarm               = 3
 syscall_max             = 3
 
 
-num_ids                 = 4
+num_ids                 = 5
 
 reset:
         B start
@@ -59,6 +62,7 @@ display_index:  .word display_device_id
 keyboard_index: .word keyboard_device_id
 tape_index:     .word tape_device_id
 clock_index:    .word clock_device_id
+sound_index:    .word sound_device_id
 
 start:
         @ Set the stack up for supervisor mode...
@@ -129,6 +133,11 @@ keyboard_map:
         LDR R0,keyboard_index
         LDR R1,=keyboard_map_start
         LDR R2,=keyboard_map_end
+        BL map_device
+sound_map:
+        LDR R0,sound_index
+        LDR R1,=sound_map_start
+        LDR R2,=sound_map_end
         BL map_device
 
 /* set the clock firing */
@@ -219,7 +228,13 @@ return_interrupt:
         POP {R8-R12}
         B software_interrupt_done
 alarm:
-
+        /* Set how often the clock fires to R0 milliseconds, with 0 turning it off */
+        LDR R1,clock_index
+        MCR 1,#mov_register_opcode,R1,CR0,CR0
+        MCR 1,#mov_register_opcode,R0,CR1,CR1
+        CDP 1,#device_operation_opcode,CR0,CR1,CR2
+        MOV R0,#0
+        B software_interrupt_done
 not_implemented:
         MOV R0,#-2
 software_interrupt_done:

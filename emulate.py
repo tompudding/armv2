@@ -21,6 +21,7 @@ def new_machine(boot_rom):
         machine.add_hardware(hardware.Display(machine, scale_factor=1), name="display")
         machine.add_hardware(hardware.Clock(machine), name="clock")
         machine.add_hardware(hardware.TapeDrive(machine), name="tape_drive")
+        machine.add_hardware(hardware.SoundChip(machine), name="sound")
     except:
         machine.delete()
         raise
@@ -101,6 +102,7 @@ class Emulator:
         self.machine.display.new_frame()
         self.machine.tape_drive.update()
         self.machine.display.end_frame()
+        self.machine.sound.update()
 
     def restart(self):
         # breakpoints = self.dbg.breakpoints
@@ -115,6 +117,8 @@ class Emulator:
             self.machine.tape_drive.power_down()
         if self.machine.display:
             self.machine.display.power_down()
+        if self.machine.sound:
+            self.machine.sound.power_down()
         self.powered_on = False
         if self.owner:
             self.owner.power_off()
@@ -198,9 +202,7 @@ class Emulator:
         # elapsed = globals.t - self.last
         # if 1 and elapsed > 20:
         drawing.new_crt_frame(globals.crt_buffer)
-        self.dbg.machine.display.new_frame()
-        self.dbg.machine.tape_drive.update()
-        self.dbg.machine.display.end_frame()
+        self.draw()
         globals.crt_buffer.unbind()
         drawing.opengl.clear_screen()
         self.dbg.machine.display.draw_to_screen()

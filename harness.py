@@ -3,7 +3,8 @@ A scriptable harness for a single machine, for testing guest programs without th
 
 Time is virtual: every frame advances the clock by FRAME_MS whatever the wall clock says, the guest's clock
 interrupt is fired from that time, and tape loading is skipped, so runs are fast and repeatable. The screen is
-read straight from the display's memory, so no window needs to be shown.
+read straight from the display's memory and the sound chip's output is recorded, so no window needs to be
+shown and nothing is played unless one is.
 
 From Python, with the repo root as the working directory:
 
@@ -16,6 +17,7 @@ From Python, with the repo root as the working directory:
         h.type("50\\n")
         print(h.text())
         h.screenshot("guess.png")
+        h.save_audio("guess.wav")
 
 From the command line, where each action runs in order:
 
@@ -26,6 +28,7 @@ From the command line, where each action runs in order:
 import argparse
 import os
 import sys
+import wave
 
 import numpy
 
@@ -57,6 +60,8 @@ class Harness:
         hardware.Clock.use_pygame_timer = False
         hardware.Machine.daemon_thread = True
         self.emulator = Emulator(boot_rom=boot_rom)
+        self.captured = []
+        self.capture_sound()
         self.t = 0
         self.next_tick = None
         self.set_time()
@@ -75,6 +80,13 @@ class Harness:
     @property
     def machine(self):
         return self.emulator.machine
+
+    def capture_sound(self):
+        # Restarting the machine makes a new sound chip, so this needs doing again after that
+        sound = self.machine.sound
+        sound.capture = self.captured
+        # Virtual time runs faster than the speakers can keep up with, so only play it when it's being watched
+        sound.playback = self.show
 
     def set_time(self):
         globals.t = self.t
@@ -95,13 +107,14 @@ class Harness:
                     clock.fired()
                 self.next_tick += clock.period
 
+        # Interrupts from the clock or from keys make the cpu thread take a step, and the frame's cycles
+        # would be dropped if we asked for them while that was still going on
+        self.machine.wait_until_idle()
         self.emulator.step_num(self.FRAME_MS * self.emulator.clock_rate)
 
         # The tape drive's update moves the tape on, so it has to happen even if nothing is shown
         emulate.drawing.new_crt_frame(globals.crt_buffer)
-        self.machine.display.new_frame()
-        self.machine.tape_drive.update()
-        self.machine.display.end_frame()
+        self.emulator.draw()
 
         if self.show:
             globals.crt_buffer.unbind()
@@ -222,6 +235,32 @@ class Harness:
             image = image.resize((image.width * scale, image.height * scale), Image.NEAREST)
         image.save(filename)
 
+    # Sound. This is everything the sound chip has produced, whether or not it was played
+
+    @property
+    def sample_rate(self):
+        return self.machine.sound.sample_rate
+
+    def audio(self):
+        """The mono samples produced so far, as an int16 array at sample_rate"""
+        if not self.captured:
+            return numpy.zeros(0, dtype=numpy.int16)
+        return numpy.concatenate(self.captured)
+
+    def clear_audio(self):
+        self.captured.clear()
+
+    def save_audio(self, filename):
+        with wave.open(filename, "wb") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(self.sample_rate)
+            f.writeframes(self.audio().tobytes())
+
+    def restart(self):
+        self.emulator.restart()
+        self.capture_sound()
+
 
 def unescape(text):
     return text.encode("utf-8").decode("unicode_escape")
@@ -251,6 +290,7 @@ def main():
     actions.add_argument("--run", action=Action, metavar="MS", help="run for MS ms of virtual time")
     actions.add_argument("--print", action=Action, nargs=0, help="print the screen's text")
     actions.add_argument("--screenshot", action=Action, metavar="FILE", help="save the screen as an image")
+    actions.add_argument("--audio", action=Action, metavar="FILE", help="save the sound so far as a wav file")
     args = parser.parse_args()
 
     with Harness(boot_rom=args.rom, show=args.show) as harness:
@@ -272,6 +312,8 @@ def main():
                 print("-" * Display.width)
             elif name == "screenshot":
                 harness.screenshot(value)
+            elif name == "audio":
+                harness.save_audio(value)
         if args.show:
             # Leave it running until the window is closed
             harness.emulator.run()

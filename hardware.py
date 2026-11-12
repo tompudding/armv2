@@ -6,6 +6,8 @@ import signal
 import time
 import random
 from . import drawing
+from . import synth
+from . import audio
 import os
 import numpy
 import struct
@@ -833,6 +835,94 @@ class Clock(armv2.Device):
         self.cpu.interrupt(self.id, 0)
 
 
+class SoundChip(armv2.Device):
+    """
+    A three voice synthesiser like the Commodore 64's SID. synth.py lists the registers, which are a byte each
+    from the start of the mapped memory, and audio.py plays the result.
+
+    The samples are made a frame at a time, so register changes take effect at the start of the next frame.
+    """
+
+    id = 0x51D06581
+
+    # The longest gap between updates that we'll make samples for, so that a pause doesn't produce a backlog
+    max_update_ms = 100
+
+    def __init__(self, cpu):
+        super().__init__(cpu)
+        self.sample_rate = pygame.mixer.get_init()[0]
+        self.synth = synth.Synth(self.sample_rate)
+        self.lock = threading.Lock()
+        # Whether to play the samples. The harness turns this off and uses capture instead
+        self.playback = True
+        self.volume = 1.0
+        # A list to add every chunk of samples to
+        self.capture = None
+        self.source = None
+        self.powered_on = True
+        self.last_time = None
+        self.sample_debt = 0.0
+
+    def read_byte_callback(self, addr, value):
+        with self.lock:
+            return self.synth.read(addr)
+
+    def write_byte_callback(self, addr, value):
+        with self.lock:
+            self.synth.write(addr, value)
+        return 0
+
+    def read_callback(self, addr, value):
+        with self.lock:
+            return sum(self.synth.read(addr + i) << (i * 8) for i in range(4))
+
+    def write_callback(self, addr, value):
+        with self.lock:
+            for i in range(4):
+                self.synth.write(addr + i, (value >> (i * 8)) & 0xFF)
+        return 0
+
+    def power_down(self):
+        self.powered_on = False
+        with self.lock:
+            self.synth.reset()
+        if self.source:
+            self.source.close()
+            self.source = None
+
+    def delete(self):
+        self.power_down()
+
+    def update(self):
+        if not self.powered_on:
+            return
+        last, self.last_time = self.last_time, globals.t
+        if last is None:
+            return
+        self.sample_debt += min(globals.t - last, self.max_update_ms) * self.sample_rate / 1000
+        count = int(self.sample_debt)
+        if count <= 0:
+            return
+        self.sample_debt -= count
+
+        with self.lock:
+            samples = self.synth.render(count)
+        if self.capture is not None:
+            self.capture.append(samples)
+        if self.playback:
+            self.play(samples)
+
+    def play(self, samples):
+        if self.source is None:
+            output = audio.Output.get()
+            if output is None:
+                self.playback = False
+                return
+            self.source = output.add()
+        self.source.volume = self.volume
+        self.source.write(samples)
+
+
 class MemPassthrough:
     def __init__(self, cv, accessor):
         self.cv = cv
@@ -868,6 +958,7 @@ class Machine:
         self.memw = MemPassthrough(self.cv, self.cpu.memw)
         self.thread = threading.Thread(target=self.thread_main, daemon=self.daemon_thread)
         self.tape_drive = None
+        self.sound = None
         self.status = armv2.Status.OK
         self.thread.start()
 
@@ -952,6 +1043,19 @@ class Machine:
             # if we get here it's not running
             raise RuntimeError("Thread is not running!")
 
+    def wait_until_idle(self):
+        """Wait for the cpu thread to finish what it has been asked to do
+
+        An interrupt asks for a step of its own, and a request to step is ignored while that is outstanding,
+        so anything that needs each frame to run in full has to call this first."""
+        with self.cv:
+            while (
+                self.running
+                and self.steps_to_run
+                and (self.status != armv2.Status.WAIT_FOR_INTERRUPT or self.cpu.pins & armv2.Pins.INTERRUPT)
+            ):
+                self.cv.wait(0.1)
+
     def add_hardware(self, device, name=None):
         with self.cv:
             self.cpu.add_hardware(device)
@@ -987,6 +1091,8 @@ class Machine:
         armv2.debug_log("Killed")
         if self.tape_drive:
             self.tape_drive.delete()
+        if self.sound:
+            self.sound.delete()
 
     def interrupt(self, hw_id, code):
         with self.cv:
