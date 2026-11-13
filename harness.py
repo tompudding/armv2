@@ -19,6 +19,15 @@ From Python, with the repo root as the working directory:
         h.screenshot("guess.png")
         h.save_audio("guess.wav")
 
+A program's variables and code can be read and changed by name, as tapes carry their symbols:
+
+        h.write_word("lives", 99)
+        print(h.read_word("score"), h.symbol_at(h.registers()["pc"]))
+
+A script can also set something up and then hand over to the keyboard, given Harness(show=True):
+
+        h.interact()
+
 From the command line, where each action runs in order:
 
     python -m armv2_emulator.harness --tape tapes/guessing.tape --wait guess --type '50\\n' \\
@@ -27,14 +36,12 @@ From the command line, where each action runs in order:
 
 import argparse
 import os
+import struct
 import sys
 import wave
+import subprocess
 
 import numpy
-
-if "--show" not in sys.argv:
-    # The machine needs a window for its OpenGL context, but it stays hidden and makes no sound
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
 
@@ -48,6 +55,16 @@ class Timeout(Exception):
     pass
 
 
+def centre_window_on_i3():
+    """i3 can place the window partly off the screen. We ask it to centre the window rather than working out a
+    position ourselves because only i3 knows the real layout, and SDL can't see monitors made with xrandr
+    --setmonitor"""
+    if os.environ.get("DESKTOP_SESSION") != "i3":
+        return
+    window = pygame.display.get_wm_info()["window"]
+    subprocess.run(["i3-msg", f"[id={window}] move position center"], capture_output=True, check=False)
+
+
 class Harness:
     FRAME_MS = 16
     # How long a typed key is held down for, and the gap after it before the next one
@@ -55,6 +72,9 @@ class Harness:
 
     def __init__(self, boot_rom="armv2_emulator/build/boot.rom", show=False, scale=3):
         self.show = show
+        if not show:
+            # The machine needs a window for its OpenGL context, but it stays hidden and makes no sound
+            os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
         width, height = Display.pixel_size
         emulate.init(width * scale, height * scale, hidden=not show)
         hardware.Clock.use_pygame_timer = False
@@ -65,7 +85,10 @@ class Harness:
         self.t = 0
         self.next_tick = None
         self.tick_period = None
+        self.symbol_list = None
+        self.symbol_addresses = {}
         self.set_time()
+        centre_window_on_i3()
 
     def __enter__(self):
         return self
@@ -260,13 +283,138 @@ class Harness:
             f.setframerate(self.sample_rate)
             f.writeframes(self.audio().tobytes())
 
+    # The guest's memory. Anywhere that takes an address also takes the name of a symbol, or a (name, offset)
+    # pair for somewhere inside it, such as a field of a structure or an instruction of a function
+
+    def symbols(self):
+        """The address of every symbol that is loaded, by name
+
+        These are the boot rom's and the operating system's, and the tape's once it has loaded. Where a tape
+        uses a name that the system also has, such as main, the tape's is the one given."""
+        debugger = self.emulator.dbg
+        if debugger.need_symbols:
+            self.machine.wait_until_idle()
+            debugger.load_symbols()
+        if debugger.symbols is not self.symbol_list:
+            # The debugger reads them again whenever a tape loads. The tape loads above the system, so
+            # going up through the addresses lets its names win
+            self.symbol_list = debugger.symbols
+            self.symbol_addresses = {name: value for value, name in sorted(debugger.symbols)}
+        return self.symbol_addresses
+
+    def address(self, where):
+        """The address of a symbol, of a (symbol, offset) pair, or of an address, which is returned as it is"""
+        offset = 0
+        if isinstance(where, tuple):
+            where, offset = where
+        if isinstance(where, str):
+            try:
+                where = self.symbols()[where]
+            except KeyError:
+                raise KeyError(
+                    f"There is no symbol called {where!r}. Has the tape finished loading?"
+                ) from None
+        return where + offset
+
+    def symbol_at(self, address):
+        """The symbol that an address is in and how far into it, as (name, offset), or None if it is below
+        them all. Symbols don't record their sizes, so this is the nearest one at or before the address"""
+        address &= 0x03FFFFFC
+        best = None
+        for name, value in self.symbols().items():
+            if value <= address and (best is None or value > best[1]):
+                best = (name, value)
+        return None if best is None else (best[0], address - best[1])
+
+    def read(self, where, size):
+        """Some bytes of the guest's memory. Memory that the guest hasn't used yet reads as zeroes"""
+        address = self.address(where)
+        self.machine.wait_until_idle()
+        return bytes(self.machine.cpu.mem[address : address + size])
+
+    def write(self, where, data):
+        """Change some bytes of the guest's memory, which raises armv2.AccessError if the guest hasn't used
+        that memory yet"""
+        address = self.address(where)
+        self.machine.wait_until_idle()
+        self.machine.cpu.mem[address : address + len(data)] = data
+
+    def read_word(self, where):
+        """A 32 bit value, which is what an int, a pointer or an instruction is"""
+        return struct.unpack("<I", self.read(where, 4))[0]
+
+    def write_word(self, where, value):
+        self.write(where, struct.pack("<I", value & 0xFFFFFFFF))
+
+    def read_byte(self, where):
+        return self.read(where, 1)[0]
+
+    def write_byte(self, where, value):
+        self.write(where, bytes([value & 0xFF]))
+
+    def registers(self):
+        """The registers of the mode that the cpu is in, by name. pc is the address alone, and psr is the
+        flags and mode that share r15 with it"""
+        self.machine.wait_until_idle()
+        values = self.machine.cpu.regs[0:16]
+        registers = {f"r{i}": value for i, value in enumerate(values[:13])}
+        registers.update(
+            sp=values[13], lr=values[14], pc=values[15] & 0x03FFFFFC, psr=values[15] & 0xFC000003
+        )
+        return registers
+
+    def settle(self, timeout=2000):
+        """Run until the guest has nothing left to do and is waiting for an interrupt, which is when what
+        it was doing in response to a key is complete and its memory is safe to look at"""
+        self.frame()
+        self.run_until(self.machine.is_waiting, timeout)
+
     def restart(self):
         self.emulator.restart()
         self.capture_sound()
 
+    # The keys that the guest knows by codes of its own, as synapse.h has them
+    special_keys = {pygame.K_LEFT: 250, pygame.K_RIGHT: 251, pygame.K_UP: 252, pygame.K_DOWN: 253}
+
+    def interact(self):
+        """Hand the machine over to whoever is at the keyboard, at normal speed, until the window is closed
+
+        This is for carrying on by hand from wherever a script has got to, so the harness needs to have been
+        made with show=True. F5 to F8 do what they do in the standalone emulator."""
+        clock = pygame.time.Clock()
+        held = {}
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return
+                if event.type == pygame.KEYDOWN and event.key in Emulator.function_keys:
+                    Emulator.function_keys[event.key](self.emulator)
+                    self.capture_sound()
+                elif event.type == pygame.KEYDOWN:
+                    key = self.special_keys.get(event.key)
+                    if key is None and len(event.unicode) == 1 and ord(event.unicode) < 128:
+                        key = self.key_code(event.unicode)
+                    if key is not None:
+                        # A key up doesn't say which character it was, so remember what we sent
+                        held[event.key] = key
+                        self.key_down(key)
+                elif event.type == pygame.KEYUP and event.key in held:
+                    self.key_up(held.pop(event.key))
+            self.frame()
+            clock.tick(1000 // self.FRAME_MS)
+
 
 def unescape(text):
     return text.encode("utf-8").decode("unicode_escape")
+
+
+def parse_where(text):
+    """A place in memory from the command line: an address, a symbol, or symbol+offset"""
+    name, plus, offset = text.partition("+")
+    try:
+        return int(text, 0)
+    except ValueError:
+        return (name, int(offset, 0)) if plus else name
 
 
 class Action(argparse.Action):
@@ -294,6 +442,16 @@ def main():
     actions.add_argument("--print", action=Action, nargs=0, help="print the screen's text")
     actions.add_argument("--screenshot", action=Action, metavar="FILE", help="save the screen as an image")
     actions.add_argument("--audio", action=Action, metavar="FILE", help="save the sound so far as a wav file")
+    actions.add_argument(
+        "--peek", action=Action, metavar="WHERE", help="print the word at a symbol or address"
+    )
+    actions.add_argument(
+        "--poke",
+        action=Action,
+        metavar="WHERE=VALUE",
+        help="set the word at a symbol, symbol+offset or address",
+    )
+    actions.add_argument("--poke-byte", action=Action, metavar="WHERE=VALUE", help="the same, for one byte")
     args = parser.parse_args()
 
     with Harness(boot_rom=args.rom, show=args.show) as harness:
@@ -317,9 +475,16 @@ def main():
                 harness.screenshot(value)
             elif name == "audio":
                 harness.save_audio(value)
+            elif name == "peek":
+                word = harness.read_word(parse_where(value))
+                print(f"{value} = {word} (0x{word:08x})")
+            elif name in ("poke", "poke_byte"):
+                where, number = value.rsplit("=", 1)
+                write = harness.write_word if name == "poke" else harness.write_byte
+                write(parse_where(where), int(number, 0))
         if args.show:
             # Leave it running until the window is closed
-            harness.emulator.run()
+            harness.interact()
 
 
 if __name__ == "__main__":
