@@ -93,7 +93,7 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
 
         if(cpu->page_tables[PAGEOF(cpu->pc)] == NULL) {
             //Trying to execute an unmapped page!
-            //some sort of exception
+            //some sort of exception.
             if( ARMV2STATUS_OK != fault(cpu, cpu->pc) ) {
                 exception = EXCEPT_PREFETCH_ABORT;
                 goto handle_exception;
@@ -306,6 +306,7 @@ enum armv2_status fault(struct armv2 *cpu, uint32_t addr)
         LOG("Fault called on mapped page\n");
         return ARMV2STATUS_FAULT_FAULT;
     }
+
     enum armv2_status result = ARMV2STATUS_OK;
 
     // We need at least a page of free RAM

@@ -269,13 +269,8 @@ handle_error:
 
         LSR R0,#3
         LDR R4,=0x3fffc
-        ADD R5, R4, #13*4
-/* copy the saved registers into place */
+        STR SP, [R4]
 restore_regs_loop:
-        LDR R3, [SP], #4
-        STR R3, [R4], #4
-        CMP R4, R5
-        BLS restore_regs_loop
         MOV R1,LR
         ADR R5,handle_error_usr
         MOVS PC,R5
