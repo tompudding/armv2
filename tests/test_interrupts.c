@@ -174,17 +174,89 @@ TEST(interrupt_data_is_readable_from_the_handler)
     CHECK_REG(1, 9);                         /* and its code */
 }
 
-/* A second interrupt while one is being handled is dropped rather than queued */
-TEST(interrupts_are_dropped_while_masked)
+/* Reads the interrupt's device and code into r0 and r1, then returns */
+static void write_reading_handler(void)
+{
+    /* cdp p1, INTERRUPT_DATA, cr0, cr0, cr0 ; mrc r0, cr0 ; mrc r1, cr1 ; subs pc, lr, #4 */
+    t_write(g_vector_table[EXCEPT_IRQ] + 0, cdp(C_AL, 1, 3, 0, 0, 0, 0));
+    t_write(g_vector_table[EXCEPT_IRQ] + 4, mrc_mcr(C_AL, 1, 1, 0, 0, 0, 0, 0));
+    t_write(g_vector_table[EXCEPT_IRQ] + 8, mrc_mcr(C_AL, 1, 1, 0, 1, 1, 0, 0));
+    t_write(g_vector_table[EXCEPT_IRQ] + 12, dp_imm(C_AL, OP_SUB, 1, R_LR, R_PC, 0, 4));
+}
+
+/* A second interrupt while one is being handled waits its turn */
+TEST(interrupts_queue_while_one_is_being_handled)
 {
     t_setflags("nzcvi");
-    t_write(CODE_ADDR, NOP);
+    t_write(CODE_ADDR, MOV_IMM(2, 42));
+    write_reading_handler();
     interrupt(cpu, 7, 9);
     t_run(CODE_ADDR, 1);                     /* now in irq mode with irqs masked */
 
-    interrupt(cpu, 3, 4);                    /* this one goes nowhere */
+    interrupt(cpu, 3, 4);
 
-    CHECK_MSG(!PIN_ON(cpu, I), "a masked interrupt must not leave the pin asserted");
+    CHECK_MSG(PIN_ON(cpu, I), "the second interrupt should be holding the pin on");
     CHECK_HEX("last interrupt id", cpu->hardware_manager.last_interrupt_id, 7);
-    CHECK_HEX("last interrupt code", cpu->hardware_manager.last_interrupt_code, 9);
+
+    t_step(4);                               /* the handler for the first */
+    CHECK_REG(0, 7);
+    CHECK_REG(1, 9);
+    CHECK_REG(2, 0);                         /* we haven't got back to the program yet... */
+
+    t_step(5);                               /* ...because the second is taken straight away */
+    CHECK_REG(0, 3);
+    CHECK_REG(1, 4);
+    CHECK_MSG(!PIN_ON(cpu, I), "the pin should go off once the queue is empty");
+
+    t_step(1);
+    CHECK_REG(2, 42);
+    CHECK_HEX("mode", t_getmode(), MODE_SUP);
+}
+
+/* Interrupts that arrive while they are masked are taken, in order, once they are unmasked */
+TEST(interrupts_raised_while_masked_are_kept)
+{
+    t_setflags("I");
+    t_write(CODE_ADDR, MOV_IMM(2, 42));
+    interrupt(cpu, 7, 9);
+    interrupt(cpu, 3, 4);
+
+    t_run(CODE_ADDR, 1);
+
+    CHECK_REG(2, 42);                        /* still masked, so the program carries on */
+    CHECK_MSG(PIN_ON(cpu, I), "the pin should stay on until they are taken");
+
+    t_setflags("nzcvi");
+    t_step(1);
+    CHECK_PC(g_vector_table[EXCEPT_IRQ]);
+    CHECK_HEX("first id", cpu->hardware_manager.last_interrupt_id, 7);
+    CHECK_HEX("first code", cpu->hardware_manager.last_interrupt_code, 9);
+
+    t_setflags("nzcvi");
+    t_step(1);
+    CHECK_HEX("second id", cpu->hardware_manager.last_interrupt_id, 3);
+    CHECK_HEX("second code", cpu->hardware_manager.last_interrupt_code, 4);
+    CHECK_MSG(!PIN_ON(cpu, I), "the pin should go off once the queue is empty");
+}
+
+/* The queue is a fixed size, and when it is full the newest interrupts are the ones dropped */
+TEST(a_full_interrupt_queue_drops_new_interrupts)
+{
+    t_setflags("I");
+    for( uint32_t i = 0; i < INTERRUPT_QUEUE_SIZE + 5; i++ ) {
+        CHECK_MSG(ARMV2STATUS_OK == interrupt(cpu, 100 + i, i), "interrupt %u failed", i);
+    }
+    t_write(CODE_ADDR, NOP);
+    t_run(CODE_ADDR, 1);
+
+    for( uint32_t i = 0; i < INTERRUPT_QUEUE_SIZE; i++ ) {
+        CHECK_MSG(PIN_ON(cpu, I), "the pin went off after %u interrupts", i);
+        t_setflags("nzcvi");
+        t_step(1);
+        t_context("interrupt %u", i);
+        CHECK_HEX("id", cpu->hardware_manager.last_interrupt_id, 100 + i);
+        CHECK_HEX("code", cpu->hardware_manager.last_interrupt_code, i);
+        t_clear_context();
+    }
+    CHECK_MSG(!PIN_ON(cpu, I), "the pin should go off once the queue is empty");
 }

@@ -396,12 +396,22 @@ enum armv2_status interrupt(struct armv2 *cpu, uint32_t hw_id, uint32_t code)
         return ARMV2STATUS_INVALID_ARGS;
     }
 
-    //TODO: some kind of interrupt queue, for now drop interrupts that happen while we're doing this
-    if( PIN_OFF(cpu,I) && FLAG_CLEAR(cpu,I) ) {
-        cpu->hardware_manager.last_interrupt_id = hw_id;
-        cpu->hardware_manager.last_interrupt_code = code;
-        SETPIN(cpu,I);
+    /* Devices interrupt whenever they like, including while the cpu has interrupts masked or is already
+       handling one, so they queue up here and the cpu takes them one at a time. This isn't safe to call
+       while another thread is in run_armv2 */
+    hw_manager_t *manager = &cpu->hardware_manager;
+
+    if( manager->queue_length >= INTERRUPT_QUEUE_SIZE ) {
+        //Nothing is taking them, so drop the new one rather than something older
+        return ARMV2STATUS_OK;
     }
+
+    struct queued_interrupt *entry =
+        &manager->queue[(manager->queue_start + manager->queue_length) % INTERRUPT_QUEUE_SIZE];
+    entry->id   = hw_id;
+    entry->code = code;
+    manager->queue_length++;
+    SETPIN(cpu,I);
 
     return ARMV2STATUS_OK;
 }

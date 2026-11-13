@@ -210,10 +210,13 @@ check_position:
         LDR R11,[R10]
         CMP R9,R11
         BNE return_interrupt
-        /* Clear the interrupt flag again by setting the mode to SUP*/
+        /* Nothing yet. Wait with interrupts still masked, so that one arriving after the check above wakes
+           us rather than being handled before we go to sleep */
+        CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0
+        /* Clear the interrupt flag by setting the mode to SUP, which lets the handler run... */
         ORRS PC,PC,#3
         NOP
-        CDP 1,#wait_for_interrupt_opcode,CR0,CR0,CR0
+        /* ...and mask them again to look at what it left us */
         ORRS PC,R0,PC
         NOP
         B check_position

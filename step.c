@@ -21,9 +21,13 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
             return ARMV2STATUS_OK;
         }
 
-        if( WAITING(cpu) && PIN_OFF(cpu, I) && PIN_OFF(cpu, F) ) {
-            *instructions_in_out = instructions;
-            return ARMV2STATUS_WAIT_FOR_INTERRUPT;
+        if( WAITING(cpu) ) {
+            if( PIN_OFF(cpu, I) && PIN_OFF(cpu, F) ) {
+                *instructions_in_out = instructions;
+                return ARMV2STATUS_WAIT_FOR_INTERRUPT;
+            }
+            //An interrupt ends the wait even if it is masked and so can't be taken yet
+            CLEARCPUFLAG(cpu, WAIT);
         }
         if( instructions > 0 ) {
             instructions--;
@@ -58,8 +62,19 @@ enum armv2_status run_armv2(struct armv2 *cpu, int32_t *instructions_in_out)
                 cpu->regs.actual[R14_I] = cpu->regs.actual[PC] - 4;
                 //set the mode to IRQ mode
                 SETMODE(cpu, MODE_IRQ);
+                //Take the oldest waiting interrupt, and leave the pin on if there are more behind it
+                hw_manager_t *manager = &cpu->hardware_manager;
+                if( manager->queue_length > 0 ) {
+                    struct queued_interrupt *entry = &manager->queue[manager->queue_start];
+                    manager->last_interrupt_id   = entry->id;
+                    manager->last_interrupt_code = entry->code;
+                    manager->queue_start = (manager->queue_start + 1) % INTERRUPT_QUEUE_SIZE;
+                    manager->queue_length--;
+                }
+                if( manager->queue_length == 0 ) {
+                    CLEARPIN(cpu, I);
+                }
                 //mask interrupts so they won't be taken next time.
-                CLEARPIN(cpu, I);
                 SETFLAG(cpu, I);
                 //in case it's waiting for an interrupt
                 CLEARCPUFLAG(cpu, WAIT);

@@ -73,13 +73,37 @@ TEST(hardware_manager_wait_for_interrupt)
     CHECK_REG(0, 0);        /* the following instruction has not run */
 }
 
-/* ... and it does not park if interrupts are masked, or we would never get
- * going again */
-TEST(wait_for_interrupt_is_ignored_with_interrupts_masked)
+/* ... and it parks with interrupts masked too, which is how the boot rom waits without missing one */
+TEST(wait_for_interrupt_parks_with_interrupts_masked)
 {
     t_setflags("I");
     t_write(CODE_ADDR, cdp(C_AL, CP_HW_MANAGER, WAIT_FOR_INTERRUPT, 0, 0, 0, 0));
     t_write(CODE_ADDR + 4, MOV_IMM(0, 42));
+
+    enum armv2_status status = t_run(CODE_ADDR, 10);
+
+    CHECK_MSG(ARMV2STATUS_WAIT_FOR_INTERRUPT == status,
+              "status is %d, expected ARMV2STATUS_WAIT_FOR_INTERRUPT (%d)",
+              status, ARMV2STATUS_WAIT_FOR_INTERRUPT);
+    CHECK_REG(0, 0);
+
+    /* A masked interrupt wakes it without being taken */
+    interrupt(cpu, 1, 2);
+    status = t_step(1);
+
+    CHECK_MSG(ARMV2STATUS_OK == status, "status is %d, expected ARMV2STATUS_OK", status);
+    CHECK_REG(0, 42);
+    CHECK_HEX("mode", t_getmode(), MODE_SUP);
+    CHECK_MSG(PIN_ON(cpu, I), "the interrupt should still be waiting to be taken");
+}
+
+/* An interrupt that is already waiting means there is nothing to wait for */
+TEST(wait_for_interrupt_returns_at_once_if_one_is_waiting)
+{
+    t_setflags("I");
+    t_write(CODE_ADDR, cdp(C_AL, CP_HW_MANAGER, WAIT_FOR_INTERRUPT, 0, 0, 0, 0));
+    t_write(CODE_ADDR + 4, MOV_IMM(0, 42));
+    interrupt(cpu, 1, 2);
 
     enum armv2_status status = t_run(CODE_ADDR, 2);
 

@@ -79,10 +79,10 @@ enum armv2_status hw_manager_data_operation(struct armv2 *cpu, uint32_t crm, uin
         return ARMV2STATUS_OK;
 
     case WAIT_FOR_INTERRUPT:
-        if(FLAG_CLEAR(cpu,I) && FLAG_CLEAR(cpu,F)) {
-            //only start a wait if we're not already in an interrupt
-            SETCPUFLAG(cpu,WAIT);
-        }
+        /* Park the cpu until a device interrupts. That ends the wait whether or not interrupts are masked,
+           so a program can mask them, check whether it has anything to do, and wait if not, without an
+           interrupt slipping in between the check and the wait and being slept through */
+        SETCPUFLAG(cpu,WAIT);
         return ARMV2STATUS_OK;
 
     case GETTIME:

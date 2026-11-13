@@ -9,6 +9,7 @@ OBJ_FILES := $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
 ARMCFLAGS  =-std=gnu99 -nostdlib -march=armv2a -Wa,-mapcs-26 -mno-thumb-interwork -marm -Wl,--omagic -Isrc -Isrc/libc -Os
 TEST_SRCS := $(wildcard tests/*.c)
 TEST_HDRS := $(wildcard tests/*.h)
+CORE_HDRS  = armv2.h hw_manager.h common.h memory_map.h
 TESTFLAGS  = ${CFLAGS} -g -I. -Itests
 .PRECIOUS: build/% #Don't delete our intermediate object files, they're useful for debugging
 .PHONY: all test clean
@@ -19,14 +20,17 @@ all: armv2.so build/boot.rom
 test: build/run_tests
 	./build/run_tests
 
-build/run_tests: ${TEST_SRCS} ${TEST_HDRS} libarmv2.a armv2.h | build
+build/run_tests: ${TEST_SRCS} ${TEST_HDRS} libarmv2.a ${CORE_HDRS} | build
 	${CC} ${TESTFLAGS} -o $@ ${TEST_SRCS} libarmv2.a
 
 armv2.so: libarmv2.a armv2.pyx carmv2.pxd
-	python setup.py build_ext --inplace
+	python setup.py build_ext --inplace --force
 
-libarmv2.a: step.o instructions.o init.o armv2.h mmu.o hw_manager.o
+libarmv2.a: step.o instructions.o init.o mmu.o hw_manager.o
 	${AR} rcs $@ step.o instructions.o init.o mmu.o hw_manager.o
+
+#The structures in these are shared by every object, so a change to one has to rebuild them all
+step.o instructions.o init.o mmu.o hw_manager.o: ${CORE_HDRS}
 
 build/boot.rom: build/boot.bin build/os | build
 	python create.py --boot $^ -o $@

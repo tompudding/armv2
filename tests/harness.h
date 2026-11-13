@@ -62,6 +62,8 @@ enum armv2_status t_exec(uint32_t instruction);
 enum armv2_status t_exec_at(uint32_t addr, uint32_t instruction);
 /* Execute count instructions starting at addr (the caller writes them). */
 enum armv2_status t_run(uint32_t addr, int32_t count);
+/* Carry on from wherever the last run stopped. Taking an interrupt counts as one. */
+enum armv2_status t_step(int32_t count);
 
 /* Checks. Each records a failure against the running test and carries on. */
 void t_check_hex(const char *what, uint32_t got, uint32_t want, const char *file, int line);

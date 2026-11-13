@@ -262,6 +262,17 @@ enum armv2_status t_run(uint32_t addr, int32_t count)
     return result;
 }
 
+enum armv2_status t_step(int32_t count)
+{
+    enum armv2_status result;
+
+    mute();
+    result = run_armv2(cpu, &count);
+    unmute();
+
+    return result;
+}
+
 void t_context(const char *fmt, ...)
 {
     va_list args;
