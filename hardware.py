@@ -726,8 +726,11 @@ class Display(armv2.Device):
             pos = addr - self.letter_start
             return self.letter_data[pos]
         elif addr < self.font_end:
+            # The guest sees each character as the same 64 bit word that the font file has for it, which
+            # is the top row in the highest byte and the left pixel in the highest bit of each. We store
+            # the rows from the bottom up with the left pixel in the lowest bit, as that's how they're drawn
             pos = addr - self.font_start
-            return self.font_data[pos // 8][pos & 7]
+            return byte_reverse(int(self.font_data[pos // 8][pos & 7]))
         elif addr < self.frame_buffer_end:
             pos = self.cpu_to_screen(addr - self.frame_buffer_start)
             word = pos // 4
@@ -757,8 +760,13 @@ class Display(armv2.Device):
             # self.dirty.add(pos)
         elif addr < self.font_end:
             pos = addr - self.font_start
-            if pos // 8 >= 0x80:
-                self.font_data[pos // 8][7 - (pos & 7)] = value
+            letter = pos // 8
+            if letter >= 0x80:
+                self.font_data[letter][pos & 7] = byte_reverse(value)
+                # Anything already on the screen in that character changes with it
+                for cell, current in enumerate(self.letter_data):
+                    if current == letter:
+                        self.redraw(cell)
         elif addr < self.frame_buffer_end:
             pos = self.cpu_to_screen(addr - self.frame_buffer_start)
             word = pos // 4
