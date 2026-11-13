@@ -64,6 +64,7 @@ class Harness:
         self.capture_sound()
         self.t = 0
         self.next_tick = None
+        self.tick_period = None
         self.set_time()
 
     def __enter__(self):
@@ -100,8 +101,10 @@ class Harness:
         if clock.period <= 0:
             self.next_tick = None
         else:
-            if self.next_tick is None:
+            if self.next_tick is None or clock.period != self.tick_period:
+                # A new period starts from now, as setting a timer does, rather than after the old one
                 self.next_tick = self.t + clock.period
+                self.tick_period = clock.period
             while self.t >= self.next_tick:
                 if self.emulator.dbg.wants_interrupt():
                     clock.fired()
